@@ -28,8 +28,8 @@
   </ItemGroup>
 
   <!-- The image (spec §11, §14 milestone 6): `dotnet publish src/Pollyanna -t:PublishContainer`.
-       CI sets ContainerRegistry, ContainerRepository, ContainerImageTags, Version, and the
-       source and documentation labels from its own context. -->
+       CI (`.github/workflows/ci.yml`) sets ContainerRegistry, ContainerRepository,
+       ContainerImageTags, Version, and the source and documentation labels from its own context. -->
   <PropertyGroup>
     <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled</ContainerBaseImage>
     <ContainerRepository>pollyanna</ContainerRepository>
