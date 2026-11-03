@@ -1,7 +1,8 @@
 # Pollyanna
 
-Self-hosted gift exchange (.NET 10, Razor Pages, EF Core on SQLite). README.md has the dev
-setup, test and migration commands and the code layout; DEPLOYMENT.md covers running it.
+Self-hosted gift exchange (.NET 10, Razor Pages, EF Core on SQLite). CONTRIBUTING.md has
+the dev setup, test and migration commands and the code layout; README.md is the front door
+for people who run it, and DEPLOYMENT.md the full operator guide.
 
 ## Working rules
 

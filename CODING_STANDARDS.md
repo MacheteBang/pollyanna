@@ -29,7 +29,7 @@ Reviewers check every diff against these rules. They are judgement calls; mechan
 ## Data
 
 - Entities and their enums live in `Pollyanna.Data` (`Data/Entities.cs`). Enums are stored by name.
-- Every model change ships with its migration (CI checks this). Add one with the command in README.md.
+- Every model change ships with its migration (CI checks this). Add one with the command in CONTRIBUTING.md.
 - A query that limits rows (`Take`, `First`) has an `OrderBy`.
 
 ## Naming
