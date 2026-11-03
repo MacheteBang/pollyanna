@@ -1,0 +1,16 @@
+@model Pollyanna.Pages.Shared.NotesView
+@using Pollyanna.Infrastructure
+<ol class="passed" role="list">
+    @foreach (var note in Model.Thread.Notes)
+    {
+        var mine = note.Sender == Model.Viewer;
+        <li class="passed-note @(mine ? "passed-mine" : "passed-theirs")">
+            @if (note.IsNew)
+            {
+                <span class="stamp stamp-small passed-new">NEW</span>
+            }
+            <p class="passed-label">@(mine ? Model.Mine : Model.Them) · <time datetime="@Format.IsoHour(note.CreatedAt)" data-hour>@Format.Date(DateOnly.FromDateTime(note.CreatedAt))</time></p>
+            <p class="passed-body">@note.Body</p>
+        </li>
+    }
+</ol>

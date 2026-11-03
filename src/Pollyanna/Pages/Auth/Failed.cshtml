@@ -1,0 +1,17 @@
+@page "/auth/failed"
+@{
+    ViewData["Title"] = "Sign-in didn't work";
+    var providerProblem = Request.Query["reason"] == "provider";
+}
+
+<div class="empty">
+    <h1>Sign-in didn't work</h1>
+    <p>Your sign-in provider didn't let you in, or the sign-in took too long. Nothing was changed.</p>
+    @if (providerProblem)
+    {
+        <p>The sign-in service turned Pollyanna away. Whoever runs this site needs to check its settings.</p>
+    }
+</div>
+<div class="actions">
+    <a class="button" href="/auth/login">Try again</a>
+</div>

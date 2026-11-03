@@ -1,0 +1,104 @@
+@page "/events/new"
+@model Pollyanna.Pages.Events.NewModel
+@using Pollyanna.Events
+@using Pollyanna.Infrastructure
+@{
+    ViewData["Title"] = "New event";
+}
+
+<a class="back" href="/">← Your exchanges</a>
+<div class="page-head">
+    <h1>New event</h1>
+    <p class="small">It starts as a draft. Nobody else sees it until you open it.</p>
+</div>
+
+@if (Model.Error is not null)
+{
+    <p class="notice notice-error" role="alert">@Model.Error</p>
+}
+
+<form method="post" action="/events/new" asp-antiforgery="true" class="form-slips">
+    <section class="slip slip-plain" aria-labelledby="s1">
+        <h2 id="s1"><span class="red-text">1.</span> The exchange</h2>
+        <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="Name" value="@Model.Name" required maxlength="@EventManager.NameMax" placeholder="e.g. Family gifts 2026" autocomplete="off">
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label for="budget">Budget</label>
+                <input id="budget" name="BudgetText" value="@Model.BudgetText" maxlength="@EventManager.BudgetMax" placeholder="$25" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="date">Exchange date</label>
+                <input id="date" name="ExchangeDate" type="date" value="@(Model.ExchangeDate is { } d ? Format.IsoDate(d) : "")" required min="2000-01-01" max="2100-12-31">
+            </div>
+        </div>
+        @if (Model.Candidates.Count > 0)
+        {
+            <div class="field">
+                <label for="previous">Same group as an earlier event?</label>
+                <select id="previous" name="PreviousEventId" data-previous-select>
+                    @foreach (var c in Model.Candidates)
+                    {
+                        <option value="@c.Id" selected="@(c.Id == Model.PreviousEventId)">@c.Name</option>
+                    }
+                    <option value="" selected="@(Model.PreviousEventId is null)">No, start fresh</option>
+                </select>
+                <p class="hint">Copies its people and households, and stops people drawing the same person again.</p>
+            </div>
+            <div class="field" data-needs-previous>
+                <label for="depth">Don't repeat a pairing from the last…</label>
+                <select id="depth" name="NoRepeatDepth">
+                    @for (var n = 1; n <= EventManager.MaxNoRepeatDepth; n++)
+                    {
+                        <option value="@n" selected="@(n == Model.NoRepeatDepth)">@(n == 1 ? "1 year" : $"{n} years")</option>
+                    }
+                </select>
+            </div>
+        }
+    </section>
+
+    <section class="slip slip-plain" aria-labelledby="s2">
+        <h2 id="s2"><span class="red-text">2.</span> Will you take part?</h2>
+        <fieldset class="choices">
+            <legend class="visually-hidden">Will you take part?</legend>
+            <label class="choice"><input type="radio" name="TakePart" value="true" checked="@Model.TakePart"><span>Yes, put my name in the hat too</span></label>
+            <label class="choice"><input type="radio" name="TakePart" value="false" checked="@(!Model.TakePart)"><span>No, I'm just organizing</span></label>
+        </fieldset>
+        <p class="hint">Either way, you won't see who drew whom.</p>
+    </section>
+
+    @if (Model.Candidates.Count > 0)
+    {
+        <section class="slip slip-plain" aria-labelledby="s3">
+            <h2 id="s3"><span class="red-text">3.</span> Who's in the hat</h2>
+            @foreach (var c in Model.Candidates)
+            {
+                <fieldset class="choices" data-previous-group="@c.Id">
+                    <legend>From @c.Name: untick anyone who isn't joining this time.</legend>
+                    @if (c.People.Count == 0)
+                    {
+                        <p class="small">Nobody else was in it.</p>
+                    }
+                    @foreach (var p in c.People)
+                    {
+                        <label class="choice choice-ruled">
+                            <input type="checkbox" name="@NewModel.CopyField(c.Id)" value="@p.Id" checked="@Model.IsTicked(c.Id, p.Id)">
+                            <partial name="_Avatar" model="p" />
+                            <span>@p.Name</span>
+                        </label>
+                    }
+                </fieldset>
+            }
+            <p class="small" data-no-previous hidden>Starting fresh: you'll add people on the next page.</p>
+            <p class="small">You can add anyone else on the next page.</p>
+        </section>
+    }
+    else
+    {
+        <p class="small center">You'll add people on the next page.</p>
+    }
+
+    <button type="submit" class="button">Create draft</button>
+</form>

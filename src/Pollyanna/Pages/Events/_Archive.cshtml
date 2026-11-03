@@ -1,0 +1,14 @@
+@* "Archive this event…" on the manage page, for drawn and revealed events (spec §4, §6). *@
+@model IReadOnlyList<Pollyanna.Pages.Events.ManageModel.ParticipantRow>
+<details class="editor" id="archive">
+    <summary>Archive this event…</summary>
+    <p class="small">The event becomes read-only and moves to everyone's past events. This can't be undone. Pairings that haven't been revealed stay sealed for good.</p>
+    <partial name="_LeaveRequests" model="Model" />
+    <form method="post" asp-page-handler="Archive" class="stack">
+        <label class="choice">
+            <input type="checkbox" name="keepMessages" value="true">
+            <span>Keep the question threads. Each stays readable by its own two people only. Otherwise they're deleted.</span>
+        </label>
+        <button type="submit" class="button button-outline">Archive the event</button>
+    </form>
+</details>

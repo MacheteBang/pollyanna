@@ -1,0 +1,19 @@
+@* The one-shot result of the last form post, if any. A post that names a place (Finish's "at")
+   shows it there, beside its form, when the page renders one; the layout shows it otherwise. *@
+@{
+    var place = ViewData["NoticeAt"] as string;
+    var wanted = TempData["NoticeAt"] as string;
+    var show = !Context.Items.ContainsKey("NoticeShown") && (place is null || place == wanted);
+    if (show)
+    {
+        Context.Items["NoticeShown"] = true;
+    }
+}
+@if (show && TempData["Error"] is string error)
+{
+    <p class="notice notice-error" role="alert">@error</p>
+}
+else if (show && TempData["Notice"] is string notice)
+{
+    <p class="notice" role="status">@notice</p>
+}

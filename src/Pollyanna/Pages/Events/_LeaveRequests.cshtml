@@ -1,0 +1,6 @@
+@* Beside Reveal and Archive: anyone waiting to leave stays in, and their request is dropped (spec §4). *@
+@model IReadOnlyList<Pollyanna.Pages.Events.ManageModel.ParticipantRow>
+@foreach (var p in Model.Where(p => p.WantsToLeave))
+{
+    <p class="small red-text strong">@p.Name asked to leave. Doing this instead of a redraw keeps them in and drops the request.</p>
+}

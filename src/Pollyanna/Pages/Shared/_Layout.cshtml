@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>@(ViewData["Title"] is string title ? $"{title} · Pollyanna" : "Pollyanna")</title>
+    <link rel="preload" href="~/fonts/courier-prime-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="~/fonts/courier-prime-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png">
+    <script src="~/js/site.js" asp-append-version="true" defer></script>
+</head>
+<body>
+    <div class="page">
+        <header class="masthead">
+            <a class="brand" href="/"><partial name="_Girl" /><span>Pollyanna</span></a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <nav class="whoami" aria-label="Account">
+                    <a href="/account">@User.Identity.Name</a>
+                    <form method="post" action="/auth/signout" asp-antiforgery="true">
+                        <button type="submit" class="link-button">Sign out</button>
+                    </form>
+                </nav>
+            }
+        </header>
+        <main>
+            <partial name="_Notice" />
+            @RenderBody()
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,3 @@
+# EF Core writes these; collapse them in PR diffs so review time goes to the hand-written code.
+src/Pollyanna/Data/Migrations/*.Designer.cs linguist-generated=true
+src/Pollyanna/Data/Migrations/PollyannaDbModelSnapshot.cs linguist-generated=true

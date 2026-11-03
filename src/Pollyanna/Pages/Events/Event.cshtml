@@ -1,0 +1,301 @@
+@page "/events/{id:guid}/{handler?}"
+@model Pollyanna.Pages.Events.EventModel
+@using Pollyanna.Data
+@using Pollyanna.Events
+@using Pollyanna.Infrastructure
+@using Pollyanna.Pages.Shared
+@{
+    ViewData["Title"] = Model.Event.Name;
+    var others = Model.Participants.Where(p => p.Id != User.PersonId()).ToList();
+}
+
+<a class="back" href="/">← Your exchanges</a>
+<div class="page-head">
+    <h1>@Model.Event.Name</h1>
+    <p>@(string.IsNullOrWhiteSpace(Model.Event.BudgetText) ? "" : Model.Event.BudgetText + " · ")<partial name="_When" model="Model.Event.ExchangeDate" /></p>
+    @if (Model.Membership.IsOrganizer)
+    {
+        <p><a href="/events/@Model.Event.Id/manage">Manage this event</a></p>
+    }
+</div>
+
+@if (Model.Event.Status == EventStatus.Draft)
+{
+    <section class="slip slip-plain" aria-labelledby="status-heading">
+        <div class="slip-head">
+            <h2 id="status-heading">Still a draft</h2>
+            <span class="stamp stamp-ink">DRAFT</span>
+        </div>
+        <p>Only organizers can see this event until it's opened.</p>
+    </section>
+}
+else if (Model.Event.Status == EventStatus.Open)
+{
+    <section class="slip slip-plain" aria-labelledby="status-heading">
+        <div class="slip-head">
+            <h2 id="status-heading">Names aren't drawn yet</h2>
+            <span class="stamp">OPEN</span>
+        </div>
+        @if (Model.Event.Redrawn)
+        {
+            <p>The names went back in the hat. Your new slip shows up here once the organizers draw again.</p>
+        }
+        else
+        {
+            <p>Write your notes so whoever draws you knows what you'd like. You'll find out who you're giving to here once the organizers draw names.</p>
+        }
+    </section>
+}
+else if (Model.Event.Status == EventStatus.Drawn)
+{
+    if (Model.WantsToLeave)
+    {
+        <section class="slip slip-plain" aria-labelledby="leaving-heading">
+            <h2 id="leaving-heading">You've asked to leave</h2>
+            <p>Taking you out means drawing names again. You'll be out once the organizers do. Until then your slip stays yours.</p>
+            <form method="post" asp-page-handler="stay" class="stack">
+                <button type="submit" class="button button-outline">Stay in after all</button>
+            </form>
+        </section>
+    }
+
+    if (Model.QuestionsThread is { Notes.Count: > 0 } questions)
+    {
+        <a class="passed-link" href="/events/@Model.Event.Id/questions">
+            <span>@(questions.Unread > 0 ? "Your giver asked you something" : "Questions from your giver")</span>
+            @if (questions.Unread > 0)
+            {
+                <span class="stamp stamp-small">@questions.Unread NEW</span>
+            }
+        </a>
+    }
+
+    if (Model.Slip is not { } slip)
+    {
+        <section class="slip slip-plain" id="slip" aria-labelledby="slip-heading">
+            <div class="slip-head">
+                <h2 id="slip-heading">Can't find your slip</h2>
+                <span class="stamp">DRAWN</span>
+            </div>
+            <p>Names have been drawn, but your assignment can't be read any more. Ask an organizer to draw names again.</p>
+        </section>
+    }
+    else
+    {
+        if (slip.RecipientChanged)
+        {
+            <p class="notice" role="status"><strong>Your recipient has changed.</strong> Someone left or joined, so you're giving to someone else now.</p>
+        }
+        var ask = Model.AskThread;
+        <details class="reveal" id="slip" data-reveal open="@Model.Unfold">
+            <summary class="reveal-cover">
+                @if (slip.DrawnAgain)
+                {
+                    <span class="kicker">NAMES WERE DRAWN AGAIN</span>
+                }
+                @if (ask is { Unread: > 0 })
+                {
+                    <span class="kicker">A NEW REPLY INSIDE</span>
+                }
+                @* The bow is adapted from Microsoft Fluent Emoji (MIT); see THIRD-PARTY-NOTICES.md. *@
+                <span class="folded" aria-hidden="true">
+                    <span class="ribbon-band"></span>
+                    <svg class="ribbon-bow" width="84" height="84" viewBox="0 0 32 32" focusable="false">
+                        <path d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z" fill="currentColor"/>
+                        <path class="bow-fold" d="M20 16.581L24.54 14.263C26.9 13.063 29.68 14.623 29.97 17.173C29.69 19.723 26.91 21.293 24.54 20.083L19.81 17.671ZM12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z"/>
+                        <rect class="bow-knot" x="12" y="6" width="8" height="13" rx="2.2"/>
+                    </svg>
+                </span>
+                <span class="button reveal-tap">Pull the ribbon</span>
+                <span class="small">Make sure nobody's looking over your shoulder.</span>
+            </summary>
+            <div class="reveal-body">
+                <div class="reveal-slip">
+                    <p>You're getting</p>
+                    <p class="reveal-name">@slip.Recipient.Name</p>
+                    <p class="reveal-end">a gift.</p>
+                    <form method="post" action="/events/@Model.Event.Id/seen" asp-antiforgery="true" data-fold>
+                        <input type="hidden" name="upto" value="@(ask?.Upto ?? 0)">
+                        <button type="submit" class="link-button tap">Tie it back up</button>
+                    </form>
+                </div>
+                <section class="slip slip-plain" aria-labelledby="their-notes-heading">
+                    <div class="slip-head">
+                        <h2 id="their-notes-heading">@Format.Possessive(slip.Recipient.Name) notes</h2>
+                        @if (slip.NotesUpdated)
+                        {
+                            <span class="stamp stamp-small">UPDATED</span>
+                        }
+                    </div>
+                    @if (slip.NotesUpdated)
+                    {
+                        <p class="small red-text strong">Notes updated since you last looked.</p>
+                    }
+                    <p class="notes">@(slip.Notes.Length > 0 ? slip.Notes : "No notes yet.")</p>
+                </section>
+                @if (ask is not null)
+                {
+                    <section class="thread" id="ask" aria-labelledby="ask-heading">
+                        <div class="thread-head">
+                            <h2 id="ask-heading">Ask @slip.Recipient.Name anonymously</h2>
+                            <p class="small">@slip.Recipient.Name sees "Your giver asks…", never your name. Times are rounded to the hour.</p>
+                        </div>
+                        @if (ask.Notes.Count > 0)
+                        {
+                            var notes = new NotesView(ask, MessageSender.Giver, $"{slip.Recipient.Name} replied");
+                            <partial name="_Notes" model="notes" />
+                        }
+                        <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "ask" })" />
+                        @if (ask.Closed)
+                        {
+                            <p class="slip slip-plain" role="status">Your recipient has closed this conversation.</p>
+                        }
+                        else
+                        {
+                            <form method="post" action="/events/@Model.Event.Id/ask" asp-antiforgery="true" class="slip slip-plain stack">
+                                <label for="ask-body">@(ask.Notes.Count > 0 ? "Another question" : "Your question")</label>
+                                <textarea id="ask-body" name="body" rows="4" maxlength="@EventManager.MessageMax" placeholder="e.g. What size gloves do you wear?" required></textarea>
+                                <div class="passed-send">
+                                    <span class="small" data-counter="ask-body">Up to @EventManager.MessageMax.ToString("N0") characters</span>
+                                    <button type="submit" class="button button-small">Send anonymously</button>
+                                </div>
+                            </form>
+                        }
+                    </section>
+                }
+            </div>
+        </details>
+    }
+
+    <section class="slip slip-plain" id="shopping" aria-labelledby="shopping-heading">
+        <h2 id="shopping-heading">Shopping</h2>
+        <p>@(Model.DoneShopping ? "You're done shopping." : "Still shopping.") <span class="small">Only the organizers see this.</span></p>
+        <form method="post" asp-page-handler="shopping" class="stack">
+            <input type="hidden" name="done" value="@(Model.DoneShopping ? "false" : "true")">
+            <button type="submit" class="button button-outline">@(Model.DoneShopping ? "Not done after all" : "I'm done shopping")</button>
+        </form>
+    </section>
+}
+else
+{
+    @* Revealed or archived: the exchange is over, and everything here is read-only. *@
+    var archived = Model.Event.Status == EventStatus.Archived;
+    if (archived)
+    {
+        <section class="slip slip-plain" aria-labelledby="status-heading">
+            <div class="slip-head">
+                <h2 id="status-heading">This exchange is over</h2>
+                <span class="stamp">ARCHIVED</span>
+            </div>
+            <p>The event is archived, so nothing here changes any more.</p>
+        </section>
+    }
+
+    if (Model.Pairings is { } pairings)
+    {
+        <section class="slip slip-plain" id="pairings" aria-labelledby="pairings-heading">
+            <div class="slip-head">
+                <h2 id="pairings-heading">Who drew whom</h2>
+                @if (!archived)
+                {
+                    <span class="stamp">REVEALED</span>
+                }
+            </div>
+            <partial name="_Pairings" model="pairings" />
+        </section>
+    }
+    else if (Model.Slip is { } past)
+    {
+        <div class="reveal-slip" id="slip">
+            <p>You got</p>
+            <p class="reveal-name">@past.Recipient.Name</p>
+            <p class="reveal-end">a gift.</p>
+        </div>
+        <p class="small center">The pairings were never revealed, so nobody else's is shown.</p>
+    }
+    else
+    {
+        <section class="slip slip-plain" id="slip" aria-labelledby="slip-heading">
+            <h2 id="slip-heading">Can't find your slip</h2>
+            <p>Your assignment for this event can't be read any more.</p>
+        </section>
+    }
+
+    var giverName = Model.Slip?.Recipient.Name;
+    if (Model.AskThread is { Notes.Count: > 0 } asked && giverName is not null)
+    {
+        var notes = new NotesView(asked, MessageSender.Giver, $"{giverName} replied");
+        <section class="thread" id="ask" aria-labelledby="ask-heading">
+            <div class="thread-head">
+                <h2 id="ask-heading">You asked @giverName</h2>
+                <p class="small">Read-only now. Only the two of you see this.</p>
+            </div>
+            <partial name="_Notes" model="notes" />
+        </section>
+    }
+    if (Model.QuestionsThread is { Notes.Count: > 0 } questions)
+    {
+        var giver = Model.MyGiver?.Name;
+        var notes = new NotesView(questions, MessageSender.Recipient, giver is null ? "Giver" : $"{giver} asked");
+        <section class="thread" id="questions" aria-labelledby="questions-heading">
+            <div class="thread-head">
+                <h2 id="questions-heading">@(giver is null ? "Your giver asked you" : $"{giver} asked you")</h2>
+                <p class="small">Read-only now. Only the two of you see this.</p>
+            </div>
+            <partial name="_Notes" model="notes" />
+        </section>
+    }
+}
+
+<section class="slip slip-plain" id="your-notes" aria-labelledby="notes-heading">
+    <h2 id="notes-heading">Your notes</h2>
+    @if (Model.Membership.Editable)
+    {
+        <form method="post" asp-page-handler="notes" class="stack">
+            <label for="notes">Likes, sizes, no-gos. Everyone in the hat can read them.</label>
+            <textarea id="notes" name="notes" rows="5" maxlength="@EventManager.NotesMax">@Model.MyNotes</textarea>
+            <button type="submit" class="button">Save notes</button>
+        </form>
+    }
+    else
+    {
+        <p class="notes">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "No notes.")</p>
+    }
+</section>
+
+<section class="slip slip-plain" aria-labelledby="people-heading">
+    <h2 id="people-heading">In the hat (@Model.Participants.Count)</h2>
+    @if (others.Count == 0)
+    {
+        <p>Nobody else yet.</p>
+    }
+    else
+    {
+        <ul class="people" role="list">
+            @foreach (var p in others)
+            {
+                <li class="person">
+                    <partial name="_Avatar" model="p" />
+                    <div class="person-body">
+                        <span class="person-name">@p.Name</span>
+                        @if (p.Notes.Length > 0)
+                        {
+                            <p class="notes small">@p.Notes</p>
+                        }
+                        else
+                        {
+                            <p class="small">No notes yet.</p>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@if (Model.Membership.CanLeave && !Model.WantsToLeave)
+{
+    <div class="actions">
+        <a class="center" href="/events/@Model.Event.Id/leave">Leave this event</a>
+    </div>
+}

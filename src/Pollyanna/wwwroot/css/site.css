@@ -1,0 +1,696 @@
+/* Pollyanna — "Paper slips" (spec §12).
+   The app is a table with a gift on it: kraft ground, torn paper slips, rubber stamps,
+   and ribbon.
+   Palette is fixed: no other colours. Red text only ever sits on paper (on kraft it
+   falls below 4.5:1). Light only. */
+
+/* ---------- Fonts (served by the app; SIL Open Font License, see /fonts/*-OFL.txt) ---------- */
+
+@font-face {
+    font-family: "Courier Prime";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/courier-prime-latin-400-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Courier Prime";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/courier-prime-latin-ext-400-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: "Courier Prime";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/courier-prime-latin-700-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Courier Prime";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/courier-prime-latin-ext-700-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: "Courier Prime";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/courier-prime-latin-400-italic.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Courier Prime";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/courier-prime-latin-ext-400-italic.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: "Courier Prime";
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/courier-prime-latin-700-italic.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Courier Prime";
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/courier-prime-latin-ext-700-italic.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* Pencil hand: only for the revealed name. */
+@font-face {
+    font-family: "Reenie Beanie";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/reenie-beanie-latin-400-normal.woff2") format("woff2");
+}
+
+/* ---------- Tokens ---------- */
+
+:root {
+    --kraft: #C9A77C;      /* the table */
+    --paper: #F4EDE0;      /* slips */
+    --bright: #FFFDF8;     /* inputs, replies */
+    --ink: #1E1A16;
+    --red: #B3261E;        /* stamps, rules, dots */
+    --red-text: #9E2019;   /* red text, on paper only */
+    --ribbon: #3F6E8C;     /* bows and ribbon only */
+
+    --ink-faint: rgb(30 26 22 / 0.25);   /* slip shadow */
+    --ink-rule: rgb(30 26 22 / 0.4);     /* dashed rules */
+
+    --font: "Courier Prime", "Courier New", Courier, monospace;
+    --font-hand: "Reenie Beanie", "Courier Prime", cursive;
+
+    --tap: 44px;
+    --gutter: 20px;
+
+    color-scheme: light;
+}
+
+/* ---------- Base ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+    background-color: var(--kraft);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--kraft);
+    color: var(--ink);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+h1, h2, h3 { margin: 0; line-height: 1.2; font-weight: 700; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.125rem; }
+p { margin: 0; }
+
+a { color: var(--ink); text-underline-offset: 0.15em; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 3px;
+}
+
+.page {
+    max-width: 36rem;
+    margin: 0 auto;
+    padding: var(--gutter) var(--gutter) 32px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ---------- Masthead ---------- */
+
+.masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--tap);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    text-decoration: none;
+}
+
+.girl { flex-shrink: 0; color: var(--ribbon); }
+
+/* Bows: ribbon blue, folds in ink at 30%, an ink knot. */
+.bow-fold { fill: var(--ink); fill-opacity: 0.3; }
+.bow-knot { fill: var(--ink); }
+
+.whoami {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9375rem;
+}
+.whoami a, .whoami .link-button {
+    min-height: var(--tap);
+    display: inline-flex;
+    align-items: center;
+}
+.whoami form { margin: 0; }
+
+.back {
+    align-self: flex-start;
+    min-height: var(--tap);
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    font-size: 0.9375rem;
+}
+.back:hover { text-decoration: underline; }
+
+/* ---------- Slips: torn paper, slightly rotated ----------
+   The torn edge is a clip-path on a backing layer (::before) with its shadow on another
+   (::after), so focus outlines on the slip itself aren't clipped away. */
+
+.slip {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 22px 20px 20px;
+    color: var(--ink);
+    transform: rotate(-1deg);
+}
+.slip::before, .slip::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    clip-path: var(--torn);
+}
+.slip::before { background-color: var(--paper); z-index: -1; }
+.slip::after { background-color: var(--ink-faint); transform: translateY(2px); z-index: -2; }
+
+.slip { --torn: polygon(0 3%, 6% 0, 18% 2%, 33% 0, 51% 2%, 67% 0, 82% 3%, 100% 0, 99% 30%, 100% 62%, 99% 100%, 81% 98%, 64% 100%, 47% 97%, 29% 100%, 12% 98%, 0 100%, 1% 64%, 0 33%); }
+.slips > li:nth-child(even) .slip, .slip:nth-of-type(even) {
+    transform: rotate(0.9deg);
+    --torn: polygon(0 0, 14% 2%, 31% 0, 48% 3%, 63% 0, 79% 2%, 100% 0, 100% 35%, 99% 70%, 100% 100%, 85% 97%, 70% 100%, 52% 98%, 36% 100%, 19% 97%, 0 100%, 1% 70%, 0 36%);
+}
+.slips > li:nth-child(3n) .slip { transform: rotate(-0.4deg); }
+
+/* A slip with straight edges, for sections holding forms and longer text. */
+.slip-plain { --torn: none; transform: rotate(-0.5deg); padding: 20px 18px; gap: 12px; }
+.slip-plain:nth-of-type(even) { --torn: none; transform: rotate(0.6deg); }
+
+.slips {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.slip-link { text-decoration: none; }
+.slip-link:hover .slip-title { text-decoration: underline; }
+
+.slip-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+.slip-title { font-size: 1.375rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.slip-line { font-size: 0.9375rem; }
+.slip-small, .small { font-size: 0.875rem; }
+
+/* ---------- Stamps: rubber-stamped status labels ---------- */
+
+.stamp {
+    flex-shrink: 0;
+    display: inline-block;
+    border: 2px solid var(--red);
+    color: var(--red);
+    padding: 2px 8px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    line-height: 1.4;
+    text-transform: uppercase;
+    transform: rotate(4deg);
+}
+.stamp-ink { border: 2px dashed var(--ink); color: var(--ink); transform: rotate(-3deg); }
+.stamp-small { font-size: 0.75rem; letter-spacing: 1px; padding: 1px 6px; }
+
+/* A small red dot: "something changed here". */
+.dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: var(--red);
+}
+
+.red-text { color: var(--red-text); }
+.strong { font-weight: 700; }
+
+/* ---------- Buttons and forms ---------- */
+
+.button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    padding: 0 24px;
+    border: none;
+    background-color: var(--ink);
+    color: var(--paper);
+    font-family: inherit;
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+.button:hover { text-decoration: underline; }
+.button-outline { background-color: transparent; color: var(--ink); border: 2px solid var(--ink); }
+.button:disabled { background-color: transparent; color: var(--ink); border: 2px dashed var(--ink); cursor: not-allowed; text-decoration: none; }
+
+.link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    cursor: pointer;
+}
+
+label { font-size: 0.875rem; font-weight: 700; }
+
+input:not([type="checkbox"], [type="radio"]), select, textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 12px;
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    background-color: var(--bright);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 1rem;
+}
+textarea { padding: 10px 12px; line-height: 1.5; }
+input[type="checkbox"], input[type="radio"] {
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    accent-color: var(--ink);
+}
+
+/* ---------- Page pieces ---------- */
+
+.actions {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.actions a.center { min-height: var(--tap); display: flex; align-items: center; justify-content: center; }
+
+.center { text-align: center; }
+
+.about {
+    margin: 28px auto 0;
+    max-width: 34rem;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding-top: 24px;
+    text-align: center;
+}
+.empty p { max-width: 20rem; }
+.gift { max-width: 100%; height: auto; color: var(--ribbon); }
+.gift-paper { fill: var(--paper); stroke: var(--ink); }
+.gift-line { stroke: var(--ink); }
+.gift-tag { fill: var(--bright); stroke: var(--ink); }
+.gift-ink { fill: var(--ink); }
+
+.email-box {
+    padding: 8px 10px;
+    background-color: var(--bright);
+    border: 1px dashed var(--ink-rule);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.facts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; }
+.facts dt { font-weight: 700; }
+.facts dd { margin: 0; min-width: 0; }
+.break { overflow-wrap: anywhere; }
+
+/* ---------- Event pages ---------- */
+
+.page-head { display: flex; flex-direction: column; gap: 6px; }
+.page-head p { font-size: 0.9375rem; }
+
+/* Small capitals over a heading or list: "ORGANIZING", "EXTRA RULES". */
+.kicker { margin: 0; font-size: 0.8125rem; font-weight: 700; letter-spacing: 2px; }
+.slip .kicker { margin-top: 8px; }
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* The result of the last form post. Always on paper, so red text keeps its contrast. */
+.notice {
+    padding: 12px 14px;
+    background-color: var(--paper);
+    border: 2px solid var(--ink);
+    font-size: 0.9375rem;
+}
+.notice-error { border: 2px dashed var(--red); color: var(--red-text); font-weight: 700; }
+
+/* A gentle nudge on a slip, e.g. "you're the only organizer". */
+.warning {
+    padding: 12px;
+    border: 2px dashed var(--red-text);
+    font-size: 0.875rem;
+}
+
+.stack, .form-slips { display: flex; flex-direction: column; gap: 10px; }
+.form-slips { gap: 26px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 22rem) { .field-row { grid-template-columns: minmax(0, 1fr); } }
+.hint { font-size: 0.8125rem; line-height: 1.4; }
+
+/* A control and its button side by side, e.g. "Pick a person… [Add]". */
+.input-row { display: flex; gap: 8px; align-items: stretch; }
+.input-row > select, .input-row > input { flex: 1; min-width: 0; }
+.button-small { min-height: 48px; padding: 0 16px; font-size: 1rem; flex-shrink: 0; }
+
+.choices { margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.choices legend { padding: 0; margin-bottom: 4px; font-size: 0.875rem; font-weight: 700; }
+.choice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: var(--tap);
+    padding: 6px 0;
+    font-size: 1rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+.choice input { flex-shrink: 0; }
+.choice-ruled { border-bottom: 1px dashed var(--ink-rule); }
+
+.tap { min-height: var(--tap); display: inline-flex; align-items: center; justify-content: center; }
+.notes { white-space: pre-line; overflow-wrap: anywhere; }
+
+/* People lists: a snapshot, the name, and things about them on the right. */
+.people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: var(--tap);
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--ink-rule);
+}
+.person-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.person-text { display: block; }
+.person-name { font-weight: 700; }
+.person-side { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.person form { margin: 0; }
+
+.avatar {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border: 2px solid var(--bright);
+    outline: 1px solid var(--ink-rule);
+    transform: rotate(-3deg);
+}
+.avatar-initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bright);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.person:nth-child(even) .avatar { transform: rotate(2deg); }
+
+/* A household: a scrap of bright paper on the slip. */
+.household {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 10px 12px;
+    background-color: var(--bright);
+    border: 1px solid var(--ink-rule);
+    transform: rotate(-1deg);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.household:nth-of-type(even) { transform: rotate(1deg); }
+.household-name { font-weight: 700; }
+
+/* Edit forms tucked away under a summary line, so the page stays short. */
+.editor > summary {
+    min-height: var(--tap);
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    list-style: none;
+}
+.editor > summary::-webkit-details-marker { display: none; }
+.editor[open] > summary { font-weight: 700; }
+.editor[open] { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
+
+/* Checkbox-style marks on the manage page's people list: "[x]  [ ]  [x]". Courier keeps them in columns. */
+.person-marks { white-space: pre; }
+
+/* Home page: what changed on the viewer's own slip. Red text, on paper. */
+.slip-update { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 700; color: var(--red-text); }
+
+/* ---------- The reveal card (spec §7, §12) ----------
+   A <details>: closed, it shows a folded slip tied with ribbon and "Pull the ribbon"; open,
+   the slip with the recipient's name in pencil, and their notes. The script adds .untying
+   for 600ms before opening: the bow lifts off and the band slips away, then the slip
+   unfolds. These are the only animations, and the reduced-motion rule below turns them off
+   (the script then opens the card at once). */
+
+.reveal { display: flex; flex-direction: column; gap: 20px; }
+.reveal > summary { list-style: none; cursor: pointer; }
+.reveal > summary::-webkit-details-marker { display: none; }
+.reveal[open] > summary { display: none; }
+
+.reveal-cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 0 6px;
+    text-align: center;
+}
+.reveal-cover:focus-visible { outline-offset: 6px; }
+.reveal-cover .kicker { margin: 0; }
+.reveal-cover:hover .reveal-tap { text-decoration: underline; }
+
+/* A slip folded in half: the far half a shade darker, with a crease between, tied with a
+   band of ribbon and a bow that sits above its top edge. */
+.folded {
+    position: relative;
+    margin-top: 38px;
+    color: var(--ribbon);
+    display: flex;
+    flex-direction: column;
+    width: 220px;
+    height: 110px;
+    background-color: var(--paper);
+    box-shadow: 0 3px 0 var(--ink-faint);
+    transform: rotate(-3deg);
+}
+.folded::before, .folded::after { content: ""; flex: 1; }
+.folded::before { background-color: rgb(30 26 22 / 0.06); border-bottom: 1px solid var(--ink-faint); }
+.ribbon-band {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 18px;
+    margin-left: -9px;
+    background-color: currentColor;
+    transform-origin: 50% 100%;
+}
+.ribbon-bow { position: absolute; left: 50%; top: -38px; margin-left: -42px; transform-origin: 50% 60%; }
+.reveal.untying .ribbon-bow { animation: bow-off 560ms cubic-bezier(.4, 0, .6, 1) forwards; }
+.reveal.untying .ribbon-band { animation: band-off 560ms cubic-bezier(.4, 0, .6, 1) forwards; }
+@keyframes bow-off {
+    0% { transform: none; opacity: 1; }
+    35% { transform: rotate(-10deg) scale(1.08); opacity: 1; }
+    100% { transform: translateY(-40px) rotate(28deg) scale(0.35); opacity: 0; }
+}
+@keyframes band-off {
+    0%, 30% { transform: none; }
+    100% { transform: scaleY(0); }
+}
+.reveal-tap { padding: 0 28px; }
+
+.reveal-body { display: flex; flex-direction: column; gap: 20px; }
+.reveal[open] .reveal-body { animation: unfold 420ms cubic-bezier(.2, .8, .2, 1) both; transform-origin: top center; }
+@keyframes unfold {
+    from { transform: scaleY(0.35); opacity: 0.4; }
+    to { transform: scaleY(1); opacity: 1; }
+}
+
+.reveal-slip {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 22px 22px 18px;
+    background-color: var(--paper);
+    box-shadow: 0 3px 0 var(--ink-faint);
+    transform: rotate(-1deg);
+}
+/* The crease where it was folded. */
+.reveal-slip::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-top: 1px solid var(--ink-rule);
+    opacity: 0.45;
+}
+.reveal-name {
+    font-family: var(--font-hand);
+    font-size: clamp(3rem, 16vw, 4.75rem);
+    line-height: 0.95;
+    overflow-wrap: anywhere;
+}
+.reveal-end { text-align: right; }
+.reveal-slip form { margin: 0; align-self: flex-start; }
+
+/* ---------- The question box (spec §6, §12) ----------
+   Passed notes, not chat bubbles: the viewer's own on slip paper to the right, the other
+   side's on bright paper with a red top edge to the left. */
+
+.thread { display: flex; flex-direction: column; gap: 14px; }
+.thread-head { display: flex; flex-direction: column; gap: 6px; }
+
+.passed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.passed-note {
+    position: relative;
+    width: 82%;
+    padding: 14px 14px 10px;
+    box-shadow: 0 2px 0 var(--ink-faint);
+}
+.passed-mine { align-self: flex-end; background-color: var(--paper); transform: rotate(0.8deg); }
+.passed-theirs { align-self: flex-start; background-color: var(--bright); border-top: 3px solid var(--red); transform: rotate(-0.8deg); }
+.passed-note:nth-child(3n) { transform: rotate(-0.5deg); }
+.passed-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+.passed-theirs .passed-label { color: var(--red-text); }
+.passed-body { margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere; }
+/* "NEW", stamped on the corner of a note the viewer hasn't seen. */
+.passed-new { position: absolute; top: -12px; right: -10px; background-color: var(--bright); transform: rotate(6deg); }
+
+.passed-send { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* Event page: "Your giver asked you something", a note pinned above the slip. */
+.passed-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 8px 14px;
+    background-color: var(--bright);
+    border-top: 3px solid var(--red);
+    box-shadow: 0 2px 0 var(--ink-faint);
+    transform: rotate(0.6deg);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.3;
+    text-decoration: none;
+}
+.passed-link:hover > span:first-child { text-decoration: underline; }
+
+.thread-close { display: flex; flex-direction: column; gap: 2px; }
+.thread-close form { margin: 0; }
+
+/* ---------- The revealed list (spec §4, §7) ----------
+   Who drew whom, one ruled line each, giver → recipient; the viewer's own lines in bold. */
+
+.pairings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pairing {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    min-height: 52px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--ink-rule);
+}
+.pairing:last-child { border-bottom: none; }
+.pairing-mine { font-weight: 700; }
+.pairing-person { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.pairing-unknown { font-style: italic; }
+.pairing-arrow { color: var(--red-text); font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+}

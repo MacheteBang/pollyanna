@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- CI passes the release as -p:Version (spec §11); `Pollyanna help` and the ready line show it. -->
+    <Version>0.0.0-dev</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Email notifications (spec §11, §15). -->
+    <PackageReference Include="MailKit" Version="4.18.1" />
+    <!-- MimeKit pulls in 10.0.0, which has known advisories. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pollyanna.Tests" />
+  </ItemGroup>
+
+  <!-- The image (spec §11, §14 milestone 6): `dotnet publish src/Pollyanna -t:PublishContainer`.
+       CI sets ContainerRegistry, ContainerRepository, ContainerImageTags, Version, and the
+       source and documentation labels from its own context. -->
+  <PropertyGroup>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled</ContainerBaseImage>
+    <ContainerRepository>pollyanna</ContainerRepository>
+    <ContainerRuntimeIdentifier>linux-x64</ContainerRuntimeIdentifier>
+    <ContainerUser>1654</ContainerUser>
+    <!-- The SDK would otherwise label the assembly name as the author. -->
+    <ContainerGenerateLabelsImageAuthors>false</ContainerGenerateLabelsImageAuthors>
+    <ContainerTitle>Pollyanna</ContainerTitle>
+    <ContainerDescription>A small self-hosted Secret Santa with a sealed draw. Run `/app/Pollyanna help` for settings, mounts, health check and backup; the full guide is /app/DEPLOYMENT.md.</ContainerDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ContainerPort Include="8080" Type="tcp" />
+    <!-- Development settings (mock issuer, dev secret) stay out of the published app. -->
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+    <!-- An operator with only the image can read these from /app. -->
+    <None Include="../../DEPLOYMENT.md" Link="DEPLOYMENT.md" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

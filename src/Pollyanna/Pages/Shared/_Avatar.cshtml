@@ -1,0 +1,9 @@
+@model Pollyanna.Events.PersonRow
+@if (Model.HasPicture)
+{
+    <img class="avatar" src="/people/@Model.Id/picture" alt="" width="32" height="32" loading="lazy">
+}
+else
+{
+    <span class="avatar avatar-initials" aria-hidden="true">@Pollyanna.Infrastructure.Format.Initials(Model.Name)</span>
+}

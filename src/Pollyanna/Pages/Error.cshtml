@@ -1,0 +1,13 @@
+@page "/error/{code:int?}"
+@model ErrorModel
+@{
+    ViewData["Title"] = Model.Heading;
+}
+
+<div class="empty">
+    <h1>@Model.Heading</h1>
+    <p>@Model.Message</p>
+</div>
+<div class="actions">
+    <a class="button" href="/">Back to your exchanges</a>
+</div>

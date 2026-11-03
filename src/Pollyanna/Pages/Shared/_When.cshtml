@@ -1,0 +1,3 @@
+@model DateOnly
+@using Pollyanna.Infrastructure
+<time datetime="@Format.IsoDate(Model)">@Format.Date(Model)</time><span class="countdown" data-countdown="@Format.IsoDate(Model)" hidden></span>

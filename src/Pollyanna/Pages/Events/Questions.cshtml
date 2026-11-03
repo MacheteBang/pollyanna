@@ -1,0 +1,59 @@
+@page "/events/{id:guid}/questions/{handler?}"
+@model Pollyanna.Pages.Events.QuestionsModel
+@using Pollyanna.Data
+@using Pollyanna.Events
+@using Pollyanna.Pages.Shared
+@{
+    ViewData["Title"] = "Your giver asks…";
+    var thread = Model.Thread;
+}
+
+<a class="back" href="/events/@Model.Event.Id">← @Model.Event.Name</a>
+<div class="page-head">
+    <h1>Your giver asks…</h1>
+    <p>The person getting you a gift has a question. Their name stays a secret.</p>
+</div>
+
+@if (thread is not { Notes.Count: > 0 })
+{
+    <section class="slip slip-plain" aria-labelledby="none-heading">
+        <h2 id="none-heading">No questions yet</h2>
+        <p>When your giver asks you something, it shows up here and you can reply.</p>
+    </section>
+}
+else
+{
+    var notes = new NotesView(thread, MessageSender.Recipient, "Giver");
+    <partial name="_Notes" model="notes" />
+
+    <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "reply" })" />
+
+    if (thread.Closed)
+    {
+        <section class="slip slip-plain" id="reply" aria-labelledby="closed-heading">
+            <h2 id="closed-heading">You closed this conversation</h2>
+            <p>Your giver can't send more questions, and you can't reply, until you reopen it.</p>
+            <form method="post" asp-page-handler="reopen" class="stack">
+                <button type="submit" class="button button-outline">Reopen it</button>
+            </form>
+        </section>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="reply" id="reply" class="slip slip-plain stack">
+            <label for="reply-body">Your reply</label>
+            <textarea id="reply-body" name="body" rows="3" maxlength="@EventManager.MessageMax" required></textarea>
+            <div class="passed-send">
+                <span class="small" data-counter="reply-body">Up to @EventManager.MessageMax.ToString("N0") characters</span>
+                <button type="submit" class="button button-small">Reply</button>
+            </div>
+        </form>
+
+        <div class="thread-close">
+            <form method="post" asp-page-handler="close">
+                <button type="submit" class="link-button tap">Close this conversation</button>
+            </form>
+            <p class="small">Your giver won't be able to send more questions. You can reopen it any time.</p>
+        </div>
+    }
+}

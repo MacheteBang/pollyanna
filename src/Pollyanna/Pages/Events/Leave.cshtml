@@ -1,0 +1,38 @@
+@page "/events/{id:guid}/leave"
+@model Pollyanna.Pages.Events.LeaveModel
+@{
+    ViewData["Title"] = "Leave " + Model.Event.Name;
+    var drawn = Model.Membership.IsLive;
+}
+
+<a class="back" href="/events/@Model.Event.Id">← @Model.Event.Name</a>
+<h1>Leave @Model.Event.Name?</h1>
+
+@if (Model.SecondStep)
+{
+    <section class="slip slip-plain" aria-labelledby="leave-heading">
+        <h2 id="leave-heading">Someone else's slip will change</h2>
+        <p>Names are drawn, so whoever drew you is given your recipient instead, and they'll see that their recipient has changed.</p>
+        <p>If the draw rules don't allow that, or too few people would be left, you stay in until the organizers draw names again.</p>
+        <form method="post" action="/events/@Model.Event.Id/leave" asp-antiforgery="true" class="stack">
+            <input type="hidden" name="confirmed" value="true">
+            <button type="submit" class="button">Yes, leave</button>
+        </form>
+        <a class="center tap" href="/events/@Model.Event.Id">Stay in</a>
+    </section>
+}
+else
+{
+    <section class="slip slip-plain" aria-labelledby="leave-heading">
+        <h2 id="leave-heading">You'll be taken out of the hat</h2>
+        <p>Your notes for this event are deleted.@(drawn ? " Names have already been drawn, so leaving changes someone else's slip." : " An organizer can add you back before names are drawn.")</p>
+        @if (Model.Membership.IsOrganizer)
+        {
+            <p>You'll still organize the event.</p>
+        }
+        <form method="post" action="/events/@Model.Event.Id/leave" asp-antiforgery="true" class="stack">
+            <button type="submit" class="button">Leave this event</button>
+        </form>
+        <a class="center tap" href="/events/@Model.Event.Id">Stay in</a>
+    </section>
+}

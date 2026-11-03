@@ -1,0 +1,41 @@
+# Example Docker Compose file for Pollyanna. See DEPLOYMENT.md in the repository, or in the image
+# at /app/DEPLOYMENT.md; `docker run --rm <image> help` prints a short reference.
+#
+# Before the first start, beside this file:
+#   cp .env.example .env               # then fill it in
+#   sudo install -d -o 1654 -g 1654 -m 700 data draw-key
+#
+# Pollyanna serves plain HTTP on port 8080; put a TLS-terminating reverse proxy in front of it.
+
+services:
+  pollyanna:
+    image: ${POLLYANNA_IMAGE:?set POLLYANNA_IMAGE in .env}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Container paths of the two mounts below; leave these as they are.
+      POLLYANNA_DATA_DIR: /data
+      POLLYANNA_DRAW_KEY_FILE: /draw-key/draw.key
+    volumes:
+      # The database and the sign-in key ring. Back it up with `/app/Pollyanna backup` (DEPLOYMENT.md).
+      - ./data:/data
+      # The draw key, created here on first start. Kept apart from the data on purpose:
+      # back it up separately, and never with the data.
+      - ./draw-key:/draw-key
+    ports:
+      # Only the reverse proxy should reach this port. If the proxy runs on the same host,
+      # use "127.0.0.1:8080:8080".
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "/app/Pollyanna", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3

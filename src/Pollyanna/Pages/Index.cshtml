@@ -1,0 +1,87 @@
+@page
+@model IndexModel
+@using Pollyanna.Infrastructure
+@{
+    ViewData["Title"] = "Your exchanges";
+}
+
+@if (Model.Events.Count > 0)
+{
+    <h1>Your exchanges</h1>
+    <ul class="slips" role="list">
+        @foreach (var e in Model.Events)
+        {
+            <li>
+                <a class="slip slip-link" href="/events/@e.Id">
+                    <span class="slip-head">
+                        <span class="slip-title">@e.Name</span>
+                        <span class="stamp @(e.Status == EventStatus.Draft ? "stamp-ink" : "")">@Format.Stamp(e.Status)</span>
+                    </span>
+                    <span class="slip-line">@(string.IsNullOrWhiteSpace(e.BudgetText) ? "" : e.BudgetText + " · ")<partial name="_When" model="e.ExchangeDate" /></span>
+                    @foreach (var update in e.Updates)
+                    {
+                        <span class="slip-line slip-update"><span class="dot" aria-hidden="true"></span>@update</span>
+                    }
+                    @if (e.IsOrganizer)
+                    {
+                        <span class="slip-line slip-small">You organize · @Format.People(e.ParticipantCount)@(e.InvitationCount > 0 ? " · " + Format.Invites(e.InvitationCount) : "")</span>
+                    }
+                </a>
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <div class="empty">
+        @* A gift box with the bow on the lid and a tag (spec §12). The bow is adapted from Microsoft Fluent Emoji (MIT); see THIRD-PARTY-NOTICES.md. *@
+        <svg class="gift" width="170" height="150" viewBox="0 0 170 150" aria-hidden="true" focusable="false">
+            <rect class="gift-paper" x="22" y="62" width="126" height="80" stroke-width="3"/>
+            <rect class="gift-paper" x="14" y="44" width="142" height="22" stroke-width="3"/>
+            <rect x="76" y="44" width="18" height="98" fill="currentColor"/>
+            <path d="M22 66H148" stroke-width="3" class="gift-line"/>
+            <path class="gift-tag" d="M126 21L150 17L152 31L128 35Z" stroke-width="2"/>
+            <circle class="gift-ink" cx="130" cy="27" r="1.6"/>
+            <path class="gift-line" d="M90 34C104 28 116 25 129 27" stroke-width="1.6" fill="none"/>
+            <g transform="translate(43.4 14) scale(2.6)">
+                <path d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z" fill="currentColor"/>
+                <path class="bow-fold" d="M20 16.581L24.54 14.263C26.9 13.063 29.68 14.623 29.97 17.173C29.69 19.723 26.91 21.293 24.54 20.083L19.81 17.671ZM12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z"/>
+                <rect class="gift-ink" x="12" y="6" width="8" height="13" rx="2.2"/>
+            </g>
+        </svg>
+        <h1>Nothing to unwrap yet</h1>
+        <p>You're not in any exchanges yet.</p>
+    </div>
+
+    <section class="slip slip-plain" aria-labelledby="invite-heading">
+        <h2 id="invite-heading">Expecting an invitation?</h2>
+        @if (Model.Email is null)
+        {
+            <p>Your sign-in account has no email address, so an invitation by email can't reach you. Ask the organizer to add you by name instead. You can be picked now that you've signed in.</p>
+        }
+        else if (Model.EmailVerified == false)
+        {
+            <p>Your sign-in account says this email isn't verified, so invitations to it can't reach you. Verify it with your sign-in provider, or ask the organizer to add you by name:</p>
+            <p class="email-box">@Model.Email</p>
+        }
+        else
+        {
+            <p>Ask the organizer to invite this email. You'll be added the moment they do:</p>
+            <p class="email-box">@Model.Email</p>
+        }
+    </section>
+}
+
+<div class="actions">
+    @if (Model.Events.Count == 0)
+    {
+        <p class="center">Or run one yourself:</p>
+    }
+    <a class="button" href="/events/new">+ New event</a>
+    @if (Model.PastCount > 0)
+    {
+        <a class="center" href="/past">Past events (@Model.PastCount)</a>
+    }
+</div>
+
+<partial name="_About" />

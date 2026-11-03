@@ -1,0 +1,34 @@
+@page "/past"
+@model PastModel
+@using Pollyanna.Infrastructure
+@{
+    ViewData["Title"] = "Past events";
+}
+
+<a class="back" href="/">← Your exchanges</a>
+<h1>Past events</h1>
+
+@if (Model.Events.Count == 0)
+{
+    <section class="slip slip-plain">
+        <p>Nothing archived yet. Events move here once an organizer archives them.</p>
+    </section>
+}
+else
+{
+    <ul class="slips" role="list">
+        @foreach (var e in Model.Events)
+        {
+            <li>
+                <a class="slip slip-link" href="/events/@e.Id">
+                    <span class="slip-head">
+                        <span class="slip-title">@e.Name</span>
+                        <span class="stamp">ARCHIVED</span>
+                    </span>
+                    <span class="slip-line">@(string.IsNullOrWhiteSpace(e.BudgetText) ? "" : e.BudgetText + " · ")<time datetime="@Format.IsoDate(e.ExchangeDate)">@Format.Date(e.ExchangeDate)</time></span>
+                    <span class="slip-line slip-small">@(e.IsParticipant ? "You took part" : "You organized") · @Format.People(e.ParticipantCount)@(e.Revealed ? " · pairings revealed" : "")</span>
+                </a>
+            </li>
+        }
+    </ul>
+}

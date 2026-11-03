@@ -1,0 +1,28 @@
+@* The revealed list (spec §4, §7): who drew whom, the viewer's own line marked. A slip that
+   can't be read any more (spec §5.3) is listed without its giver. *@
+@model IReadOnlyList<Pollyanna.Events.Pairing>
+@{
+    var me = User.PersonId();
+    string You(Pollyanna.Events.PersonRow p) => p.Id == me ? " (you)" : "";
+}
+<ol class="pairings" role="list">
+    @foreach (var pair in Model)
+    {
+        <li class="pairing @(pair.Giver?.Id == me || pair.Recipient.Id == me ? "pairing-mine" : "")">
+            @if (pair.Giver is { } giver)
+            {
+                <span class="pairing-person"><partial name="_Avatar" model="giver" /><span>@giver.Name@You(giver)</span></span>
+            }
+            else
+            {
+                <span class="pairing-person pairing-unknown">Someone</span>
+            }
+            <span class="pairing-arrow" aria-hidden="true">→</span><span class="visually-hidden">gave to</span>
+            <span class="pairing-person"><partial name="_Avatar" model="pair.Recipient" /><span>@pair.Recipient.Name@You(pair.Recipient)</span></span>
+        </li>
+    }
+</ol>
+@if (Model.Any(p => p.Giver is null))
+{
+    <p class="small">Some slips can't be read any more (the draw key may have changed), so their giver isn't shown.</p>
+}

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Pollyanna.MockIssuer/Pollyanna.MockIssuer.csproj" />
+    <Project Path="src/Pollyanna/Pollyanna.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pollyanna.Tests/Pollyanna.Tests.csproj" />
+  </Folder>
+</Solution>

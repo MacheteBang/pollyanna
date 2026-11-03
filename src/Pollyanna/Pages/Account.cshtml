@@ -1,0 +1,61 @@
+@page "/account/{handler?}"
+@model AccountModel
+@{
+    ViewData["Title"] = "Your account";
+}
+
+<a class="back" href="/">← Your exchanges</a>
+<h1>Your account</h1>
+
+<section class="slip slip-plain" aria-labelledby="profile-heading">
+    <h2 id="profile-heading">From your sign-in account</h2>
+    <dl class="facts">
+        <dt>Name</dt>
+        <dd>@Model.DisplayName</dd>
+        <dt>Email</dt>
+        <dd>
+            @if (Model.Email is null)
+            {
+                <span>None sent</span>
+            }
+            else
+            {
+                <span class="break">@Model.Email</span>
+                @if (Model.EmailVerified == false)
+                {
+                    <span class="red-text"> (not verified)</span>
+                }
+            }
+        </dd>
+    </dl>
+    <p class="small">To change these, change them at your sign-in provider. Pollyanna picks them up the next time you sign in.</p>
+</section>
+
+@if (Model.EmailsAvailable)
+{
+    <section class="slip slip-plain" id="emails" aria-labelledby="emails-heading">
+        <h2 id="emails-heading">Emails</h2>
+        <form method="post" action="/account/emails" asp-antiforgery="true" class="stack">
+            <label class="choice">
+                <input type="checkbox" id="emails-on" name="on" value="true" checked="@Model.EmailsOn">
+                <span>Email me about Pollyanna events</span>
+            </label>
+            <p class="small">Pollyanna emails you when something in an event needs you, such as an event opening or names being drawn. Turning this off stops all of them, including any not sent yet.</p>
+            <button type="submit" class="button button-outline">Save</button>
+        </form>
+    </section>
+}
+
+<section class="slip slip-plain" aria-labelledby="signout-heading">
+    <h2 id="signout-heading">Sign out</h2>
+    <p class="small">This signs you out of Pollyanna on this device. It doesn't sign you out of your sign-in provider.</p>
+    <form method="post" action="/auth/signout" asp-antiforgery="true">
+        <button type="submit" class="button">Sign out</button>
+    </form>
+</section>
+
+<section class="slip slip-plain" aria-labelledby="delete-heading">
+    <h2 id="delete-heading">Delete your account</h2>
+    <p class="small">Deletes your name, email, picture and notes from Pollyanna, and takes you out of events that aren't over yet.</p>
+    <a class="button button-outline" href="/account/delete">Delete my account…</a>
+</section>
