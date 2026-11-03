@@ -1268,9 +1268,9 @@ Decided with the user on 2026-11-03 (issue #3), once the repository was public:
   their own licences in `THIRD-PARTY-NOTICES.md`.
 - README.md is for people who want to run Pollyanna: what it is, features,
   screenshots, what you need, a six-step quick start ending in a warning to back
-  up the draw key, upgrading and backups, alternatives (from §1 "Prior art"),
-  contributing and the license. It links into DEPLOYMENT.md, which stays the
-  full operator guide. Badges: CI, latest release and license only. No hosted
+  up the draw key, upgrading and backups, contributing and the license. The
+  user dropped the planned "Why Pollyanna?" alternatives section. It links into
+  DEPLOYMENT.md, which stays the full operator guide. Badges: CI, latest release and license only. No hosted
   demo, since sign-in needs a real provider; CONTRIBUTING.md's "Try it locally"
   stands in.
 - CONTRIBUTING.md takes the old README's development and layout sections

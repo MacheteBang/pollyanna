@@ -129,19 +129,6 @@ command ([§5](DEPLOYMENT.md#5-backups)), and the draw key, once
 ([§6](DEPLOYMENT.md#6-the-draw-key-read-this)). Keeping them apart is what keeps the draw
 sealed from your backups.
 
-## Why Pollyanna?
-
-There are good self-hosted gift apps already. Pollyanna exists for one thing they don't do:
-a draw that stays sealed from the person running it, and that remembers last year's.
-
-- [GiftManager](https://github.com/icbestCA/giftmanager) comes closest, with a draw,
-  exclusions and generic OIDC. It stores pairings in plaintext, though, and has no
-  no-repeat rule.
-- [Wishlist](https://github.com/cmintey/wishlist) and
-  [Christmas Community](https://github.com/Wingysam/Christmas-Community) have good OIDC
-  support and are made for sharing wishlists, but they don't draw names. They work well
-  alongside Pollyanna, which deliberately has no wishlists.
-
 ## Contributing
 
 Small fixes and improvements are welcome. For anything larger, please open an issue first.
