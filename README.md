@@ -60,7 +60,7 @@ gift exchange is called around Philadelphia.
     <td width="50%"><img src="docs/screenshots/manage.png" alt="The manage page: status, the six people with their notes, seen and done ticks, and two households"></td>
   </tr>
   <tr>
-    <td><strong>Home.</strong> Every exchange you're in, organizing or taking part.</td>
+    <td><strong>Home.</strong> Every event you're in, each on its own slip with a status stamp.</td>
     <td><strong>Manage.</strong> Organizers add people, set households and draw names, but never see the pairings.</td>
   </tr>
   <tr>
@@ -68,8 +68,8 @@ gift exchange is called around Philadelphia.
     <td align="center"><img src="docs/screenshots/questions-phone.png" alt="On a phone: 'Your giver asks…', with the giver's question and the recipient's reply" width="250"></td>
   </tr>
   <tr>
-    <td><strong>The reveal.</strong> Pull the ribbon, the bow unties, and the slip unfolds.</td>
-    <td><strong>The question box.</strong> The recipient answers "Your giver asks…" without knowing who's asking.</td>
+    <td><strong>Your slip.</strong> Pull the ribbon, the bow unties, and the slip unfolds.</td>
+    <td><strong>The question box.</strong> The recipient replies to "Your giver asks…" without knowing who's asking.</td>
   </tr>
 </table>
 

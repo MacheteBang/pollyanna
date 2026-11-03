@@ -229,7 +229,7 @@ API while Pollyanna keeps serving:
 ```sh
 cd /srv/pollyanna
 stamp=$(date +%F)
-docker compose exec -T Pollyanna /app/Pollyanna backup /data/backups/pollyanna-$stamp.db
+docker compose exec -T pollyanna /app/Pollyanna backup /data/backups/pollyanna-$stamp.db
 sudo tar -C data -czf /path/to/backups/pollyanna-data-$stamp.tar.gz backups/pollyanna-$stamp.db keys
 sudo rm data/backups/pollyanna-$stamp.db
 ```

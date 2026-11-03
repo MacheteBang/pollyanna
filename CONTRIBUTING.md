@@ -44,7 +44,7 @@ events from both sides: an organizer adds people on the manage page, and an emai
 invitation turns into a participant when someone signs in with that email. To try the
 draw, open the event with at least 3 participants and no pending invitations, then press
 "Draw names"; each participant unfolds their slip on the event page. Once names are drawn,
-a giver asks their recipient a question from inside the slip, and the recipient answers on
+a giver asks their recipient a question from inside the slip, and the recipient replies on
 "Questions from your giver" (`/events/{id}/questions`). An organizer then reveals
 the event (everyone sees who drew whom, and threads turn read-only) and archives it, which
 moves it to "Past events" (`/past`). Link a new event to the archived one to try the
@@ -120,8 +120,3 @@ CI checks that the migrations match the model.
 Fonts (Courier Prime, Reenie Beanie) are served from `src/Pollyanna/wwwroot/fonts` under the
 SIL Open Font License; the licence texts sit beside them. The bow mark is adapted from
 Microsoft Fluent Emoji (MIT); see `THIRD-PARTY-NOTICES.md`.
-
-## License
-
-By contributing, you agree that your contributions are licensed under the project's
-license, the [GNU Affero General Public License v3.0](LICENSE).
