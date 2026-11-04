@@ -674,7 +674,8 @@ with labels, and the reveal animation turned off under "reduce motion".
     reads `Pollyanna <version> is ready at <url>; OIDC redirect URI:
     <url>/auth/callback`.
   - OCI labels: the csproj sets `title` and `description` (pointing at
-    `help`); `licenses` waits for the repository to have a license. CI sets
+    `help`). `licenses` is not set yet: the repository has a license now,
+    and adding the label is a follow-up issue. CI sets
     `version`, `source` and `documentation` (that tag's `DEPLOYMENT.md` on
     the forge) from its context, so no host name is in the repo. CI passes
     the tag as `-p:Version`; local builds are `0.0.0-dev`.
@@ -688,8 +689,11 @@ with labels, and the reveal animation turned off under "reduce motion".
   host it in-process. It is for development and tests only and is never part
   of the shipped image.
 - Tests replace the email sender with an in-memory fake that records what
-  would have been sent. For local development, README suggests Mailpit as
-  a mail catcher, with the SMTP settings pointed at it.
+  would have been sent. For local development, CONTRIBUTING.md suggests
+  Mailpit as a mail catcher, with the SMTP settings pointed at it.
+- License: AGPL-3.0, in `LICENSE` (§14 "Done: README for operators"). The
+  fonts (OFL) and the Fluent bow (MIT) keep their own licences, credited in
+  `THIRD-PARTY-NOTICES.md`.
 
 ## 12. Visual design: "Paper slips"
 
@@ -757,7 +761,7 @@ this spec.
 
 - Solution `Pollyanna.slnx`: `src/Pollyanna` (the app), `src/Pollyanna.MockIssuer`
   (the dev/test OIDC provider, §11), `tests/Pollyanna.Tests` (xUnit, run with
-  `dotnet test`). `README.md` has the run steps.
+  `dotnet test`). `CONTRIBUTING.md` has the run steps.
 - Configuration (§11 table) is read lazily and checked at startup by
   `Infrastructure/StartupTasks.cs`, which also loads or creates the draw key
   (`Configuration/DrawKey.cs`) and applies EF migrations.
@@ -1085,7 +1089,7 @@ reasons in docs/adr/0001, 0003 and 0004.
 - Settings: `PollyannaSettings` reads `POLLYANNA_SMTP_*` and
   `POLLYANNA_MAIL_FROM` into `MailSettings` (null when no host is set),
   checked with the other settings at startup; `Help.cs` lists them, and
-  `DEPLOYMENT.md`, `deploy/.env.example` and README (Mailpit) cover them.
+  `DEPLOYMENT.md`, `deploy/.env.example` and CONTRIBUTING.md (Mailpit) cover them.
 - `NotificationKind` (the eight kinds, stored by name) sits with the
   entities in `Data/Entities.cs`. Everything else is in
   `src/Pollyanna/Notifications/`: `Audience.cs` (the `Audience` enum and
@@ -1135,7 +1139,7 @@ reasons in docs/adr/0001, 0003 and 0004.
   everyone else's recipients are shuffled; across every kind no email
   holds a message, notes, or a giver's or recipient's name; nothing is
   queued with emails off or without a relay.
-- Checked by hand against Mailpit (README): the "Event is open"
+- Checked by hand against Mailpit (CONTRIBUTING.md): the "Event is open"
   email arrives as plain text with its link and footer.
 - Accepted (§15 "Sending"): a change that would drop a row (switching
   emails off, losing the role, a cancelled invitation, reading the thread,
@@ -1255,6 +1259,32 @@ with the user on 2026-10-18 (no behaviour change):
   transaction, and saving inside the caller's transaction costs nothing; some of
   its saves (the patches, the message number retry) have to happen mid-way anyway.
 - `EmailSwitch` keeps its own transaction: it tracks nothing.
+
+### Done: README for operators
+
+Decided with the user on 2026-11-03 (issue #3), once the repository was public:
+
+- License: AGPL-3.0. `LICENSE` holds the text; the fonts and the bow keep
+  their own licences in `THIRD-PARTY-NOTICES.md`.
+- README.md is for people who want to run Pollyanna: what it is, features,
+  screenshots, what you need, a six-step quick start ending in a warning to back
+  up the draw key, upgrading and backups, contributing and the license. The
+  user dropped the planned "Why Pollyanna?" alternatives section. It links into
+  DEPLOYMENT.md, which stays the full operator guide. Badges: CI, latest release and license only. No hosted
+  demo, since sign-in needs a real provider; CONTRIBUTING.md's "Try it locally"
+  stands in.
+- CONTRIBUTING.md takes the old README's development and layout sections
+  (mock provider, Mailpit, PAR, tests, migrations, code layout), and says that
+  Pollyanna is developed with AI coding agents, whose instructions are
+  `CLAUDE.md` and `docs/agents/`.
+- The banner (`docs/assets/banner.svg`) is the girl on the kraft beside a slip
+  tied with a ribbon band and bow, holding the wordmark in Courier Prime Bold,
+  converted to outlines because GitHub won't load web fonts in an SVG. Light
+  only. The user picked it from three mockups.
+- Screenshots (`docs/screenshots/`) come from the dev app with demo people
+  (`example.com` addresses) and the "Cousins' Swap" event: home, the event page,
+  manage and the question box, two of them on a phone, plus a GIF of the reveal.
+  Desktop shots are 640 CSS px wide at 2x.
 
 ## 15. Email notifications
 

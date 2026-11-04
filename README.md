@@ -1,94 +1,143 @@
-# Pollyanna
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Pollyanna: a girl with braided hair tied in ribbon bows, beside a paper slip tied with ribbon" width="820">
+</p>
 
-A small self-hosted gift exchange for the family, for any occasion. Version 1 is complete:
-see [SPEC.md](SPEC.md) for what it does and [DEPLOYMENT.md](DEPLOYMENT.md) to run it.
-Formerly hatpick.
+<p align="center"><em>Names in a hat for your family's gift exchange. Self-hosted, and sealed even from you.</em></p>
 
-## Deployment
+<p align="center">
+  <a href="https://github.com/MacheteBang/pollyanna/actions/workflows/ci.yml"><img src="https://github.com/MacheteBang/pollyanna/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/MacheteBang/pollyanna/releases/latest"><img src="https://img.shields.io/github/v/release/MacheteBang/pollyanna" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/MacheteBang/pollyanna" alt="License: AGPL-3.0"></a>
+</p>
 
-Pollyanna ships as a Docker image behind your own TLS-terminating reverse proxy and OpenID
-Connect provider. [DEPLOYMENT.md](DEPLOYMENT.md) covers registering the OIDC client, every
-setting, the example Compose file in `deploy/`, backups (the data and, separately, the draw
-key), upgrades and the end-to-end check before first use.
+<p align="center">
+  <a href="#quick-start"><strong>Install</strong></a> ·
+  <a href="DEPLOYMENT.md"><strong>Docs</strong></a> ·
+  <a href="CONTRIBUTING.md"><strong>Contributing</strong></a>
+</p>
 
-## Development
+> **Status:** pre-1.0 (0.0.x) and in active use. Settings may still change between minor
+> versions.
 
-Needs the .NET 10 SDK with ASP.NET Core.
+<p align="center">
+  <img src="docs/screenshots/event.png" alt="The event page after the draw: the unfolded slip names the recipient, with their notes and an anonymous question" width="420">
+  &nbsp;
+  <img src="docs/screenshots/event-phone.png" alt="The event page on a phone: a slip tied with ribbon and a 'Pull the ribbon' button" width="210">
+</p>
 
-Run the mock identity provider and the app in two terminals:
+## What it is
 
-```sh
-dotnet run --project src/Pollyanna.MockIssuer   # http://localhost:5021
-dotnet run --project src/Pollyanna              # http://localhost:5010
-```
+Pollyanna is a small web app for a family gift exchange: everyone's name goes in the hat,
+and each person draws someone to get a gift for. Each person sees only their own slip, and
+the draw stays sealed from whoever runs the server as well: no screen or log shows who
+drew whom, and the database alone can't tell, until the organizer reveals it. It suits
+any occasion, from the holidays to a birthday swap or a book club. "A Pollyanna" is what a
+gift exchange is called around Philadelphia.
 
-Open http://localhost:5010. The mock provider shows a form where you choose the `sub`,
-name, email and `email_verified` Pollyanna receives; change the `sub` but keep a verified
-email to try re-linking. Sign in in a second browser profile as someone else to try
-events from both sides: an organizer adds people on the manage page, and an email
-invitation turns into a participant when someone signs in with that email. To try the
-draw, open the event with at least 3 participants and no pending invitations, then press
-"Draw names"; each participant unfolds their slip on the event page. Once names are drawn,
-a giver asks their recipient a question from inside the slip, and the recipient answers on
-"Questions from your giver" (`/events/{id}/questions`). An organizer then reveals
-the event (everyone sees who drew whom, and threads turn read-only) and archives it, which
-moves it to "Past events" (`/past`). Link a new event to the archived one to try the
-no-repeat rule. `/account/delete` deletes your own account. Development settings
-are in `src/Pollyanna/appsettings.Development.json`; the database and draw key go to
-`src/Pollyanna/.dev/`.
+## Features
 
-To try email notifications, run [Mailpit](https://mailpit.axllent.org/) as a mail catcher
-and point the app at it:
+- **Sealed draw.** The database alone can't tell who drew whom, not even for the person
+  running the server ([SPEC §5.2](SPEC.md#52-sealed-storage)).
+- **No-repeat rule.** Link this year's event to last year's, and nobody draws the same
+  person again.
+- **Households and exclusions.** Keep partners or housemates from drawing each other
+  ([SPEC §5.1](SPEC.md#51-algorithm)).
+- **Anonymous question box.** A giver asks their recipient questions without giving
+  themselves away.
+- **Reveal day.** Everyone sees who drew whom. Events are then archived, so the history
+  stays across years.
+- **Your own sign-in.** People sign in through your OpenID Connect provider, and organizers
+  invite them by email address.
+- **Optional email notifications,** which never include who drew whom.
+- **Small and private.** Any occasion. Works on phones. No trackers, CDNs or outside assets:
+  one small container with SQLite.
 
-```sh
-docker run -d --rm --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
-POLLYANNA_SMTP_HOST=localhost POLLYANNA_SMTP_PORT=1025 POLLYANNA_SMTP_TLS=none \
-  POLLYANNA_MAIL_FROM='Pollyanna <pollyanna@localhost>' dotnet run --project src/Pollyanna
-```
+## See it
 
-Emails sent through the outbox (opening an event, for one) show at http://localhost:8025.
-Sign in with an email in the mock provider's form, or nobody has an address to send to.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/home.png" alt="Home: the events you're in, as paper slips stamped DRAWN and OPEN"></td>
+    <td width="50%"><img src="docs/screenshots/manage.png" alt="The manage page: status, the six people with their notes, seen and done ticks, and two households"></td>
+  </tr>
+  <tr>
+    <td><strong>Home.</strong> Every event you're in, each on its own slip with a status stamp.</td>
+    <td><strong>Manage.</strong> Organizers add people, set households and draw names, but never see the pairings.</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/reveal.gif" alt="Pulling the ribbon: the bow lifts off, and the slip unfolds to show the recipient's name in pencil" width="330"></td>
+    <td align="center"><img src="docs/screenshots/questions-phone.png" alt="On a phone: 'Your giver asks…', with the giver's question and the recipient's reply" width="250"></td>
+  </tr>
+  <tr>
+    <td><strong>Your slip.</strong> Pull the ribbon, the bow unties, and the slip unfolds.</td>
+    <td><strong>The question box.</strong> The recipient replies to "Your giver asks…" without knowing who's asking.</td>
+  </tr>
+</table>
 
-To try sign-in through pushed authorization requests (PAR), start the mock provider with
-`dotnet run --project src/Pollyanna.MockIssuer -- --MockIssuer:PushedAuthorization=true`.
+There's no hosted demo, because signing in needs a real identity provider. To click
+around, [try it locally](CONTRIBUTING.md#try-it-locally) with the mock provider.
 
-Run the tests:
+## What you need
 
-```sh
-dotnet test
-```
+Pollyanna has no accounts of its own: everyone signs in through an identity provider you
+run. Before you start, have:
 
-After changing the data model, add a migration:
+- **Docker** with the Compose plugin, on a Linux x86-64 host.
+- **A reverse proxy that terminates TLS** (Caddy, nginx, Traefik, …).
+- **An OpenID Connect provider** where you can register a client, such as Pocket ID,
+  Authelia, Authentik or Keycloak. Everyone who takes part needs an account there. If you
+  don't run one yet, [Pocket ID](https://pocket-id.org) is the easiest place to start.
 
-```sh
-dotnet tool restore
-dotnet ef migrations add <Name> --project src/Pollyanna -o Data/Migrations
-```
+## Quick start
 
-## Layout
+1. Register an OIDC client at your provider. The redirect URI is
+   `https://<your-host>/auth/callback` ([details](DEPLOYMENT.md#1-register-pollyanna-with-your-provider)).
+2. Download the example Compose file and settings:
 
-- `src/Pollyanna`: the app (Razor Pages, EF Core on SQLite).
-  - `Auth/`, `People/`: sign-in, sessions, profile pictures.
-  - `Events/`: event rules and management (who can see and change what), the draw
-    algorithm (`Draw.cs`), everything after the draw (`EventManager.Draw.cs`), the
-    anonymous question box (`EventManager.Questions.cs`, `PostingLimit.cs`), reveal and
-    archive (`EventManager.Reveal.cs`) and account deletion (`EventManager.Accounts.cs`).
-    `SealedHat.cs` is the only code that reads or writes assignments and their threads, and
-    the only user of the draw key's giver tags (docs/adr/0002).
-  - `Notifications/`: email notifications (spec §15): the outbox (`Outbox.cs`), the
-    background sender (`OutboxSender.cs`), the MailKit relay (`MailSender.cs`) and one file
-    per notification kind in `Kinds/`, holding all of that kind's rules.
-  - `Configuration/`, `Infrastructure/`: settings and the draw key; startup checks,
-    middleware, and the operator commands (`help`, `healthcheck`, `backup`).
-  - `Pages/`: the screens; `Pages/Events/` holds new event, event page, manage, leave and
-    questions; `Past` and `AccountDelete` sit beside the home and account pages.
-  - `wwwroot/`: the stylesheet, fonts and the one small script (`js/site.js`); no build step.
-- `src/Pollyanna.MockIssuer`: an OIDC provider for development and tests only; never shipped.
-- `deploy/`: the example Compose file and `.env.example` (see DEPLOYMENT.md); the image itself
-  is defined in `src/Pollyanna/Pollyanna.csproj`, and `.github/workflows/ci.yml` tests and publishes it.
-- `tests/Pollyanna.Tests`: unit and integration tests, including the full OIDC flow against
-  the mock issuer hosted in-process.
+   ```sh
+   curl -fsSLO https://raw.githubusercontent.com/MacheteBang/pollyanna/main/deploy/compose.yaml
+   curl -fsSL https://raw.githubusercontent.com/MacheteBang/pollyanna/main/deploy/.env.example -o .env
+   chmod 600 .env
+   ```
 
-Fonts (Courier Prime, Reenie Beanie) are served from `src/Pollyanna/wwwroot/fonts` under the
-SIL Open Font License; the licence texts sit beside them. The bow mark is adapted from
-Microsoft Fluent Emoji (MIT); see `THIRD-PARTY-NOTICES.md`.
+3. Fill in the four settings in `.env`: your public URL, the provider's issuer URL, and
+   the client ID and secret ([settings](DEPLOYMENT.md#3-settings)).
+4. Create the data and draw-key directories, owned by uid 1654 (the container's user):
+
+   ```sh
+   sudo install -d -o 1654 -g 1654 -m 700 data draw-key
+   ```
+
+5. Start it: `docker compose up -d`, then `docker compose logs -f` until it says it's ready.
+6. Point your reverse proxy at port 8080 ([examples](DEPLOYMENT.md#4-the-reverse-proxy)).
+
+> [!WARNING]
+> **Back up the draw key now.** If `draw-key/draw.key` is lost, every slip that's drawn but
+> not yet revealed becomes unreadable, and the only fix is a redraw. Keep the copy apart from
+> your data backups ([DEPLOYMENT.md §6](DEPLOYMENT.md#6-the-draw-key-read-this)).
+
+Then run through the [end-to-end check](DEPLOYMENT.md#8-check-it-end-to-end-before-first-use)
+before the family signs in.
+
+## Upgrading and backups
+
+To upgrade, set the new version in `POLLYANNA_IMAGE` in `.env`, then run
+`docker compose pull && docker compose up -d`. Migrations apply on start, and there's no
+downgrade, so take a data backup first ([§7](DEPLOYMENT.md#7-upgrading)).
+
+Back up two things, separately: the data directory, regularly, with the built-in `backup`
+command ([§5](DEPLOYMENT.md#5-backups)), and the draw key, once
+([§6](DEPLOYMENT.md#6-the-draw-key-read-this)). Keeping them apart is what keeps the draw
+sealed from your backups.
+
+## Contributing
+
+Small fixes and improvements are welcome. For anything larger, please open an issue first.
+Pollyanna is deliberately small, so pull requests for something
+[SPEC.md](SPEC.md) §1 lists as a non-goal may be declined. [CONTRIBUTING.md](CONTRIBUTING.md)
+covers running it locally, the tests and how the project is built.
+
+## License
+
+Pollyanna is licensed under the [GNU Affero General Public License v3.0](LICENSE). The fonts,
+Courier Prime and Reenie Beanie, are under the SIL Open Font License, and the bow is adapted
+from Microsoft Fluent Emoji (MIT); see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
