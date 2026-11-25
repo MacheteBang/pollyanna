@@ -27,7 +27,7 @@ Keep the repository free of deployment specifics: use generic examples such as
 
 ## Try it locally
 
-Needs the .NET 10 SDK with ASP.NET Core. No identity provider or mail server is needed: the
+Needs the .NET 11 SDK with ASP.NET Core. No identity provider or mail server is needed: the
 solution has a mock OpenID Connect provider for development.
 
 Run the mock identity provider and the app in two terminals:
