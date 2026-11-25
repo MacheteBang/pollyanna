@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '11.0.x'
 
       # A model change without its migration fails here rather than at the operator's first start.
       - name: Migrations match the model
@@ -51,7 +51,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '11.0.x'
 
       # The SDK builds the image and talks to the registry API itself; no Docker daemon needed.
       # The repository and the source and documentation labels come from this repo, never from

@@ -377,7 +377,7 @@ chiseled ASP.NET base image, the non-root user, port 8080) are in `src/Pollyanna
 It contains only the app, plus this guide and `THIRD-PARTY-NOTICES.md` in `/app`: the mock
 identity provider and the tests are separate projects and never part of it.
 
-**Building from source**, with the .NET 10 SDK and Docker on the build machine:
+**Building from source**, with the .NET 11 SDK and Docker on the build machine:
 
 ```sh
 dotnet publish src/Pollyanna -c Release -t:PublishContainer -p:ContainerImageTags=local

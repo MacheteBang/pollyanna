@@ -621,7 +621,10 @@ with labels, and the reveal animation turned off under "reduce motion".
 
 ## 11. Technology
 
-- Back end: .NET 10.
+- Back end: .NET 11. Pollyanna follows the newest .NET release, LTS or STS,
+  moving each November when a new one comes out (decided 2026-11-25, user).
+  STS releases now get 24 months, so an STS release is supported as long as
+  the LTS before it, so staying current costs no support time.
 - Front end: server-rendered Razor Pages with a little plain JavaScript; no
   front-end build step. Pages work before scripts load where possible
   ("Tap to reveal" can be a `<details>` element enhanced by script).
@@ -967,8 +970,8 @@ this spec.
 
 - The image: the .NET SDK's container support (`dotnet publish src/Pollyanna
   -t:PublishContainer`), no Dockerfile; settings in `Pollyanna.csproj`.
-  Base `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled` (no shell, no
-  package manager), non-root uid 1654, plain HTTP on port 8080.
+  Base `mcr.microsoft.com/dotnet/aspnet:11.0-resolute-chiseled` (Ubuntu 26.04;
+  no shell, no package manager), non-root uid 1654, plain HTTP on port 8080.
   `appsettings.Development.json` isn't published; `src/Pollyanna.MockIssuer`
   and the tests are never part of the image.
 - Commands for the shell-less image (`Infrastructure/Commands.cs`, run
@@ -1285,6 +1288,25 @@ Decided with the user on 2026-11-03 (issue #3), once the repository was public:
   (`example.com` addresses) and the "Cousins' Swap" event: home, the event page,
   manage and the question box, two of them on a phone, plus a GIF of the reveal.
   Desktop shots are 640 CSS px wide at 2x.
+
+### Done: .NET 11
+
+Decided with the user on 2026-11-25, released as 0.0.4:
+
+- Framework-only: every project targets `net11.0`; the Microsoft packages and
+  `dotnet-ef` move to 11.0.x; the other packages stay where they were. New .NET
+  11 and C# features are left for later work. No `global.json`: the target
+  framework already stops an older SDK, and CI picks its SDK with
+  `setup-dotnet` (`11.0.x`).
+- The image base moves to `aspnet:11.0-resolute-chiseled`, since .NET 11
+  images ship on Ubuntu 26.04 and there's no `11.0-noble-chiseled`. Still
+  shell-less, uid 1654, port 8080.
+- The `System.Security.Cryptography.Pkcs` pin against the advisories in the
+  10.0.0 that MailKit pulls in moved from the app to the test project: .NET 11's
+  ASP.NET Core framework carries it, so the app no longer needs the pin (NuGet
+  refuses it as prunable), but the test project still resolves 10.0.0.
+- No database migration: the EF Core 11 model matches the last migration.
+- Released right away rather than after the holidays, at the user's call.
 
 ## 15. Email notifications
 
