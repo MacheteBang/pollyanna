@@ -89,29 +89,38 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   needs to check its settings." The log names the provider's `error` code
   (e.g. `invalid_client`) and the settings to check; the page shows no
   details, and the client secret is never logged.
-- A person is identified by the provider's issuer plus `sub` claim, mapped to
-  Pollyanna's own person ID. Everything else in the app (participation,
-  sealed pairings, history) uses the Pollyanna person ID, so a change of
-  provider account doesn't lose anything.
-- Re-linking: if a sign-in has an unknown issuer/`sub` but a verified email
-  that matches exactly one existing person, that person is re-linked to the
-  new account instead of a new person being created. This covers a recreated
-  account or a switch of provider.
+- A person signs in through one or more **logins** (§4). A login is one
+  provider account: the provider's issuer plus `sub` claim, unique across all
+  logins. It maps to Pollyanna's own person ID. Everything else in the app
+  (participation, sealed pairings, history) uses the Pollyanna person ID, so
+  a change of provider account doesn't lose anything.
+- Linking by email: if a sign-in has an unknown login but a verified email
+  that matches the current email of exactly one person (tombstones never
+  count), the login is added to that person instead of a new person being
+  created. It is added next to their other logins and never replaces one, so
+  the earlier login keeps working. This covers a recreated account or a
+  switch of provider.
   - "Verified" here means the provider sent `email_verified: true`. An email
-    with no `email_verified` claim is never used for re-linking (unlike
+    with no `email_verified` claim is never used for linking (unlike
     invitations, §4). Matching is case-insensitive.
+  - If the email matches two or more people, nothing is linked and a new
+    person is created. One info line gives the number of matches, naming
+    nobody.
   - The first sign-in in a process run that has no `email_verified` claim
     logs one info line, naming nobody: invitations by email still match,
     but re-linking by email won't work with this provider.
-- Display name, email and picture are refreshed from claims on every login.
+- On every sign-in, display name, email and picture take the values just
+  received, but a claim that isn't sent never clears a stored value. The
+  login's last email is updated the same way.
 - Profile pictures: on login, the server downloads the `picture` URL and
   stores the image; the browser only ever loads it from Pollyanna
   (`/people/{id}/picture`), so the strict CSP holds.
   - Fetch rules: `http`/`https` only, 5-second timeout, at most 1 MB, PNG,
     JPEG, WebP or GIF only (no SVG). Served with its checked content type and
     `X-Content-Type-Options: nosniff`.
-  - Any failure keeps the previous image, or shows the person's initials if
-    there is none. A failed fetch never blocks sign-in.
+  - Any failure keeps the previous image, and so does a sign-in that sends no
+    `picture`. Initials show only when no picture was ever stored. A failed
+    fetch never blocks sign-in.
   - Only people who share an event with the person, or an organizer adding
     people (an organizer of any event in `draft` or `open`), can load it. It
     is deleted with the account.
@@ -133,10 +142,20 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 
 ## 4. Domain model
 
-**Person** — created on first login.
-`id`, `oidc_issuer` + `oidc_sub` (unique together), `display_name`,
-`email`, `email_verified`, `picture_url`, `picture` (stored image and its
-type), `created_at`, `last_login_at`.
+**Person** — created on first sign-in.
+`id`, `display_name`, `email`, `email_verified`, `picture_url`, `picture`
+(stored image and its type), `created_at`, `last_login_at`. A person has one
+or more logins.
+
+**Login** — one provider account linked to a person (§3).
+`id`, `person_id`, `issuer` + `sub` (unique together across all logins),
+`last_email` (the email that login last sent), `created_at`, `last_used_at`.
+- A person holds at least one login; only a tombstone (below) has none, and
+  "has no logins" is how a tombstone is told apart: it can't sign in, be
+  picked, match an email or be emailed.
+- Upgrading from a single issuer and `sub` per person turned each person's
+  pair into one login whose last email is the person's current email.
+  Tombstones got no login.
 
 **Deleting an account.** A person can delete their own Pollyanna account:
 - It is blocked while they are the last organizer of any event that isn't
@@ -153,16 +172,16 @@ type), `created_at`, `last_login_at`.
     "wants to leave — redraw needed" request, and the account page says
     deletion waits for that redraw. Once nothing blocks it, deletion leaves
     every event at once.
-- Their profile (name, email, picture, provider link) and all their notes
-  are deleted. The person row itself stays as an empty tombstone (its `id`
+- Their profile (name, email, picture), every login and all their notes are
+  deleted. The person row itself stays as an empty tombstone (its `id`
   only), so foreign keys and sealed pairings stay valid. In archived and
   revealed events they appear as "Former participant", and revealed lists
   and the no-repeat rule keep working without a name.
 - Messages they wrote in revealed and archived threads stay, so the other
   side keeps their conversation; the deleted side is shown as "Former
   participant".
-- Signing in again later creates a fresh person, with no link to the old
-  history.
+- Signing in again later, through any of their old logins, creates a fresh
+  person, with no link to the old history.
 
 **Event**
 `id`, `name`, `year`, `budget_text` (free text, e.g. "$25"),

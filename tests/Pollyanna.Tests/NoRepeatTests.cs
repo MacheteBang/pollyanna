@@ -164,8 +164,11 @@ public sealed class NoRepeatTests : IAsyncLifetime
         // pairings still count for the people in both events.
         var carol = await app.PersonAsync("Carol");
         var last = await EarlierAsync("Last year", Loop(me, ann, bob, carol), people: [me, ann, bob, carol]);
-        await app.WithDbAsync(db => db.People.Where(p => p.Id == ann).ExecuteUpdateAsync(s => s
-            .SetProperty(p => p.DisplayName, (string?)null).SetProperty(p => p.OidcSub, (string?)null).SetProperty(p => p.OidcIssuer, (string?)null)));
+        await app.WithDbAsync(async db =>
+        {
+            await db.Logins.Where(l => l.PersonId == ann).ExecuteDeleteAsync();
+            await db.People.Where(p => p.Id == ann).ExecuteUpdateAsync(s => s.SetProperty(p => p.DisplayName, (string?)null));
+        });
         // This year: Pat, Bob, Carol. Last year's Bob → Carol forbids Pat → Bob → Carol → Pat.
         var ev = await CurrentAsync(last, depth: 1, people: [me, bob, carol]);
 

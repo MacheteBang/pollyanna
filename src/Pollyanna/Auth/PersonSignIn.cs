@@ -40,9 +40,11 @@ public sealed record ProviderIdentity(
 }
 
 /// <summary>
-/// Maps a provider account to a Pollyanna person on every sign-in (spec §3): find by issuer +
-/// sub, else re-link by verified email, else create. Then refresh name, email and picture, and
-/// turn any invitations to that email into participation (spec §4).
+/// Maps a provider account to a Pollyanna person on every sign-in (spec §3): find the person
+/// holding the login (issuer + sub), else add the login to the one person whose current email
+/// matches a verified email, else create a person. Then refresh name, email and picture from
+/// the claims just received (a claim that isn't sent clears nothing), and turn any invitations
+/// to that email into participation (spec §4).
 /// </summary>
 public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Outbox outbox, ILogger<PersonSignIn> logger)
 {
@@ -51,40 +53,75 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         var now = clock.GetUtcNow().UtcDateTime;
         if (identity.EmailVerified is null)
             hint.Note(logger);
-        var person = await db.People.SingleOrDefaultAsync(
-            p => p.OidcIssuer == identity.Issuer && p.OidcSub == identity.Subject, cancellationToken);
 
-        if (person is null && identity.EmailVerified == true && Person.NormalizeEmail(identity.Email) is { } email)
+        // Deleting an account deletes its logins, so a login always belongs to a living person.
+        var login = await db.Logins.SingleOrDefaultAsync(
+            l => l.Issuer == identity.Issuer && l.Subject == identity.Subject, cancellationToken);
+        Person person;
+        if (login is not null)
+            person = await db.People.SingleAsync(p => p.Id == login.PersonId, cancellationToken);
+        else
         {
-            // Re-linking needs an explicit email_verified=true, and exactly one match.
-            var matches = await db.People.Where(p => p.EmailNormalized == email).OrderBy(p => p.Id).Take(2).ToListAsync(cancellationToken);
-            if (matches.Count == 1)
+            login = new Login { Issuer = identity.Issuer, Subject = identity.Subject, CreatedAt = now };
+            if (await MatchByEmailAsync(identity, cancellationToken) is { } match)
             {
-                person = matches[0];
-                logger.LogInformation("Re-linked person {PersonId} to a new provider account.", person.Id);
-                person.OidcIssuer = identity.Issuer;
-                person.OidcSub = identity.Subject;
+                person = match;
+                logger.LogInformation("Added a login to person {PersonId} by verified email.", person.Id);
             }
+            else
+            {
+                person = new Person { CreatedAt = now };
+                db.People.Add(person);
+            }
+            login.PersonId = person.Id;
+            db.Logins.Add(login);
         }
 
-        if (person is null)
-        {
-            person = new Person { OidcIssuer = identity.Issuer, OidcSub = identity.Subject, CreatedAt = now };
-            db.People.Add(person);
-        }
-
-        person.DisplayName = identity.Name ?? identity.Email ?? "Unnamed";
-        person.Email = identity.Email;
-        person.EmailNormalized = Person.NormalizeEmail(identity.Email);
-        person.EmailVerified = identity.Email is null ? null : identity.EmailVerified;
-        person.PictureUrl = identity.PictureUrl;
+        login.LastUsedAt = now;
+        if (identity.Email is not null)
+            login.LastEmail = identity.Email;
+        UpdateProfile(person, identity);
         person.LastLoginAt = now;
         await db.SaveChangesAsync(cancellationToken);
 
         await AcceptInvitationsAsync(person, now, cancellationToken);
 
-        await RefreshPictureAsync(person, cancellationToken);
+        await RefreshPictureAsync(person, identity, cancellationToken);
         return person;
+    }
+
+    /// <summary>
+    /// The one living person whose current email matches, case-insensitively, an email the
+    /// provider explicitly marked verified. Two or more matches link nobody, and say so in one
+    /// line that names nobody.
+    /// </summary>
+    async Task<Person?> MatchByEmailAsync(ProviderIdentity identity, CancellationToken cancellationToken)
+    {
+        if (identity.EmailVerified != true || Person.NormalizeEmail(identity.Email) is not { } email)
+            return null;
+        var matches = await db.People.Living().Where(p => p.EmailNormalized == email)
+            .OrderBy(p => p.Id).ToListAsync(cancellationToken);
+        if (matches.Count == 1)
+            return matches[0];
+        if (matches.Count > 1)
+            logger.LogInformation("A new login's verified email matches {Count} people, so it was linked to none of them.", matches.Count);
+        return null;
+    }
+
+    /// <summary>Name, email and picture take the values just received; a claim that isn't sent keeps what's stored.</summary>
+    static void UpdateProfile(Person person, ProviderIdentity identity)
+    {
+        if (identity.Name is not null)
+            person.DisplayName = identity.Name;
+        if (identity.Email is not null)
+        {
+            person.Email = identity.Email;
+            person.EmailNormalized = Person.NormalizeEmail(identity.Email);
+            person.EmailVerified = identity.EmailVerified;
+        }
+        person.DisplayName ??= identity.Email ?? "Unnamed";
+        if (identity.PictureUrl is not null)
+            person.PictureUrl = identity.PictureUrl;
     }
 
     /// <summary>
@@ -118,23 +155,16 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         logger.LogInformation("Person {PersonId} joined {Count} event(s) by invitation.", person.Id, invitations.Count);
     }
 
-    async Task RefreshPictureAsync(Person person, CancellationToken cancellationToken)
+    async Task RefreshPictureAsync(Person person, ProviderIdentity identity, CancellationToken cancellationToken)
     {
-        var stored = await db.PersonPictures.FindAsync([person.Id], cancellationToken);
-        if (person.PictureUrl is null)
-        {
-            // The provider no longer sends a picture: fall back to initials.
-            if (stored is not null)
-            {
-                db.PersonPictures.Remove(stored);
-                await db.SaveChangesAsync(cancellationToken);
-            }
+        // No picture sent this time keeps the stored one (spec §3).
+        if (identity.PictureUrl is null)
             return;
-        }
-
-        var image = await pictures.FetchAsync(person.PictureUrl, cancellationToken);
+        var image = await pictures.FetchAsync(identity.PictureUrl, cancellationToken);
         if (image is null)
             return; // Keep whatever we had; a failed fetch never blocks sign-in.
+
+        var stored = await db.PersonPictures.FindAsync([person.Id], cancellationToken);
 
         if (stored is null)
             db.PersonPictures.Add(new PersonPicture { PersonId = person.Id, Data = image.Data, ContentType = image.ContentType });
