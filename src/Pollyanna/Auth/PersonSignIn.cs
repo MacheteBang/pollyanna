@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Pollyanna.Auth;
 
+/// <summary>How adding a login from <c>/account</c> ended.</summary>
+public enum AddLoginResult { Added, AlreadyYours, AnotherPersons }
+
 /// <summary>What the provider told us about the person signing in.</summary>
 public sealed record ProviderIdentity(
     string Issuer,
@@ -77,6 +80,42 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
             db.Logins.Add(login);
         }
 
+        await CountAsSignInAsync(person, login, identity, now, cancellationToken);
+        return person;
+    }
+
+    /// <summary>
+    /// Adds the login just returned by <paramref name="provider"/> to <paramref name="personId"/>,
+    /// who asked for it from <c>/account</c> (spec §3 "Adding a login while signed in"). The fresh
+    /// round trip proves control, so there is no email match, no <c>email_verified</c> check and no
+    /// admission check. A login another person holds is refused and nothing is merged; one the
+    /// person already holds changes nothing. An added login counts as a sign-in for the profile.
+    /// </summary>
+    public async Task<AddLoginResult> AddLoginAsync(Provider provider, Guid personId, ProviderIdentity identity, CancellationToken cancellationToken = default)
+    {
+        var holder = await db.Logins.Where(l => l.Issuer == identity.Issuer && l.Subject == identity.Subject)
+            .Select(l => (Guid?)l.PersonId).SingleOrDefaultAsync(cancellationToken);
+        if (holder == personId)
+            return AddLoginResult.AlreadyYours;
+        if (holder is not null)
+        {
+            logger.LogInformation("Person {PersonId} tried to add a login through provider {Provider} that belongs to another person.",
+                personId, provider.Key);
+            return AddLoginResult.AnotherPersons;
+        }
+
+        var now = clock.GetUtcNow().UtcDateTime;
+        var person = await db.People.Living().SingleAsync(p => p.Id == personId, cancellationToken);
+        var login = new Login { PersonId = personId, Issuer = identity.Issuer, Subject = identity.Subject, CreatedAt = now };
+        db.Logins.Add(login);
+        await CountAsSignInAsync(person, login, identity, now, cancellationToken);
+        logger.LogInformation("Person {PersonId} added a login through provider {Provider}.", personId, provider.Key);
+        return AddLoginResult.Added;
+    }
+
+    /// <summary>What every sign-in does once the login and person are known: refresh both, accept invitations, fetch the picture.</summary>
+    async Task CountAsSignInAsync(Person person, Login login, ProviderIdentity identity, DateTime now, CancellationToken cancellationToken)
+    {
         login.LastUsedAt = now;
         if (identity.Email is not null)
             login.LastEmail = identity.Email;
@@ -87,7 +126,6 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         await AcceptInvitationsAsync(person, now, cancellationToken);
 
         await RefreshPictureAsync(person, identity, cancellationToken);
-        return person;
     }
 
     /// <summary>

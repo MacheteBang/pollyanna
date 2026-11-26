@@ -95,6 +95,14 @@ public static class ProviderSchemes
             };
             o.Events.OnTicketReceived = async context =>
             {
+                // "Add a login" from /account is its own path: it never signs anyone in, so the
+                // sign-in rules (email matching, admission) don't apply to it.
+                if (AddLogin.IsAddLogin(context.Properties))
+                {
+                    await AddLogin.HandleCallbackAsync(context, provider);
+                    return;
+                }
+
                 var signIn = context.HttpContext.RequestServices.GetRequiredService<PersonSignIn>();
                 var person = await signIn.SignInAsync(provider, ProviderIdentity.FromClaims(context.Principal!), context.HttpContext.RequestAborted);
                 context.Principal = new ClaimsPrincipal(new ClaimsIdentity(

@@ -351,6 +351,8 @@ input[type="checkbox"], input[type="radio"] {
     flex-direction: column;
     gap: 14px;
 }
+.actions form { margin: 0; }
+.actions form .button { width: 100%; }
 .actions a.center { min-height: var(--tap); display: flex; align-items: center; justify-content: center; }
 
 .center { text-align: center; }

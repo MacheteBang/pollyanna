@@ -137,16 +137,14 @@ public sealed class PageTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Account_page_shows_name_and_email_as_sent_and_a_sign_out_form()
+    public async Task Account_page_shows_the_ways_to_sign_in_and_a_sign_out_form()
     {
         var (browser, _) = await SignInAsync(new("pat", "Pat Example", "pat@example.com", false, null));
         using var _b = browser;
         var page = await browser.GetPageAsync("/account");
-        var text = page.Body!.TextContent;
 
-        Assert.Contains("Pat Example", text);
-        Assert.Contains("pat@example.com", text);
-        Assert.Contains("(not verified)", text);
+        Assert.Contains("Pat Example", page.QuerySelector(".whoami")!.TextContent);
+        Assert.Contains("pat@example.com", page.QuerySelector("#logins")!.TextContent);
         var form = page.QuerySelector("main form[action='/auth/signout']")!;
         Assert.Equal("post", form.GetAttribute("method"));
         Assert.NotNull(form.QuerySelector("input[name='__RequestVerificationToken']"));
