@@ -12,6 +12,8 @@ public static partial class SignInFailure
 {
     public const string LoggerCategory = "Pollyanna.Auth";
     const string Page = "/auth/failed";
+    /// <summary>The failure page, with today's wording for a failed sign-in.</summary>
+    public const string PagePath = Page;
     /// <summary>The page adds that whoever runs the site needs to check its settings.</summary>
     const string ProviderPage = Page + "?reason=provider";
 

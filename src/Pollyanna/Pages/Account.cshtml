@@ -7,28 +7,41 @@
 <a class="back" href="/">← Your exchanges</a>
 <h1>Your account</h1>
 
-<section class="slip slip-plain" aria-labelledby="profile-heading">
-    <h2 id="profile-heading">From your sign-in account</h2>
-    <dl class="facts">
-        <dt>Name</dt>
-        <dd>@Model.DisplayName</dd>
-        <dt>Email</dt>
-        <dd>
-            @if (Model.Email is null)
+<section class="slip slip-plain stack" id="logins" aria-labelledby="logins-heading">
+    <h2 id="logins-heading">Ways to sign in</h2>
+    @if (TempData["LastLogin"] is true)
+    {
+        <p class="notice notice-error" role="alert">That's your only way to sign in, so it can't be removed. To leave Pollyanna, <a href="/account/delete">delete your account</a> instead.</p>
+    }
+    <ul class="people" role="list">
+        @foreach (var login in Model.Logins)
+        {
+            <li class="person">
+                <div class="person-body">
+                    <span class="person-name">@login.Label@if (login.NoLongerSetUp)
+                        {<span class="red-text"> (no longer set up)</span>}</span>
+                    <span class="small break">@(login.LastEmail ?? "No email sent")</span>
+                </div>
+                <form method="post" action="/account/removelogin" asp-antiforgery="true">
+                    <input type="hidden" name="loginId" value="@login.Id">
+                    <button type="submit" class="link-button red-text tap" aria-label="Remove @login.Label@(login.LastEmail is null ? "" : $" ({login.LastEmail})")">Remove</button>
+                </form>
+            </li>
+        }
+    </ul>
+    @if (Model.AddChoices.Count > 0)
+    {
+        <div class="actions">
+            @foreach (var provider in Model.AddChoices)
             {
-                <span>None sent</span>
+                <form method="post" action="/account/addlogin" asp-antiforgery="true">
+                    <input type="hidden" name="key" value="@provider.Key">
+                    <partial name="_ProviderButton" model='new Pollyanna.Pages.Shared.ProviderButtonView(provider, "Add " + provider.Label, null, Outline: true)' />
+                </form>
             }
-            else
-            {
-                <span class="break">@Model.Email</span>
-                @if (Model.EmailVerified == false)
-                {
-                    <span class="red-text"> (not verified)</span>
-                }
-            }
-        </dd>
-    </dl>
-    <p class="small">To change these, change them at your sign-in provider. Pollyanna picks them up the next time you sign in.</p>
+        </div>
+    }
+    <p class="small">Your name, email and picture come from your latest sign-in. A removed way to sign in whose verified email matches yours is added back the next time you use it.</p>
 </section>
 
 @if (Model.EmailsAvailable)

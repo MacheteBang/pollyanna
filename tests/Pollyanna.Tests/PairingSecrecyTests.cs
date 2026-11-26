@@ -20,7 +20,8 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
 {
     TestApp app = null!;
 
-    public async Task InitializeAsync() => app = await TestApp.StartAsync();
+    // A second provider, so /account renders its whole "Ways to sign in" section, add buttons included.
+    public async Task InitializeAsync() => app = await TestApp.StartAsync(providers: [new("google", "Google")]);
     public async Task DisposeAsync() => await app.DisposeAsync();
 
     public enum Viewer { Organizer, Participant, OrganizerWhoTakesPart }

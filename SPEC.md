@@ -176,6 +176,32 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 - On every sign-in, display name, email and picture take the values just
   received, but a claim that isn't sent never clears a stored value. The
   login's last email is updated the same way.
+- Managing logins ("Ways to sign in" on `/account`, §7):
+  - **Adding.** With more than one provider, each "Add <label>" button
+    (a POST) challenges that provider with the intent "add a login" and the
+    signed-in person carried in the protected authentication properties. On
+    return, the callback checks that the session still belongs to that
+    person; if not, nothing changes and the person lands on `/auth/failed`.
+    A fresh round trip proves control, so the login is attached with no
+    email match, no `email_verified` check and no open-provider admission
+    check. It counts as a sign-in for name, email and picture (and accepts
+    invitations to the new email). Two logins from the same provider are
+    allowed. No new session is made; the current one carries on. Notice:
+    "Added."
+  - A login another (living) person already holds is refused with "That
+    sign-in already belongs to another Pollyanna account." Nothing is merged.
+    A login the person already holds gives "That's already one of your ways
+    to sign in." and changes nothing.
+  - **Removing.** A plain POST per login, no confirmation page, notice
+    "Removed." Any login can be removed, including the one the session was
+    made through (the session belongs to the person and carries on) and
+    logins from removed providers. Removing the last login is refused, with
+    a link to `/account/delete`. Removed logins aren't remembered or blocked:
+    a matching verified email adds one back on its next sign-in, and the page
+    says so.
+  - One info log line each for a login added, removed, or refused as another
+    person's, giving the provider key and the person ID, never the email. No
+    email is sent about any of these.
 - Profile pictures: on login, the server downloads the `picture` URL and
   stores the image; the browser only ever loads it from Pollyanna
   (`/people/{id}/picture`), so the strict CSP holds.
@@ -651,7 +677,7 @@ who is asking.
 | `/events/{id}/questions` | participant | Threads where the user is the recipient |
 | `/events/{id}/manage` | organizer | Edit details; participants and invitations; organizers; households; exclusions; open, draw, redraw, reveal, archive; once revealed, the full pairing list |
 | `/past` | signed in | Archived events the user took part in or organized |
-| `/account` | signed in | Name and email as the provider sent them; the "Email me about Pollyanna events" switch (§15); sign out; delete account |
+| `/account` | signed in | "Ways to sign in" (§3): one row per login with its provider's label, the email it last sent, "(no longer set up)" when its issuer isn't configured, and a "Remove" button; with more than one provider, an outline "Add <label>" button per provider in configured order; a note that a removed login whose verified email matches is added back on its next sign-in. Then the "Email me about Pollyanna events" switch (§15); sign out; delete account |
 | `/auth/login` | anyone | Starts sign-in. With one provider, goes straight to it; with several, the chooser (§3), whose buttons go to `/auth/login/<key>` |
 | `/auth/icon/<key>` | anyone | A provider's logo for its buttons (§3); 404 without one |
 | `/healthz` | anyone | Liveness, no data |

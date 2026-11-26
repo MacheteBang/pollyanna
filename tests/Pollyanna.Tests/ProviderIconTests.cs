@@ -32,6 +32,20 @@ public sealed class ProviderIconTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_account_pages_add_buttons_show_the_icon_too()
+    {
+        var (browser, _) = await app.SignInAsync(new("alice", "Alice", "alice@example.com", true, null));
+        using var _b = browser;
+
+        var page = await browser.GetPageAsync("/account");
+
+        var buttons = page.QuerySelectorAll("#logins form[action='/account/addlogin'] button").ToDictionary(b => b.TextContent.Trim());
+        Assert.StartsWith("/auth/icon/google?v=", Assert.Single(buttons["Add Google"].QuerySelectorAll("img")).GetAttribute("src"));
+        Assert.Contains("button-outline", buttons["Add Google"].ClassList);
+        Assert.Empty(buttons["Add Work account"].QuerySelectorAll("img"));
+    }
+
+    [Fact]
     public async Task The_icon_is_served_to_a_signed_out_browser_with_its_content_type_and_nosniff()
     {
         using var browser = app.NewBrowser();
