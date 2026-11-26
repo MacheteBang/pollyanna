@@ -1,0 +1,286 @@
+<title>Pollyanna Email Layouts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE, throwaway (wayfinder ticket "The email layout", #35). Not production code.
+  Verdict: layout C (gift tag), with its stamp; button label by link target, URL under it; light only.
+  Three layouts for the HTML part of every notification, switchable with the bottom bar or ← →.
+  Each email is a full document in an iframe, built the way the Razor component would build it:
+  one table skeleton, inline styles, a <style> block only for extras that may be lost.
+  "Gmail web" strips <style>, transform and box-shadow; "Forced dark" is a crude full inversion
+  (Gmail iOS, classic Outlook). Partial inverters (Gmail Android, Outlook.com) can't be shown here.
+-->
+<style>
+  /* Layout: control strip on top, the email in a mail-client frame beside its plain-text part. */
+  :root {
+    --desk: #26231f; --panel: #322e29; --line: #4a443c; --fg: #ece6db; --muted: #b3a998;
+    --pick: #c9a77c; --pick-ink: #1e1a16;
+    --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  body { background: var(--desk); color: var(--fg); font: 14px/1.45 var(--ui); }
+  .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 96px; max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
+  h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
+  h1 span { color: var(--muted); font-weight: 400; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
+  .group { display: grid; gap: 4px; }
+  .group > label, .group > .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .seg { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { background: var(--panel); color: var(--fg); border: 0; border-right: 1px solid var(--line); padding: 6px 10px; font: inherit; cursor: pointer; }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--pick); color: var(--pick-ink); }
+  select { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; max-width: 100%; }
+  button:focus-visible, select:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px; }
+  .note { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; color: var(--muted); max-width: 90ch; }
+  .note b { color: var(--fg); }
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+  .client { background: #fff; color: #222; border-radius: 8px; overflow: hidden; min-width: 0; }
+  .client.dark { background: #1b1b1b; color: #ddd; }
+  .hdr { padding: 10px 14px; border-bottom: 1px solid #ddd; font-size: 13px; display: grid; gap: 2px; }
+  .client.dark .hdr { border-color: #333; }
+  .hdr .subj { font-weight: 600; font-size: 15px; }
+  .hdr .from { color: #666; }
+  .client.dark .hdr .from { color: #999; }
+  .frame { display: flex; justify-content: center; overflow-x: auto; }
+  iframe { border: 0; width: 100%; max-width: 100%; height: 640px; display: block; background: transparent; }
+  .frame.phone iframe { width: 375px; border-left: 1px dashed #bbb; border-right: 1px dashed #bbb; }
+  .plain { min-width: 0; display: grid; gap: 6px; }
+  .plain pre { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font: 12.5px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .bar { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; background: #f7f3ea; color: #111; border-radius: 999px; padding: 4px; box-shadow: 0 6px 24px #0008; z-index: 5; max-width: calc(100vw - 32px); }
+  .bar button { border: 0; background: #111; color: #f7f3ea; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; cursor: pointer; flex: none; }
+  .bar .cur { padding: 0 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+
+<div class="wrap">
+  <h1>Pollyanna email layouts <span>· prototype for “The email layout”</span></h1>
+  <div class="controls">
+    <div class="group"><span class="lbl">Layout</span><div class="seg" id="variants"></div></div>
+    <div class="group"><label for="kind">Email</label><select id="kind"></select></div>
+    <div class="group"><span class="lbl">Client</span><div class="seg" id="modes"></div></div>
+    <div class="group"><span class="lbl">Width</span><div class="seg" id="widths"></div></div>
+  </div>
+  <div class="note" id="vnote"></div>
+  <div class="stage">
+    <div class="client" id="client">
+      <div class="hdr"><span class="subj" id="subj"></span><span class="from">Pollyanna &lt;pollyanna@pollyanna.example&gt; · to <span id="to"></span></span></div>
+      <div class="frame" id="frame"><iframe id="mail" title="Rendered email"></iframe></div>
+    </div>
+    <div class="plain"><span class="lbl" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">text/plain part (unchanged)</span><pre id="plain"></pre></div>
+  </div>
+</div>
+<div class="bar" role="toolbar" aria-label="Layout switcher">
+  <button id="prev" aria-label="Previous layout">←</button><span class="cur" id="cur"></span><button id="next" aria-label="Next layout">→</button>
+</div>
+
+<script>
+const URL0 = "https://pollyanna.example";
+const EV = "Maple Street Pollyanna";
+const EID = "7d3e0c52-1b4a-4f7e-9a61-2c8f5e0b9d14";
+const EURL = `${URL0}/events/${EID}`;
+const q = s => `"${s}"`;
+
+// The eight kinds, with the words exactly as the Kinds/*.cs classes compose them today.
+const KINDS = [
+  { id: "added-open", name: "Added to an event (open)", aud: "Participants", status: "OPEN",
+    subject: `You've been added to ${EV}`,
+    body: `You've been added to ${q(EV)} on Pollyanna. Write your notes so your giver knows what to get you: likes, sizes, no-gos.`, link: EURL },
+  { id: "added-drawn", name: "Added to an event (drawn)", aud: "Participants", status: "DRAWN",
+    subject: `You've been added to ${EV}`,
+    body: `You've been added to ${q(EV)} on Pollyanna. Open it to see your slip and write your notes.`, link: EURL },
+  { id: "invite", name: "Invitation (one open provider)", aud: "Invitee", status: "OPEN", to: "sue@example.com",
+    subject: `You're invited to ${EV} on Pollyanna`,
+    body: `Alice Moreno invited you to ${q(EV)}, a gift exchange on Pollyanna. To join, sign in with this email address.\nSign in with Google using this address (sue@example.com).`, link: EURL },
+  { id: "invite-trusted", name: "Invitation (trusted providers only)", aud: "Invitee", status: "OPEN", to: "sue@example.com",
+    subject: `You're invited to ${EV} on Pollyanna`,
+    body: `Alice Moreno invited you to ${q(EV)}, a gift exchange on Pollyanna. To join, sign in with this email address.`, link: EURL },
+  { id: "organizer", name: "Made an organizer", aud: "Organizers", status: "DRAFT",
+    subject: `Alice Moreno made you an organizer of ${EV}`,
+    body: `Alice Moreno made you an organizer of ${q(EV)} on Pollyanna. You can now manage its people, the draw and its details.`, link: `${EURL}/manage` },
+  { id: "open", name: "Event is open", aud: "Participants", status: "OPEN",
+    subject: `${EV} is open: write your notes`,
+    body: `${q(EV)} is open on Pollyanna. Write your notes so your giver knows what to get you: likes, sizes, no-gos.`, link: EURL },
+  { id: "drawn", name: "Names are drawn", aud: "Participants", status: "DRAWN",
+    subject: `${EV}: names are drawn`,
+    body: `Names are drawn in ${q(EV)} on Pollyanna, and your slip is ready. Open the event to see who you're giving to.`, link: EURL },
+  { id: "redrawn", name: "Names are drawn (after a redraw)", aud: "Participants", status: "DRAWN",
+    subject: `${EV}: names were drawn again`,
+    body: `Names were drawn again, take another look: your slip in ${q(EV)} on Pollyanna is ready, and it may not be the one you saw before.`, link: EURL },
+  { id: "revealed", name: "Event is revealed", aud: "ParticipantsAndOrganizers", status: "REVEALED",
+    subject: `${EV} is revealed`,
+    body: `The pairings in ${q(EV)} on Pollyanna are revealed: see who drew whom on the event page.`, link: EURL },
+  { id: "question", name: "A question for you", aud: "Participants", status: "DRAWN",
+    subject: `${EV}: a question for you`,
+    body: `Your giver in ${q(EV)} asked you something. Read it and reply on Pollyanna.`, link: `${EURL}/questions` },
+  { id: "redraw", name: "Redraw needed", aud: "Organizers", status: "DRAWN",
+    subject: `${EV}: a redraw is needed`,
+    body: `Dan Whitfield wants to leave ${q(EV)}; a redraw is needed. Taking them out means drawing names again, which you can do from the manage page.`, link: `${EURL}/manage` },
+];
+
+// AudienceRules.Footer, split so the HTML can link the account page.
+function footer(aud) {
+  const stop = `To stop Pollyanna emails, switch them off on your account page: ${URL0}/account`;
+  const why = {
+    Invitee: `Someone invited this address to ${q(EV)} on Pollyanna. If this email wasn't meant for you, ignore it.`,
+    Participants: `You're getting this because you take part in ${q(EV)} on Pollyanna.`,
+    Organizers: `You're getting this because you organize ${q(EV)} on Pollyanna.`,
+    ParticipantsAndOrganizers: `You're getting this because you're in ${q(EV)} on Pollyanna.`,
+  }[aud];
+  return aud === "Invitee" ? { why, stop: null, text: why } : { why, stop: true, text: `${why}\n${stop}` };
+}
+const plainText = k => `${k.body}\n\n${k.link}\n\n-- \n${footer(k.aud).text}\n`;
+
+// The one label the layout forces: chosen by where the link goes, not by kind.
+const cta = link => link.endsWith("/manage") ? "Open the manage page" : link.endsWith("/questions") ? "Read the question" : "Open the event";
+
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const paras = (body, style) => body.split("\n").map(p => `<p style="${style}">${esc(p)}</p>`).join("");
+
+const P = { kraft: "#C9A77C", slip: "#F4EDE0", bright: "#FFFDF8", ink: "#1E1A16", red: "#B3261E", redText: "#9E2019", blue: "#3F6E8C", inkSoft: "#5A5048" };
+const FONT = `'Courier New', Courier, monospace`;
+
+function doc(bodyBg, inner, extraStyle) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">
+<style>:root{color-scheme:light only}${extraStyle || ""}</style></head>
+<body style="margin:0;padding:0;background-color:${bodyBg};">${inner}</body></html>`;
+}
+
+function footerHtml(k, color, linkColor) {
+  const f = footer(k.aud);
+  const s = `margin:0 0 6px 0;font-family:${FONT};font-size:12px;line-height:1.5;color:${color};`;
+  return `<p style="${s}">${esc(f.why)}</p>` + (f.stop
+    ? `<p style="${s}">To stop Pollyanna emails, switch them off on <a href="${URL0}/account" style="color:${linkColor};text-decoration:underline;">your account page</a>.</p>` : "");
+}
+
+const VARIANTS = [
+  { key: "A", name: "Slip on kraft",
+    note: `<b>A · Slip on kraft.</b> The app's own look: a typed wordmark on the kraft ground, one slip-paper panel (tilted in Apple Mail only) holding the subject as its heading, the text, and an ink-outlined button with the plain URL under it as a fallback. The footer sits on the kraft, outside the slip. <code>&lt;style&gt;</code> carries only the tilt's mobile reset.`,
+    render(k) {
+      const t = `font-family:${FONT};color:${P.ink};`;
+      return doc(P.kraft, `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${P.kraft};">
+<tr><td align="center" style="padding:28px 12px 36px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+    <tr><td style="padding:0 4px 14px 4px;${t}font-size:22px;font-weight:bold;letter-spacing:6px;">POLLYANNA</td></tr>
+    <tr><td class="slip" style="background-color:${P.slip};border:1px solid #A88A62;padding:28px 28px 26px 28px;transform:rotate(-0.6deg);box-shadow:2px 3px 0 #A88A62;">
+      <h1 style="margin:0 0 16px 0;${t}font-size:20px;line-height:1.3;font-weight:bold;">${esc(k.subject)}</h1>
+      ${paras(k.body, `margin:0 0 14px 0;${t}font-size:15px;line-height:1.6;`)}
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 14px 0;"><tr>
+        <td style="background-color:${P.bright};border:2px solid ${P.ink};">
+          <a href="${esc(k.link)}" style="display:inline-block;padding:12px 22px;${t}font-size:15px;font-weight:bold;text-decoration:none;letter-spacing:1px;">${esc(cta(k.link).toUpperCase())}</a></td></tr></table>
+      <p style="margin:0;${t}font-size:12px;line-height:1.5;color:${P.inkSoft};word-break:break-all;">Or paste this into your browser:<br>${esc(k.link)}</p>
+    </td></tr>
+    <tr><td style="padding:22px 4px 0 4px;">${footerHtml(k, P.ink, P.ink)}</td></tr>
+  </table>
+</td></tr></table>`, `@media (max-width:480px){.slip{transform:none!important;padding:22px 18px!important}}`);
+    } },
+  { key: "B", name: "Typed note",
+    note: `<b>B · Typed note.</b> Closest to the plain text: no kraft, no panel, no button. A red rubber-stamp wordmark, then the same paragraphs, the URL as a plain underlined link, and the footer after the same <code>--</code> rule. Survives every client and every dark mode almost untouched, but it's barely "Paper slips". No <code>&lt;style&gt;</code> extras at all.`,
+    render(k) {
+      const t = `font-family:${FONT};color:${P.ink};`;
+      return doc(P.bright, `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${P.bright};">
+<tr><td style="padding:28px 20px 36px 20px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+    <tr><td style="padding:0 0 26px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="border:3px solid ${P.red};padding:4px 10px;font-family:${FONT};font-size:16px;font-weight:bold;letter-spacing:4px;color:${P.red};transform:rotate(-2deg);">POLLYANNA</td></tr></table>
+    </td></tr>
+    <tr><td>
+      ${paras(k.body, `margin:0 0 16px 0;${t}font-size:15px;line-height:1.65;`)}
+      <p style="margin:0 0 28px 0;${t}font-size:15px;line-height:1.5;word-break:break-all;"><a href="${esc(k.link)}" style="color:${P.ink};text-decoration:underline;">${esc(k.link)}</a></p>
+      <p style="margin:0 0 8px 0;${t}font-size:12px;color:${P.inkSoft};">--</p>
+      ${footerHtml(k, P.inkSoft, P.ink)}
+    </td></tr>
+  </table>
+</td></tr></table>`);
+    } },
+  { key: "C", name: "Gift tag",
+    note: `<b>C · Gift tag.</b> The slip as a tag: a ribbon-blue band across its top, the event's status as a red stamp (DRAFT, OPEN, DRAWN, REVEALED, the app's own labels), the event name big, then the text and a solid ink bar as the button. The footer is a second, smaller bright-paper tag. Adds the stamp, which is wording the plain text doesn't have. <code>&lt;style&gt;</code> carries the stamp's tilt reset.`,
+    render(k) {
+      const t = `font-family:${FONT};color:${P.ink};`;
+      return doc(P.kraft, `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${P.kraft};">
+<tr><td align="center" style="padding:28px 12px 36px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+    <tr><td style="background-color:${P.blue};height:10px;line-height:10px;font-size:0;">&nbsp;</td></tr>
+    <tr><td style="background-color:${P.slip};padding:18px 26px 26px 26px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="${t}font-size:12px;font-weight:bold;letter-spacing:4px;">POLLYANNA</td>
+        <td align="right"><span class="stamp" style="display:inline-block;border:2px solid ${P.red};padding:2px 8px;font-family:${FONT};font-size:12px;font-weight:bold;letter-spacing:2px;color:${P.red};transform:rotate(4deg);">${k.status}</span></td>
+      </tr></table>
+      <h1 style="margin:22px 0 18px 0;${t}font-size:26px;line-height:1.2;font-weight:bold;">${esc(EV)}</h1>
+      ${paras(k.body, `margin:0 0 14px 0;${t}font-size:15px;line-height:1.6;`)}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;"><tr>
+        <td align="center" style="background-color:${P.ink};">
+          <a href="${esc(k.link)}" style="display:block;padding:14px 10px;font-family:${FONT};font-size:15px;font-weight:bold;letter-spacing:2px;color:${P.slip};text-decoration:none;">${esc(cta(k.link).toUpperCase())}</a></td></tr></table>
+      <p style="margin:10px 0 0 0;${t}font-size:11px;line-height:1.5;color:${P.inkSoft};word-break:break-all;">${esc(k.link)}</p>
+    </td></tr>
+    <tr><td style="padding:18px 40px 0 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="background-color:${P.bright};border-top:2px dashed ${P.inkSoft};padding:12px 16px 8px 16px;">${footerHtml(k, P.inkSoft, P.ink)}</td></tr></table>
+    </td></tr>
+  </table>
+</td></tr></table>`, `@media (max-width:480px){.stamp{transform:none!important}}`);
+    } },
+];
+
+const MODES = [
+  { key: "apple", name: "Apple Mail" },
+  { key: "gmail", name: "Gmail web" },
+  { key: "dark", name: "Forced dark" },
+];
+const WIDTHS = [{ key: "wide", name: "Desktop" }, { key: "phone", name: "Phone 375" }];
+
+const state = { v: 0, k: 0, m: 0, w: 0 };
+try { Object.assign(state, JSON.parse(localStorage.getItem("proto-email") || "{}")); } catch (e) {}
+const h = location.hash.slice(1).toUpperCase();
+const hv = VARIANTS.findIndex(v => v.key === h); if (hv >= 0) state.v = hv;
+
+function seg(el, items, field) {
+  el.innerHTML = items.map((it, i) => `<button type="button" data-i="${i}">${it.key && it.key.length === 1 ? it.key + " · " : ""}${it.name}</button>`).join("");
+  el.addEventListener("click", e => { const b = e.target.closest("button"); if (b) { state[field] = +b.dataset.i; draw(); } });
+}
+seg(document.getElementById("variants"), VARIANTS, "v");
+seg(document.getElementById("modes"), MODES, "m");
+seg(document.getElementById("widths"), WIDTHS, "w");
+const sel = document.getElementById("kind");
+sel.innerHTML = KINDS.map((k, i) => `<option value="${i}">${k.name}</option>`).join("");
+sel.addEventListener("change", () => { state.k = +sel.value; draw(); });
+
+function forMode(html, mode) {
+  if (mode === "gmail") return html.replace(/<style>[\s\S]*?<\/style>/g, "").replace(/transform:[^;"]+;?/g, "").replace(/box-shadow:[^;"]+;?/g, "");
+  return html;
+}
+
+function draw() {
+  const v = VARIANTS[state.v], k = KINDS[state.k], m = MODES[state.m];
+  for (const [id, f] of [["variants", "v"], ["modes", "m"], ["widths", "w"]])
+    document.querySelectorAll(`#${id} button`).forEach((b, i) => b.setAttribute("aria-pressed", i === state[f]));
+  sel.value = state.k;
+  document.getElementById("vnote").innerHTML = v.note;
+  document.getElementById("subj").textContent = k.subject;
+  document.getElementById("to").textContent = k.to || "bob@example.com";
+  document.getElementById("plain").textContent = plainText(k);
+  document.getElementById("cur").textContent = `${v.key} (${v.name})`;
+  document.getElementById("client").classList.toggle("dark", m.key === "dark");
+  document.getElementById("frame").classList.toggle("phone", WIDTHS[state.w].key === "phone");
+  const f = document.getElementById("mail");
+  f.style.filter = m.key === "dark" ? "invert(1) hue-rotate(180deg)" : "";
+  f.onload = () => { try { f.style.height = Math.max(400, f.contentDocument.documentElement.scrollHeight + 8) + "px"; } catch (e) {} };
+  f.srcdoc = forMode(v.render(k), m.key);
+  try { localStorage.setItem("proto-email", JSON.stringify(state)); } catch (e) {}
+  if (location.hash.slice(1).toUpperCase() !== v.key) history.replaceState(null, "", "#" + v.key.toLowerCase());
+}
+
+const step = d => { state.v = (state.v + d + VARIANTS.length) % VARIANTS.length; draw(); };
+document.getElementById("prev").onclick = () => step(-1);
+document.getElementById("next").onclick = () => step(1);
+addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.key === "ArrowLeft") step(-1); else if (e.key === "ArrowRight") step(1);
+});
+addEventListener("hashchange", () => { const i = VARIANTS.findIndex(v => v.key === location.hash.slice(1).toUpperCase()); if (i >= 0 && i !== state.v) { state.v = i; draw(); } });
+draw();
+</script>
