@@ -839,6 +839,23 @@ with labels, and the reveal animation turned off under "reduce motion".
   notes or a recipient's name; and the outbox rules (retry, give up, drop
   on opt-out, account deletion, a cancelled or accepted invitation, or a
   lost role) hold.
+- Tests for the HTML part of emails (§15, decided 2026-11-26, user). The
+  outgoing mail carries the HTML next to the plain text, so the test mail
+  relay sees both; building the `multipart/alternative` message is a
+  separate step with its own test (plain text first, HTML second, both
+  UTF-8, the plain part exactly the text). The secrecy tests cover the HTML
+  part too: the shuffled-pairings run requires it byte-identical, and the
+  content checks (no message bodies, notes or giver's or recipient's names,
+  no Santa or stockings) read the raw markup, hidden preview text and links
+  included. Over every kind: each paragraph of the plain text appears in
+  the HTML's text, and the preview text is the kind's text word for word;
+  nothing remote (no image, script, frame, media, stylesheet link, `src`,
+  `background`, `url(` or `@import`, and every link starts with the public
+  URL); the stamp shows the event's status when sent, and the button's
+  label follows its link, whose URL matches the one printed under it and
+  the plain text's. One test puts markup in an event's name and a person's
+  name and requires it shown as typed, never as elements. No snapshot
+  (golden-file) tests of the whole HTML.
 - Manual end-to-end check against the production provider before first use.
 
 ## 10. Milestones
