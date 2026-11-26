@@ -32,6 +32,42 @@ function previousEventPicker() {
     update();
 }
 
+// The add-people control (spec §7). Without the script it is a ticklist and an email field.
+// With it, one box filters the list by name, and a full address in it shows a ticked
+// "Add or invite <address>" row in place of the email field.
+function addPeople() {
+    const looksLikeEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+    for (const form of document.querySelectorAll("[data-add-people]")) {
+        const filter = form.querySelector("[data-add-people-filter]");
+        const field = form.querySelector("[data-add-people-email]");
+        const row = form.querySelector("[data-add-people-address]");
+        if (!filter || !field || !row) continue;
+        const box = filter.querySelector("input");
+        const address = row.querySelector("input");
+        const rows = [...form.querySelectorAll("li[data-search]")];
+        filter.hidden = false;
+        field.hidden = true;
+        field.querySelector("input").disabled = true;
+        const update = () => {
+            const typed = box.value.trim();
+            const email = looksLikeEmail(typed);
+            const term = typed.toLowerCase();
+            for (const r of rows)
+                r.hidden = term !== "" && !email && !r.dataset.search.includes(term);
+            row.hidden = !email;
+            address.disabled = !email;
+            address.value = typed;
+            row.querySelector("[data-add-people-typed]").textContent = typed;
+        };
+        box.addEventListener("input", update);
+        // Enter adds an address, but never sends a half-typed filter.
+        box.addEventListener("keydown", event => {
+            if (event.key === "Enter" && !looksLikeEmail(box.value.trim())) event.preventDefault();
+        });
+        update();
+    }
+}
+
 // The reveal card (spec §7, §12): a <details> tied with ribbon. Pulling the ribbon unties the
 // bow, then the slip unfolds. Opening it tells the server the slip was seen, which clears its
 // markers; "Tie it back up" then just closes it. Without the script, the card opens at once,
@@ -103,6 +139,7 @@ function counters() {
 document.addEventListener("DOMContentLoaded", () => {
     countdowns();
     previousEventPicker();
+    addPeople();
     revealCards();
     messageTimes();
     counters();
