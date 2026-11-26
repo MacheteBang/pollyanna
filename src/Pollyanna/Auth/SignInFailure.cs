@@ -14,41 +14,47 @@ public static partial class SignInFailure
     const string Page = "/auth/failed";
     /// <summary>The page adds that whoever runs the site needs to check its settings.</summary>
     const string ProviderPage = Page + "?reason=provider";
-    const string CheckClient = "Check POLLYANNA_OIDC_CLIENT_ID, the client secret and the client registration.";
+
+    static string CheckClient(Provider provider) =>
+        $"Check {provider.Setting(ProviderRegistry.ClientIdField)}, the client secret and the client registration.";
 
     /// <summary>
     /// Building the redirect to the provider failed (discovery, metadata, a rejected pushed
-    /// authorization request): Pollyanna's settings or the provider's are wrong. Returns where to send the person.
+    /// authorization request): Pollyanna's settings or the provider's are wrong. The log names
+    /// <paramref name="provider"/> and its settings. Returns where to send the person.
     /// </summary>
-    public static string StartFailed(ILogger logger, Exception e, string issuer)
+    public static string StartFailed(ILogger logger, Provider provider, Exception e)
     {
         switch (ProviderError(e))
         {
             case "invalid_client":
-                logger.LogError("Sign-in could not start: the provider rejected the client (invalid_client). " + CheckClient);
+                logger.LogError("Sign-in through provider {Provider} could not start: the provider rejected the client (invalid_client). " + CheckClient(provider),
+                    provider.Key);
                 break;
             case { } error:
-                logger.LogError("Sign-in could not start: the provider answered {Error}. Check the client registration.", error);
+                logger.LogError("Sign-in through provider {Provider} could not start: the provider answered {Error}. Check the client registration.",
+                    provider.Key, error);
                 break;
             default:
                 logger.LogError(
-                    "Sign-in could not start: the provider's configuration couldn't be loaded from {Issuer} ({Exception}). "
-                    + "Check POLLYANNA_OIDC_ISSUER and that Pollyanna can reach it.", issuer, Innermost(e).GetType().Name);
+                    "Sign-in through provider {Provider} could not start: the provider's configuration couldn't be loaded from {Issuer} ({Exception}). "
+                    + "Check {IssuerSetting} and that Pollyanna can reach it.",
+                    provider.Key, provider.Issuer, Innermost(e).GetType().Name, provider.Setting(ProviderRegistry.IssuerField));
                 break;
         }
         return ProviderPage;
     }
 
     /// <summary>The provider sent the person back with an error, or the code exchange failed.</summary>
-    public static string RemoteFailed(ILogger logger, Exception? e)
+    public static string RemoteFailed(ILogger logger, Provider provider, Exception? e)
     {
         var error = ProviderError(e);
         if (error is "invalid_client" or "unauthorized_client")
         {
-            logger.LogWarning("Sign-in failed: {Error}. " + CheckClient, error);
+            logger.LogWarning("Sign-in through provider {Provider} failed: {Error}. " + CheckClient(provider), provider.Key, error);
             return ProviderPage;
         }
-        logger.LogWarning("Sign-in failed: {Error}", error ?? (e is null ? "unknown" : Innermost(e).GetType().Name));
+        logger.LogWarning("Sign-in through provider {Provider} failed: {Error}", provider.Key, error ?? (e is null ? "unknown" : Innermost(e).GetType().Name));
         return Chain(e).Any(x => x is HttpRequestException) ? ProviderPage : Page;
     }
 

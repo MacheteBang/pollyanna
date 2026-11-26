@@ -8,9 +8,9 @@ namespace Pollyanna.Tests.Support;
 
 /// <summary>
 /// A tiny browser: keeps Pollyanna's cookies, follows redirects by hand across Pollyanna and the
-/// mock issuer, and fills in the issuer's sign-in form.
+/// mock issuers (keyed by issuer URL), and fills in an issuer's sign-in form.
 /// </summary>
-public sealed class TestBrowser(HttpClient app, HttpClient issuer) : IDisposable
+public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, HttpClient> issuers) : IDisposable
 {
     public HttpClient App => app;
 
@@ -40,10 +40,11 @@ public sealed class TestBrowser(HttpClient app, HttpClient issuer) : IDisposable
 
     /// <summary>
     /// Requests <paramref name="startPath"/> while signed out and goes through the whole OIDC
-    /// flow as <paramref name="identity"/>. Returns Pollyanna's final response to the callback
-    /// (a redirect back to the page first asked for).
+    /// flow as <paramref name="identity"/>, through <paramref name="provider"/> (a key; the unnamed
+    /// provider by default), picking it on the chooser when several are configured. Returns
+    /// Pollyanna's final response to the callback (a redirect back to the page first asked for).
     /// </summary>
-    public async Task<HttpResponseMessage> SignInAsync(MockIdentity identity, string startPath = "/")
+    public async Task<HttpResponseMessage> SignInAsync(MockIdentity identity, string startPath = "/", string? provider = null)
     {
         var response = await app.GetAsync(startPath);
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
@@ -51,8 +52,17 @@ public sealed class TestBrowser(HttpClient app, HttpClient issuer) : IDisposable
         Assert.StartsWith("/auth/login", login.OriginalString);
 
         response = await app.GetAsync(login);
+        if (response.StatusCode == HttpStatusCode.OK)
+            response = await app.GetAsync(await ChooseAsync(response, provider ?? "default"));
+        else
+            Assert.True(provider is null or "default", "Only one provider is configured, so there is no chooser.");
         return await CompleteAtIssuerAsync(response, identity);
     }
+
+    /// <summary>The href of the chooser button that signs in through the provider <paramref name="key"/>.</summary>
+    public static async Task<string> ChooseAsync(HttpResponseMessage chooser, string key) =>
+        (await ParseAsync(chooser)).QuerySelectorAll("a.button").Select(a => a.GetAttribute("href")!)
+            .Single(href => href == "/auth/login/" + key || href.StartsWith("/auth/login/" + key + "?"));
 
     /// <summary>Takes Pollyanna's redirect to the issuer, signs in there and returns to Pollyanna.</summary>
     public async Task<HttpResponseMessage> CompleteAtIssuerAsync(HttpResponseMessage redirectToIssuer, MockIdentity identity, string action = "sign-in") =>
@@ -63,7 +73,8 @@ public sealed class TestBrowser(HttpClient app, HttpClient issuer) : IDisposable
     {
         Assert.Equal(HttpStatusCode.Redirect, redirectToIssuer.StatusCode);
         var authorize = redirectToIssuer.Headers.Location!;
-        Assert.Equal(TestApp.Issuer + "/authorize", authorize.GetLeftPart(UriPartial.Path));
+        Assert.Equal("/authorize", authorize.AbsolutePath);
+        var issuer = issuers[authorize.GetLeftPart(UriPartial.Authority)];
         LastAuthorizeRequest = authorize;
 
         var form = QueryHelpers.ParseQuery(authorize.Query).ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
@@ -123,6 +134,7 @@ public sealed class TestBrowser(HttpClient app, HttpClient issuer) : IDisposable
     public void Dispose()
     {
         app.Dispose();
-        issuer.Dispose();
+        foreach (var issuer in issuers.Values)
+            issuer.Dispose();
     }
 }

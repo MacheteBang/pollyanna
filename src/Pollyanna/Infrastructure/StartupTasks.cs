@@ -23,8 +23,10 @@ public sealed class StartupTasks(IServiceProvider services, ILogger<StartupTasks
             await ReportNewDrawKeyAsync(scope.ServiceProvider.GetRequiredService<SealedHat>(), settings.DrawKeyFile, cancellationToken);
         if (settings.Mail is null)
             logger.LogInformation("Email notifications are off: {Key} is not set.", PollyannaSettings.SmtpHostKey);
-        logger.LogInformation("Pollyanna {Version} is ready at {PublicUrl}; OIDC redirect URI: {CallbackUrl}",
-            Help.Version, settings.PublicUrl, settings.CallbackUrl);
+        logger.LogInformation("Pollyanna {Version} is ready at {PublicUrl}", Help.Version, settings.PublicUrl);
+        foreach (var provider in settings.Providers)
+            logger.LogInformation("sign-in provider \"{Label}\" ({Key}, {Admission}): redirect URI {RedirectUri}",
+                provider.Label, provider.Key, provider.Admission.ToString().ToLowerInvariant(), settings.RedirectUri(provider));
     }
 
     /// <summary>

@@ -1,5 +1,5 @@
-using System.Net;
 using MimeKit;
+using Pollyanna.Auth;
 
 namespace Pollyanna.Configuration;
 
@@ -10,10 +10,14 @@ namespace Pollyanna.Configuration;
 public sealed class PollyannaSettings
 {
     public const string PublicUrlKey = "POLLYANNA_PUBLIC_URL";
+    // The unnamed provider's settings; listed providers use POLLYANNA_OIDC_<KEY>_* (ProviderRegistry).
     public const string IssuerKey = "POLLYANNA_OIDC_ISSUER";
     public const string ClientIdKey = "POLLYANNA_OIDC_CLIENT_ID";
     public const string ClientSecretKey = "POLLYANNA_OIDC_CLIENT_SECRET";
     public const string ClientSecretFileKey = "POLLYANNA_OIDC_CLIENT_SECRET_FILE";
+    public const string LabelKey = "POLLYANNA_OIDC_LABEL";
+    public const string AdmissionKey = "POLLYANNA_OIDC_ADMISSION";
+    public const string ProvidersKey = ProviderRegistry.ProvidersKey;
     public const string DrawKeyFileKey = "POLLYANNA_DRAW_KEY_FILE";
     public const string DataDirKey = "POLLYANNA_DATA_DIR";
     public const string SmtpHostKey = "POLLYANNA_SMTP_HOST";
@@ -26,22 +30,17 @@ public sealed class PollyannaSettings
 
     /// <summary>The public base URL, without a trailing slash.</summary>
     public required string PublicUrl { get; init; }
-    public required string Issuer { get; init; }
-    public required string ClientId { get; init; }
-    public required string ClientSecret { get; init; }
+    /// <summary>The sign-in providers, in configured order (spec §2, §3).</summary>
+    public required ProviderRegistry Providers { get; init; }
     public required string DrawKeyFile { get; init; }
     public required string DataDir { get; init; }
     /// <summary>The mail relay (spec §15); null when none is configured and email is off.</summary>
     public MailSettings? Mail { get; init; }
 
-    public const string CallbackPath = "/auth/callback";
-
-    public string CallbackUrl => PublicUrl + CallbackPath;
+    /// <summary>The redirect URI to register at <paramref name="provider"/>.</summary>
+    public string RedirectUri(Provider provider) => PublicUrl + provider.CallbackPath;
     public string DatabasePath => Path.Combine(DataDir, "pollyanna.db");
     public string KeyRingDir => Path.Combine(DataDir, "keys");
-
-    /// <summary>True when the issuer may be reached over plain HTTP (loopback only, for development).</summary>
-    public bool IssuerIsLoopback => Uri.TryCreate(Issuer, UriKind.Absolute, out var u) && IsLoopback(u);
 
     public static PollyannaSettings Load(IConfiguration config, string contentRoot)
     {
@@ -61,23 +60,7 @@ public sealed class PollyannaSettings
             if (problem is not null) problems.Add(problem);
         }
 
-        var issuer = Required(IssuerKey);
-        if (issuer is not null)
-        {
-            if (!Uri.TryCreate(issuer, UriKind.Absolute, out var u) || (u.Scheme != "https" && u.Scheme != "http"))
-                problems.Add($"{IssuerKey} must be an absolute http or https URL.");
-            else if (u.Scheme == "http" && !IsLoopback(u))
-                problems.Add($"{IssuerKey} must use https (plain http is allowed only for a provider on localhost).");
-            else
-                issuer = issuer.TrimEnd('/');
-        }
-
-        var clientId = Required(ClientIdKey);
-
-        var beforeSecret = problems.Count;
-        var secret = Secret(config, ClientSecretKey, ClientSecretFileKey, contentRoot, problems);
-        if (secret is null && problems.Count == beforeSecret)
-            problems.Add($"{ClientSecretKey} or {ClientSecretFileKey} must be set.");
+        var providers = ProviderRegistry.Load(config, contentRoot, problems);
 
         var drawKeyFile = Required(DrawKeyFileKey);
         var dataDir = Required(DataDirKey);
@@ -89,9 +72,7 @@ public sealed class PollyannaSettings
         return new PollyannaSettings
         {
             PublicUrl = publicUrl!,
-            Issuer = issuer!,
-            ClientId = clientId!,
-            ClientSecret = secret!.Trim(),
+            Providers = providers!,
             DrawKeyFile = Path.GetFullPath(drawKeyFile!, contentRoot),
             DataDir = Path.GetFullPath(dataDir!, contentRoot),
             Mail = mail,
@@ -102,7 +83,7 @@ public sealed class PollyannaSettings
     /// A secret given directly or as a file (at most one of the two); null when neither is set.
     /// Problems name the settings, never the value.
     /// </summary>
-    static string? Secret(IConfiguration config, string key, string fileKey, string contentRoot, List<string> problems)
+    internal static string? Secret(IConfiguration config, string key, string fileKey, string contentRoot, List<string> problems)
     {
         var secret = config[key];
         var file = config[fileKey]?.Trim();
@@ -185,13 +166,14 @@ public sealed class PollyannaSettings
     }
 
     /// <summary>
-    /// The OIDC redirect URI, if <see cref="PublicUrlKey"/> is valid on its own, so a settings error
-    /// can name it and the client can be registered before the first start (spec §3).
+    /// The redirect URI of every provider the settings name, if <see cref="PublicUrlKey"/> is valid
+    /// on its own, so a settings error can list them and the clients can be registered before the
+    /// first start (spec §2, §3).
     /// </summary>
-    public static string? CallbackUrlFrom(IConfiguration config) =>
+    public static IReadOnlyList<string> RedirectUrisFrom(IConfiguration config) =>
         config[PublicUrlKey]?.Trim() is { Length: > 0 } value && ParsePublicUrl(value, out var problem) is { } url && problem is null
-            ? url + CallbackPath
-            : null;
+            ? [.. ProviderRegistry.KnownCallbackPaths(config).Select(path => url + path)]
+            : [];
 
     static string? ParsePublicUrl(string value, out string? problem)
     {
@@ -205,11 +187,8 @@ public sealed class PollyannaSettings
         return null;
     }
 
-    static bool IsLoopback(Uri u) =>
-        u.IsLoopback || (IPAddress.TryParse(u.Host, out var ip) && IPAddress.IsLoopback(ip));
-
     // Keep the client secret out of logs and exception messages.
-    public override string ToString() => $"PollyannaSettings {{ PublicUrl = {PublicUrl}, Issuer = {Issuer}, ClientId = {ClientId} }}";
+    public override string ToString() => $"PollyannaSettings {{ PublicUrl = {PublicUrl}, Providers = {string.Join(", ", Providers.Select(p => p.Key))} }}";
 }
 
 public enum SmtpTls
@@ -235,14 +214,22 @@ public sealed class PollyannaConfigurationException(IReadOnlyList<string> proble
     public IReadOnlyList<string> Problems { get; } = problems;
 
     /// <summary>
-    /// What the operator sees: the problems, the OIDC redirect URI if the public URL is valid,
-    /// then where to read about every setting.
+    /// What the operator sees: the problems, every known provider's OIDC redirect URI if the
+    /// public URL is valid, then where to read about every setting.
     /// </summary>
     public string Report(IConfiguration config)
     {
         var report = Message;
-        if (PollyannaSettings.CallbackUrlFrom(config) is { } callback)
-            report += Environment.NewLine + "The OIDC redirect URI to register with the provider is " + callback + ".";
+        switch (PollyannaSettings.RedirectUrisFrom(config))
+        {
+            case [var one]:
+                report += Environment.NewLine + "The OIDC redirect URI to register with the provider is " + one + ".";
+                break;
+            case { Count: > 1 } several:
+                report += Environment.NewLine + "The OIDC redirect URIs to register, one per provider:"
+                    + string.Concat(several.Select(uri => Environment.NewLine + "  - " + uri));
+                break;
+        }
         return report + Environment.NewLine + "Run `/app/Pollyanna help` for every setting.";
     }
 }

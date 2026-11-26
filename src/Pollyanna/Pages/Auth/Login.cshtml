@@ -1,2 +1,18 @@
-@page
+@page "{key?}"
 @model Pollyanna.Pages.Auth.LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+
+<div class="empty">
+    <h1>Sign in to Pollyanna</h1>
+    <p>Choose how you'd like to sign in.</p>
+</div>
+<div class="actions">
+    @foreach (var choice in Model.Choices)
+    {
+        <a class="button" href="@choice.Href">Sign in with @choice.Label</a>
+    }
+</div>
+
+<partial name="_About" />

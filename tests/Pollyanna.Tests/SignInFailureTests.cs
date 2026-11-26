@@ -61,7 +61,7 @@ public sealed class SignInFailureTests
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(ProviderPage, response.Headers.Location!.OriginalString);
         await AssertProviderFailurePageAsync(browser);
-        AssertLogged(app, "Sign-in could not start: the provider rejected the client (invalid_client). Check POLLYANNA_OIDC_CLIENT_ID");
+        AssertLogged(app, "Sign-in through provider default could not start: the provider rejected the client (invalid_client). Check POLLYANNA_OIDC_CLIENT_ID");
     }
 
     [Fact]
@@ -88,8 +88,38 @@ public sealed class SignInFailureTests
         var callback = await browser.SignInAsync(Alice);
 
         Assert.Equal(ProviderPage, callback.Headers.Location!.OriginalString);
-        AssertLogged(app, "Sign-in failed: invalid_client. Check POLLYANNA_OIDC_CLIENT_ID");
+        AssertLogged(app, "Sign-in through provider default failed: invalid_client. Check POLLYANNA_OIDC_CLIENT_ID");
         Assert.Equal(0, await app.WithDbAsync(db => db.People.CountAsync()));
+    }
+
+    [Fact]
+    public async Task A_wrong_secret_at_a_listed_provider_logs_that_providers_settings()
+    {
+        await using var app = await TestApp.StartAsync(providers: [new("google", "Google")],
+            configure: Setting("POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET", WrongSecret));
+        using var browser = app.NewBrowser();
+
+        var callback = await browser.SignInAsync(Alice, provider: "google");
+
+        Assert.Equal(ProviderPage, callback.Headers.Location!.OriginalString);
+        await AssertProviderFailurePageAsync(browser);
+        AssertLogged(app, "Sign-in through provider google failed: invalid_client. Check POLLYANNA_OIDC_GOOGLE_CLIENT_ID");
+        Assert.DoesNotContain(app.Logs.Entries, e => e.Message.Contains(TestApp.ClientSecretOf("google")));
+        Assert.Equal(0, await app.WithDbAsync(db => db.People.CountAsync()));
+    }
+
+    [Fact]
+    public async Task An_unreachable_listed_provider_names_its_issuer_setting()
+    {
+        await using var app = await TestApp.StartAsync(providers: [new("google", "Google")], configure: b => b.ConfigureTestServices(services =>
+            services.Configure<OpenIdConnectOptions>("oidc-google", o => o.BackchannelHttpHandler = new Unreachable())));
+        using var browser = app.NewBrowser();
+
+        var response = await browser.GetAsync("/auth/login/google");
+
+        Assert.Equal(ProviderPage, response.Headers.Location!.OriginalString);
+        AssertLogged(app, $"Sign-in through provider google could not start: the provider's configuration couldn't be loaded from {TestApp.IssuerOf("google")}");
+        AssertLogged(app, "Check POLLYANNA_OIDC_GOOGLE_ISSUER");
     }
 
     [Fact]
