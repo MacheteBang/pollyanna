@@ -43,7 +43,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     DateTime Now => clock.GetUtcNow().UtcDateTime;
 
     /// <summary>People who have signed in and whose account still exists, so they can be picked.</summary>
-    public IQueryable<Person> SignedInPeople => db.People.Where(p => p.OidcSub != null);
+    public IQueryable<Person> SignedInPeople => db.People.Living();
 
     // ---------- Creating and editing ----------
 

@@ -42,6 +42,8 @@ public sealed class AccountDeletionTests : IAsyncLifetime
 
     Task<HttpResponseMessage> DeleteAsync() => browser.PostWithTokenAsync("/account/delete", "/account/delete");
 
+    Task<bool> HasLoginsAsync() => app.WithDbAsync(db => db.Logins.AnyAsync(l => l.PersonId == me));
+
     Task<Person> MeAsync() => app.WithDbAsync(db => db.People.AsNoTracking().SingleAsync(p => p.Id == me));
 
     async Task<Guid> DrawnAsync(string name, Guid[] people, Dictionary<Guid, Guid> pairs, EventStatus status = EventStatus.Drawn)
@@ -85,7 +87,7 @@ public sealed class AccountDeletionTests : IAsyncLifetime
 
         Assert.NotNull((await browser.GetPageAsync("/account/delete")).QuerySelector("form[action='/account/delete']"));
         await DeleteAsync();
-        Assert.Null((await MeAsync()).OidcSub);
+        Assert.False(await HasLoginsAsync());
         Assert.Empty(await app.OrganizersAsync(ev));
     }
 
@@ -113,8 +115,7 @@ public sealed class AccountDeletionTests : IAsyncLifetime
         Assert.Equal("/auth/deleted", (await DeleteAsync()).Headers.Location!.OriginalString);
 
         var person = await MeAsync();
-        Assert.Null(person.OidcIssuer);
-        Assert.Null(person.OidcSub);
+        Assert.False(await HasLoginsAsync());
         Assert.Null(person.DisplayName);
         Assert.Null(person.Email);
         Assert.Null(person.EmailNormalized);
@@ -228,8 +229,27 @@ public sealed class AccountDeletionTests : IAsyncLifetime
         var (again, newId) = await app.SignInAsync(Pat);
         using var _ = again;
         Assert.NotEqual(me, newId);
-        Assert.Null((await MeAsync()).OidcSub);
+        Assert.False(await HasLoginsAsync());
         Assert.Equal(HttpStatusCode.NotFound, (await again.GetAsync($"/events/{ev}")).StatusCode);
         Assert.Contains("Nothing to unwrap yet", (await again.GetPageAsync("/")).QuerySelector("h1")!.TextContent);
+    }
+
+    [Fact]
+    public async Task Deleting_removes_every_login_and_any_of_them_later_starts_a_fresh_person()
+    {
+        // Pat's second login came in by verified email.
+        var second = Pat with { Sub = "pat-other" };
+        using (var other = app.NewBrowser())
+            await other.SignInAsync(second);
+        Assert.Equal(2, await app.WithDbAsync(db => db.Logins.CountAsync(l => l.PersonId == me)));
+
+        await DeleteAsync();
+        Assert.False(await HasLoginsAsync());
+
+        var (again, newId) = await app.SignInAsync(second);
+        using var _ = again;
+        Assert.NotEqual(me, newId);
+        Assert.Equal(["pat-other"], await app.WithDbAsync(db => db.Logins.Where(l => l.PersonId == newId).Select(l => l.Subject).ToListAsync()));
+        Assert.False(await HasLoginsAsync());
     }
 }
