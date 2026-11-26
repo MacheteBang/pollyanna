@@ -26,7 +26,7 @@ public sealed class InvitationEmailTests : IAsyncLifetime
     }
 
     Task InviteAsync(Guid ev, string email) =>
-        organizer.SubmitOnAsync($"/events/{ev}/manage", $"/events/{ev}/manage/invite", Form(("email", email)));
+        organizer.SubmitOnAsync($"/events/{ev}/manage", $"/events/{ev}/manage/addpeople", Form(("email", email)));
 
     Task<List<Notification>> WaitingAsync() => app.WithDbAsync(db => db.Notifications.ToListAsync());
 

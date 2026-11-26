@@ -263,10 +263,24 @@ Without the script, the page falls back to the date alone.
 (counter, bumped on each edit), `done_shopping` (bool), `joined_at`.
 - Only the participant edits their own notes and `done_shopping`. The
   "done shopping" toggle is on the event page once the event is `drawn`.
-- Organizers add participants in two ways: pick from people who have already
-  signed in, or invite by email (below). The manage page has a separate
-  control for each: a dropdown of signed-in people ("Name — email") and an
-  "Invite by email" box.
+- Before the draw, organizers add participants with one control on the
+  manage page: a ticklist of the people they know, and an address that adds
+  or invites (below). One post takes the ticked people and an optional
+  address, and adds them all at once.
+  - **The people they know:** every person whose account still exists and
+    who is or was a participant or organizer in any event where the
+    organizer is a participant or organizer, at any status, archived
+    included. People already in the event and the organizer themselves are
+    left out. The list shows names and pictures only; no email reaches the
+    page. One query builds this list, and every people picker uses it.
+  - A ticked person who isn't on the organizer's list is refused like any
+    other bad input (not found), and nothing changes, so the list can't be
+    bypassed by posting IDs.
+  - It works as a plain form: without the script, the ticklist and a visible
+    email field. The script adds a filter box that narrows the list by name;
+    a full address typed into it shows a ticked "Add or invite <address>" row
+    in place of the email field.
+  - After the draw, late joiners are added one at a time (§5.4).
 
 **Visibility within an event** (for its participants):
 - The participant list is visible to all participants.
@@ -297,9 +311,12 @@ automatically on sign-in, so declining an invitation means leaving.)
 **Invitation** — `event_id`, `email`, `invited_by`, `created_at`.
 - If the email already belongs to a person who has signed in (same matching
   rules as below, against the email from their last sign-in), they are added
-  as a participant immediately and no invitation is stored. If it belongs to
-  more than one person, nothing is stored and the organizer is asked to pick
-  them by name instead.
+  as a participant immediately and no invitation is stored, whether or not
+  the organizer knows them. If it belongs to more than one person, nothing is
+  stored, nobody is added (not even people ticked in the same post), and the
+  notice reads "More than one person uses that address. Pick them from the
+  list if they're there, or ask them which one to use." It names nobody.
+  (Decided on 2026-11-25.)
 - Otherwise, when someone signs in with a matching email address, each matching
   invitation turns into a Participant row and is deleted. Matching is
   case-insensitive, and uses only an email the provider marks as verified
@@ -561,8 +578,10 @@ who is asking.
   handwriting. Around Philadelphia they call it a Pollyanna. This is the hat,
   minus the squinting."
 
-When adding people, organizers pick from everyone who has signed in (name and
-email), which is acceptable for a family-sized deployment.
+When adding people, organizers pick from the people they've shared an event
+with, by name and picture only, and reach anyone else only by typing their
+exact address (§4 Participant). No page lists everyone who has signed in, and
+no people picker shows another person's email.
 
 The reveal card is hidden behind a "Tap to reveal" button so a phone left on
 the table does not give it away.

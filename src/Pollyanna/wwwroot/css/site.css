@@ -519,6 +519,12 @@ input[type="checkbox"], input[type="radio"] {
 .editor[open] > summary { font-weight: 700; }
 .editor[open] { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
 
+/* The add-people control: a filter box over a ticklist. Its rows and fields are flex boxes,
+   so what the script hides needs saying twice. */
+.add-people [hidden] { display: none; }
+.add-people .person label { cursor: pointer; }
+.add-people .person input[type="checkbox"] { flex-shrink: 0; }
+
 /* Checkbox-style marks on the manage page's people list: "[x]  [ ]  [x]". Courier keeps them in columns. */
 .person-marks { white-space: pre; }
 

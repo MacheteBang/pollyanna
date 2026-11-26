@@ -25,7 +25,7 @@ public sealed class EventAccessTests : IAsyncLifetime
     [
         ("open", Form()),
         ("addperson", Form(("personId", someone.ToString()))),
-        ("invite", Form(("email", "new@example.com"))),
+        ("addpeople", Form(("email", "new@example.com"))),
         ("removeperson", Form(("personId", participant.ToString()))),
         ("cancelinvite", Form(("invitationId", Guid.NewGuid().ToString()))),
         ("savehousehold", Form(("householdName", "Sneaky"), ("members", participant.ToString()))),
@@ -76,10 +76,11 @@ public sealed class EventAccessTests : IAsyncLifetime
         var (browser, me) = await app.SignInAsync(MeIdentity);
         using var _b = browser;
         var someone = await app.PersonAsync("Someone");
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, someone]);
         var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me]);
 
         var page = await browser.GetPageAsync($"/events/{ev}/manage");
-        var response = await browser.SubmitAsync(page, $"/events/{ev}/manage/addperson", Form(("personId", someone.ToString())));
+        var response = await browser.SubmitAsync(page, $"/events/{ev}/manage/addpeople", Form(("personIds", someone.ToString())));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains(someone, await app.ParticipantsAsync(ev));
     }

@@ -25,6 +25,8 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     public IReadOnlyList<HouseholdRow> Households { get; private set; } = [];
     public IReadOnlyList<ExclusionRow> Exclusions { get; private set; } = [];
     public IReadOnlyList<PersonRow> Organizers { get; private set; } = [];
+    /// <summary>The add-people control's ticklist: people the viewer knows who aren't in yet (spec §7).</summary>
+    public IReadOnlyList<PersonRow> Known { get; private set; } = [];
     public IReadOnlyList<Pickable> CanJoin { get; private set; } = [];
     public IReadOnlyList<Pickable> CanOrganize { get; private set; } = [];
     public IReadOnlyList<Event> PreviousCandidates { get; private set; } = [];
@@ -97,6 +99,8 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
             .Select(p => new Pickable(p.Id, p.Email is null ? p.DisplayName ?? "" : $"{p.DisplayName} — {p.Email}"))
             .ToList();
         CanJoin = everyone.Where(p => !names.ContainsKey(p.Id)).ToList();
+        if (Membership.PeopleEditable)
+            Known = await events.KnownRowsAsync(Me, names.Keys);
         CanOrganize = everyone.Where(p => !Organizers.Any(o => o.Id == p.Id)).ToList();
 
         var candidates = await events.PreviousCandidatesAsync(Me, id);
@@ -117,6 +121,9 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
 
     // ---------- Actions ----------
 
+    /// <summary>A post naming no action this page has, such as one it used to have.</summary>
+    public IActionResult OnPost() => NotFound();
+
     public async Task<IActionResult> OnPostOpenAsync(Guid id) =>
         await LoadAsOrganizerAsync(id) ? Finish(await events.OpenAsync(Membership, Me), Here("status")) : NotFound();
 
@@ -133,11 +140,25 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
         await LoadAsOrganizerAsync(id) ? Finish(await events.ArchiveAsync(Membership, keepMessages), Here("status")) : NotFound();
 
     // After the draw, adding and removing people also say whether to patch or redraw (spec §5.4).
+    // Before it, people are added through the add-people control instead.
     public async Task<IActionResult> OnPostAddPersonAsync(Guid id, Guid personId, DrawChange? change, Guid? householdId) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.AddParticipantAsync(Membership, Me, personId, change, householdId), Here("people")) : NotFound();
+        await LoadAsOrganizerAsync(id) && Membership.IsLive
+            ? Finish(await events.AddParticipantAsync(Membership, Me, personId, change, householdId), Here("people"))
+            : NotFound();
 
-    public async Task<IActionResult> OnPostInviteAsync(Guid id, string? email) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.InviteAsync(Membership, Me, email), Here("people")) : NotFound();
+    /// <summary>
+    /// The add-people control (spec §7). A ticked person the organizer may not pick is refused
+    /// like any other bad input, so the list can't be bypassed by posting IDs.
+    /// </summary>
+    public async Task<IActionResult> OnPostAddPeopleAsync(Guid id, List<Guid> personIds, string? email)
+    {
+        if (!await LoadAsOrganizerAsync(id))
+            return NotFound();
+        var ticked = personIds.Distinct().ToList();
+        if (await events.KnownTo(Me).CountAsync(p => ticked.Contains(p.Id)) != ticked.Count)
+            return NotFound();
+        return Finish(await events.AddPeopleAsync(Membership, Me, ticked, email), Here("people"));
+    }
 
     public async Task<IActionResult> OnPostRemovePersonAsync(Guid id, Guid personId, DrawChange? change) =>
         await LoadAsOrganizerAsync(id) ? Finish(await events.RemoveParticipantAsync(Membership, personId, change), Here("people")) : NotFound();

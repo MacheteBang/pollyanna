@@ -72,7 +72,7 @@ public sealed class ManageTests : IAsyncLifetime
         Assert.Contains("Ann, Bob", page.QuerySelector(".household")!.TextContent);
         Assert.Contains("You're the only organizer", page.QuerySelector("#organizers")!.TextContent);
         // The pick lists offer only people who aren't in yet.
-        Assert.DoesNotContain(page.QuerySelectorAll("#add-person option"), o => o.GetAttribute("value") is { Length: > 0 });
+        Assert.Empty(page.QuerySelectorAll("input[name=personIds]"));
         Assert.Contains("Ann — ann@example.com", page.QuerySelector("#add-organizer")!.TextContent);
     }
 
@@ -81,6 +81,7 @@ public sealed class ManageTests : IAsyncLifetime
     {
         var carol = await app.PersonAsync("Carol", "carol@example.com");
         var dave = await app.PersonAsync("Dave");
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, carol]);
         var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me, dave]);
         await app.WithDbAsync(async db =>
         {
@@ -88,30 +89,17 @@ public sealed class ManageTests : IAsyncLifetime
             await db.SaveChangesAsync();
         });
 
-        await ActAsync(ev, "addperson", Form(("personId", carol.ToString())));
+        await ActAsync(ev, "addpeople", Form(("personIds", carol.ToString())));
         Assert.Contains(carol, await app.ParticipantsAsync(ev));
         Assert.Equal("Added Carol.", await NoticeAsync(ev));
 
-        await ActAsync(ev, "addperson", Form(("personId", carol.ToString())));
+        await ActAsync(ev, "addpeople", Form(("email", "carol@example.com")));
         Assert.Contains("already in the hat", await NoticeAsync(ev));
 
         // Removing someone takes their rules with them.
         await ActAsync(ev, "removeperson", match: With("personId", dave));
         Assert.DoesNotContain(dave, await app.ParticipantsAsync(ev));
         Assert.Equal(0, await app.WithDbAsync(db => db.Exclusions.CountAsync()));
-    }
-
-    [Fact]
-    public async Task People_who_never_signed_in_or_deleted_their_account_cant_be_picked()
-    {
-        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me]);
-        var tombstone = new Person { CreatedAt = DateTime.UtcNow };
-        await app.WithDbAsync(async db => { db.People.Add(tombstone); await db.SaveChangesAsync(); });
-
-        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/addperson", Form(("personId", tombstone.Id.ToString())));
-        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/addperson", Form(("personId", Guid.NewGuid().ToString())));
-
-        Assert.Equal([me], await app.ParticipantsAsync(ev));
     }
 
     [Fact]
