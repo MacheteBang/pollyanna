@@ -13,22 +13,35 @@ public static class Seed
     public static Dictionary<string, string> Form(params (string Key, string Value)[] fields) =>
         fields.ToDictionary(f => f.Key, f => f.Value);
 
-    /// <summary>Signs in through the whole OIDC flow and returns the browser with the person's ID.</summary>
-    public static async Task<(TestBrowser Browser, Guid PersonId)> SignInAsync(this TestApp app, MockIdentity identity)
+    /// <summary>
+    /// Signs in through the whole OIDC flow and returns the browser with the person's ID. Without
+    /// <paramref name="provider"/> (a <see cref="TestProvider"/> key), through the unnamed provider.
+    /// </summary>
+    public static async Task<(TestBrowser Browser, Guid PersonId)> SignInAsync(this TestApp app, MockIdentity identity, string? provider = null)
     {
         var browser = app.NewBrowser();
-        await browser.SignInAsync(identity);
-        var id = await app.WithDbAsync(db => db.People.Where(p => p.OidcIssuer == TestApp.Issuer && p.OidcSub == identity.Sub).Select(p => p.Id).SingleAsync());
-        return (browser, id);
+        await browser.SignInAsync(identity, provider: provider);
+        return (browser, await app.PersonIdAsync(TestApp.IssuerOf(provider), identity.Sub));
     }
 
-    /// <summary>A person who signed in once (at another issuer, so test sign-ins never match them by sub).</summary>
-    public static async Task<Guid> PersonAsync(this TestApp app, string name, string? email = null, bool? verified = true)
+    /// <summary>The person holding the login <paramref name="issuer"/> + <paramref name="sub"/>.</summary>
+    public static Task<Guid> PersonIdAsync(this TestApp app, string issuer, string sub) =>
+        app.WithDbAsync(db => db.Logins.Where(l => l.Issuer == issuer && l.Subject == sub).Select(l => l.PersonId).SingleAsync());
+
+    /// <summary>
+    /// A person who signed in once. Without <paramref name="logins"/> they get one login at
+    /// another issuer, so test sign-ins never match them by sub.
+    /// </summary>
+    public static async Task<Guid> PersonAsync(this TestApp app, string name, string? email = null, bool? verified = true,
+        IReadOnlyList<(string Issuer, string Sub)>? logins = null)
     {
+        logins ??= [("https://other.test", name + "-" + Guid.NewGuid())];
         var p = new Person
         {
-            OidcIssuer = "https://other.test",
-            OidcSub = name + "-" + Guid.NewGuid(),
+            Logins = [.. logins.Select(l => new Login
+            {
+                Issuer = l.Issuer, Subject = l.Sub, LastEmail = email, CreatedAt = DateTime.UtcNow, LastUsedAt = DateTime.UtcNow,
+            })],
             DisplayName = name,
             Email = email,
             EmailNormalized = Person.NormalizeEmail(email),

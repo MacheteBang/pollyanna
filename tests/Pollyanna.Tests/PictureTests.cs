@@ -89,7 +89,7 @@ public sealed class PictureTests : IAsyncLifetime
         var response = await browser.SignInAsync(new MockIdentity(sub, sub, null, null, picture));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/", response.Headers.Location!.OriginalString);
-        return (browser, await app.WithDbAsync(db => db.People.Where(p => p.OidcSub == sub).Select(p => p.Id).SingleAsync()));
+        return (browser, await app.PersonIdAsync(TestApp.Issuer, sub));
     }
 
     [Fact]
@@ -122,14 +122,51 @@ public sealed class PictureTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Picture_goes_when_the_provider_stops_sending_one()
+    public async Task A_sign_in_without_a_picture_keeps_the_stored_one()
     {
         app.Pictures.Serve("https://pics.test/ann.png", TestImages.Png);
         var (first, ann) = await SignInAsync("ann", "https://pics.test/ann.png");
         first.Dispose();
         var (second, _) = await SignInAsync("ann", null);
         using var _b = second;
-        Assert.Equal(HttpStatusCode.NotFound, (await second.GetAsync($"/people/{ann}/picture")).StatusCode);
+
+        var response = await second.GetAsync($"/people/{ann}/picture");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(TestImages.Png, await response.Content.ReadAsByteArrayAsync());
+        Assert.Equal("https://pics.test/ann.png", await app.WithDbAsync(db => db.People.Where(p => p.Id == ann).Select(p => p.PictureUrl).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task A_sign_in_without_a_name_or_email_keeps_the_stored_ones()
+    {
+        using (var first = app.NewBrowser())
+            await first.SignInAsync(new MockIdentity("ann", "Ann", "ann@example.com", true, null));
+        using (var second = app.NewBrowser())
+            await second.SignInAsync(new MockIdentity("ann", null, null, null, null));
+
+        var ann = await app.PersonIdAsync(TestApp.Issuer, "ann");
+        var person = await app.WithDbAsync(db => db.People.AsNoTracking().SingleAsync(p => p.Id == ann));
+        Assert.Equal(("Ann", "ann@example.com", "ann@example.com", true),
+            (person.DisplayName, person.Email, person.EmailNormalized, person.EmailVerified));
+        var login = await app.WithDbAsync(db => db.Logins.AsNoTracking().SingleAsync(l => l.PersonId == ann));
+        Assert.Equal("ann@example.com", login.LastEmail);
+    }
+
+    [Fact]
+    public async Task Each_sign_in_takes_the_values_just_received()
+    {
+        app.Pictures.Serve("https://pics.test/ann.png", TestImages.Png);
+        app.Pictures.Serve("https://pics.test/ann-2.jpg", TestImages.Jpeg);
+        using (var first = app.NewBrowser())
+            await first.SignInAsync(new MockIdentity("ann", "Ann", "ann@example.com", true, "https://pics.test/ann.png"));
+        using (var second = app.NewBrowser())
+            await second.SignInAsync(new MockIdentity("ann", "Annie", "Annie@Example.com", true, "https://pics.test/ann-2.jpg"));
+
+        var ann = await app.PersonIdAsync(TestApp.Issuer, "ann");
+        var person = await app.WithDbAsync(db => db.People.AsNoTracking().SingleAsync(p => p.Id == ann));
+        Assert.Equal(("Annie", "Annie@Example.com", "annie@example.com"), (person.DisplayName, person.Email, person.EmailNormalized));
+        Assert.Equal("Annie@Example.com", (await app.WithDbAsync(db => db.Logins.AsNoTracking().SingleAsync(l => l.PersonId == ann))).LastEmail);
+        Assert.Equal(TestImages.Jpeg, await app.WithDbAsync(db => db.PersonPictures.Where(p => p.PersonId == ann).Select(p => p.Data).SingleAsync()));
     }
 
     [Fact]

@@ -11,3 +11,7 @@ When a person deletes their account, their profile (name, email, picture, provid
 
 - Code must treat a person with no name, email or provider link as normal, not as corrupt data.
 - Re-linking by verified email (§3) can't reach a deleted person, since their email is gone.
+
+## Note (November 25, 2026)
+
+Since several providers (spec #17), the "provider link" is a person's logins, kept in their own table: one row per provider account (issuer plus `sub`). Deleting an account deletes every login, and "has no logins" is what marks a tombstone, instead of a null `sub` on the person row. The decision stands: the tombstone is still the row with only its `id`.

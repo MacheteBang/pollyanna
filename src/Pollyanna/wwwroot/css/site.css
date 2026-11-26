@@ -309,6 +309,8 @@ main {
 }
 .button:hover { text-decoration: underline; }
 .button-outline { background-color: transparent; color: var(--ink); border: 2px solid var(--ink); }
+/* A provider's logo beside its label (spec §3); the operator's own artwork, kept at icon size. */
+.provider-icon { height: 24px; width: auto; max-width: 48px; margin-right: 12px; flex-shrink: 0; }
 .button:disabled { background-color: transparent; color: var(--ink); border: 2px dashed var(--ink); cursor: not-allowed; text-decoration: none; }
 
 .link-button {
@@ -351,6 +353,8 @@ input[type="checkbox"], input[type="radio"] {
     flex-direction: column;
     gap: 14px;
 }
+.actions form { margin: 0; }
+.actions form .button { width: 100%; }
 .actions a.center { min-height: var(--tap); display: flex; align-items: center; justify-content: center; }
 
 .center { text-align: center; }
@@ -518,6 +522,12 @@ input[type="checkbox"], input[type="radio"] {
 .editor > summary::-webkit-details-marker { display: none; }
 .editor[open] > summary { font-weight: 700; }
 .editor[open] { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
+
+/* The add-people control: a filter box over a ticklist. Its rows and fields are flex boxes,
+   so what the script hides needs saying twice. */
+.add-people [hidden] { display: none; }
+.add-people .person label { cursor: pointer; }
+.add-people .person input[type="checkbox"], .add-people .person input[type="radio"] { flex-shrink: 0; }
 
 /* Checkbox-style marks on the manage page's people list: "[x]  [ ]  [x]". Courier keeps them in columns. */
 .person-marks { white-space: pre; }

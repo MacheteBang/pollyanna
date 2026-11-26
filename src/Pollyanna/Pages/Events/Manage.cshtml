@@ -9,6 +9,8 @@
     var drawn = m.IsLive;
     string Box(bool on) => on ? "[x]" : "[ ]";
     string Household(Guid? id) => Model.Households.FirstOrDefault(h => h.Id == id)?.Name ?? "no household";
+    var lateJoiner = new Pollyanna.Pages.Shared.PickOneView("late", Model.Known, "Who's joining", "they're added");
+    var newOrganizer = new Pollyanna.Pages.Shared.PickOneView("organizer", Model.KnownNotOrganizing, "Add an organizer", "they're made an organizer");
 }
 
 <a class="back" href="/">← Your exchanges</a>
@@ -174,26 +176,13 @@
 
     @if (editable)
     {
-        <form method="post" asp-page-handler="AddPerson" class="stack">
-            <label for="add-person">Add someone who has signed in</label>
-            <div class="input-row">
-                <select id="add-person" name="personId" required>
-                    <option value="">Pick a person…</option>
-                    @foreach (var p in Model.CanJoin)
-                    {
-                        <option value="@p.Id">@p.Label</option>
-                    }
-                </select>
-                <button type="submit" class="button button-small">Add</button>
-            </div>
-        </form>
-        <form method="post" asp-page-handler="Invite" class="stack">
-            <label for="invite-email">Or invite by email</label>
-            <div class="input-row">
-                <input id="invite-email" name="email" type="email" required maxlength="@EventManager.EmailMax" autocomplete="off" placeholder="sue@example.com">
-                <button type="submit" class="button button-small">Invite</button>
-            </div>
-            <p class="hint">They join when they first sign in with that email. Pollyanna sends no email, so tell them yourself.</p>
+        @* One control for adding people (spec §7): the people the organizer has shared an event
+           with, names and pictures only, and an address that adds or invites (_AddPeople). *@
+        <form method="post" asp-page-handler="AddPeople" class="stack add-people" data-add-people>
+            <h3 class="kicker">ADD PEOPLE</h3>
+            <partial name="_AddPeople" model="new AddPeopleControl(Model.Known, [], null)" />
+            <button type="submit" class="button button-small">Add ticked</button>
+            <p class="hint">Only people you've been in an exchange with are listed. For anyone else, type their email: if they already use Pollyanna they're added, and if not, the address is invited and they join when they first sign in with it.</p>
         </form>
     }
 
@@ -219,18 +208,9 @@
         </details>
         <details class="editor">
             <summary>Someone joining late?</summary>
-            <form method="post" asp-page-handler="AddPerson" class="stack">
-                <div class="field">
-                    <label for="late-joiner">Who's joining</label>
-                    <select id="late-joiner" name="personId" required>
-                        <option value="">Pick a person…</option>
-                        @foreach (var p in Model.CanJoin)
-                        {
-                            <option value="@p.Id">@p.Label</option>
-                        }
-                    </select>
-                    <p class="hint">They need to have signed in. Invitations by email wait until the names are back in the hat.</p>
-                </div>
+            <form method="post" asp-page-handler="AddPerson" class="stack add-people" data-add-people>
+                <partial name="_PickOne" model="lateJoiner" />
+                <p class="hint">They need to have signed in. Invitations by email wait until the names are back in the hat.</p>
                 @if (Model.Households.Count > 0)
                 {
                     <div class="field">
@@ -397,19 +377,10 @@
     }
     @if (m.Editable)
     {
-        <form method="post" asp-page-handler="AddOrganizer" class="stack">
-            <label for="add-organizer">Add an organizer</label>
-            <div class="input-row">
-                <select id="add-organizer" name="personId" required>
-                    <option value="">Pick a person…</option>
-                    @foreach (var p in Model.CanOrganize)
-                    {
-                        <option value="@p.Id">@p.Label</option>
-                    }
-                </select>
-                <button type="submit" class="button button-small">Add</button>
-            </div>
-            <p class="hint">Organizers manage the event but don't see who drew whom. Being one doesn't put them in the hat.</p>
+        <form method="post" asp-page-handler="AddOrganizer" class="stack add-people" data-add-people>
+            <partial name="_PickOne" model="newOrganizer" />
+            <button type="submit" class="button button-small">Make organizer</button>
+            <p class="hint">Organizers manage the event but don't see who drew whom. Being one doesn't put them in the hat. They need to have signed in.</p>
         </form>
     }
 </section>

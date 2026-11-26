@@ -32,12 +32,48 @@ public static class Help
           POLLYANNA_OIDC_CLIENT_SECRET or POLLYANNA_OIDC_CLIENT_SECRET_FILE
                                   The client secret, or the path of a file holding it.
                                   Set exactly one.
-          POLLYANNA_DATA_DIR        Directory for pollyanna.db and keys/ (sign-in key ring).
+          POLLYANNA_OIDC_LABEL      Optional: the name on its sign-in button (default: the
+                                  issuer's host name).
+          POLLYANNA_OIDC_ADMISSION  Optional: trusted (the default): anyone the provider
+                                  authenticates gets in; or open: only a verified email
+                                  that matches a person or a pending invitation gets in.
+          POLLYANNA_OIDC_ICON_FILE  Optional: the path of a logo for its sign-in button
+                                  (PNG, JPEG, GIF, WebP or SVG, at most 1 MB). Without
+                                  it, the button is text only.
+          POLLYANNA_DATA_DIR       Directory for pollyanna.db and keys/ (sign-in key ring).
                                   Must be writable. Suggested: /data
           POLLYANNA_DRAW_KEY_FILE   Path of the draw key, e.g. /draw-key/draw.key. Created
                                   on first start if absent, so its directory must be
                                   writable then. Keep it on a different mount from the
                                   data directory.
+
+        MORE SIGN-IN PROVIDERS (optional)
+          The POLLYANNA_OIDC_* provider above may be the only one, or other providers
+          can sit next to it (or replace it). With several, the sign-in page shows one
+          button per provider: the unnamed one first, then the list's order.
+          POLLYANNA_OIDC_PROVIDERS  Keys of the extra providers, separated by commas or
+                                  spaces, e.g. "google". A key is lowercase letters and
+                                  digits, starting with a letter; "default" is reserved.
+          For each key, uppercased in the setting names, all of these are required:
+          POLLYANNA_OIDC_<KEY>_ISSUER     The provider's issuer URL (https).
+          POLLYANNA_OIDC_<KEY>_CLIENT_ID  The client ID registered there.
+          POLLYANNA_OIDC_<KEY>_CLIENT_SECRET or POLLYANNA_OIDC_<KEY>_CLIENT_SECRET_FILE
+                                  Set exactly one.
+          POLLYANNA_OIDC_<KEY>_LABEL      The name on its button, e.g. Google.
+          POLLYANNA_OIDC_<KEY>_ADMISSION  trusted or open, as above.
+          And this one is optional:
+          POLLYANNA_OIDC_<KEY>_ICON_FILE  A logo for its button, e.g. the provider's own
+                                  downloadable button artwork (as for
+                                  POLLYANNA_OIDC_ICON_FILE above).
+          For example, with POLLYANNA_OIDC_PROVIDERS=google:
+            POLLYANNA_OIDC_GOOGLE_ISSUER=https://accounts.google.com
+            POLLYANNA_OIDC_GOOGLE_CLIENT_ID=...
+            POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET_FILE=/run/secrets/google-client-secret
+            POLLYANNA_OIDC_GOOGLE_LABEL=Google
+            POLLYANNA_OIDC_GOOGLE_ADMISSION=trusted
+            POLLYANNA_OIDC_GOOGLE_ICON_FILE=/icons/google.svg
+          Two providers can't share an issuer, and a POLLYANNA_OIDC_<KEY>_* setting
+          whose key isn't listed stops startup.
 
         EMAIL (optional; leave POLLYANNA_SMTP_HOST unset and email notifications are off)
           POLLYANNA_SMTP_HOST       The mail relay that sends notification emails. With it,
@@ -74,7 +110,9 @@ public static class Help
 
         REGISTERING THE OIDC CLIENT
           Client type      Confidential (with a client secret)
-          Redirect URI     {public URL}/auth/callback, exactly
+          Redirect URI     {public URL}/auth/callback, exactly, for the POLLYANNA_OIDC_*
+                           provider; {public URL}/auth/callback/<key> for a listed
+                           one. The startup log lists each provider's.
           Flow             Authorization code with PKCE (S256)
           Scopes           openid profile email
           Client auth      Client secret in the request body (client_secret_post)

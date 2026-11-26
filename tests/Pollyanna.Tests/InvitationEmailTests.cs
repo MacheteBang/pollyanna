@@ -26,7 +26,7 @@ public sealed class InvitationEmailTests : IAsyncLifetime
     }
 
     Task InviteAsync(Guid ev, string email) =>
-        organizer.SubmitOnAsync($"/events/{ev}/manage", $"/events/{ev}/manage/invite", Form(("email", email)));
+        organizer.SubmitOnAsync($"/events/{ev}/manage", $"/events/{ev}/manage/addpeople", Form(("email", email)));
 
     Task<List<Notification>> WaitingAsync() => app.WithDbAsync(db => db.Notifications.ToListAsync());
 
@@ -53,6 +53,59 @@ public sealed class InvitationEmailTests : IAsyncLifetime
         Assert.Contains("If this email wasn't meant for you, ignore it.", mail.Body);
         Assert.DoesNotContain("/account", mail.Body);
         Assert.Empty(await WaitingAsync());
+    }
+
+    /// <summary>The invitation email for "Sue.M@Example.com", sent from an app with <paramref name="providers"/> listed after the unnamed one.</summary>
+    static async Task<(string Body, Guid Event)> InvitationWithAsync(IReadOnlyList<TestProvider> providers)
+    {
+        await using var app = await TestApp.StartAsync(mail: true, providers: providers);
+        var (organizer, org) = await app.SignInAsync(new MockIdentity("org", "Olga", "olga@example.com", true, null));
+        using var _ = organizer;
+        var ev = await app.EventAsync("Stockings 2026", EventStatus.Open, [org], [org]);
+        await organizer.SubmitOnAsync($"/events/{ev}/manage", $"/events/{ev}/manage/addpeople", Form(("email", "Sue.M@Example.com")));
+        await app.SendMailAsync();
+        return (Assert.Single(app.Mail.To("Sue.M@Example.com")).Body, ev);
+    }
+
+    [Fact]
+    public async Task With_an_open_provider_the_invitation_names_it_and_the_invited_address()
+    {
+        var (body, _) = await InvitationWithAsync([new("google", "Google", "open")]);
+
+        Assert.Contains("\nSign in with Google using this address (Sue.M@Example.com).\n", body);
+    }
+
+    [Fact]
+    public async Task With_several_open_providers_the_invitation_names_each_in_configured_order_and_no_trusted_one()
+    {
+        var (body, _) = await InvitationWithAsync(
+            [new("google", "Google", "open"), new("work", "Work account"), new("microsoft", "Microsoft", "open")]);
+
+        Assert.Contains("\nSign in with Google or Microsoft using this address (Sue.M@Example.com).\n", body);
+        Assert.DoesNotContain("Work account", body);
+        Assert.DoesNotContain("issuer.test", body);
+    }
+
+    [Fact]
+    public async Task With_three_open_providers_the_invitation_lists_them_all()
+    {
+        var (body, _) = await InvitationWithAsync(
+            [new("google", "Google", "open"), new("microsoft", "Microsoft", "open"), new("apple", "Apple", "open")]);
+
+        Assert.Contains("Sign in with Google, Microsoft or Apple using this address (Sue.M@Example.com).", body);
+    }
+
+    [Fact]
+    public async Task With_only_trusted_providers_the_invitation_is_unchanged()
+    {
+        var (body, ev) = await InvitationWithAsync([new("work", "Work account")]);
+
+        // Exactly the text from before there were several providers.
+        Assert.Equal(
+            "Olga invited you to \"Stockings 2026\", a gift exchange on Pollyanna. To join, sign in with this email address.\n\n"
+            + $"{TestApp.PublicUrl}/events/{ev}\n\n"
+            + "-- \nSomeone invited this address to \"Stockings 2026\" on Pollyanna. If this email wasn't meant for you, ignore it.\n",
+            body);
     }
 
     [Fact]

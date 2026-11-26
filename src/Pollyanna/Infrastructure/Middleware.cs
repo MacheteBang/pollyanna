@@ -53,8 +53,9 @@ public static class Middleware
                 {
                     RouteEndpoint r => "/" + (r.RoutePattern.RawText ?? RoutePatternText(r.RoutePattern)).TrimStart('/'),
                     { } e => e.DisplayName ?? "(endpoint)",
-                    // The OIDC handler answers its callback itself, before routing picks an endpoint.
-                    null when context.Request.Path == PollyannaSettings.CallbackPath => PollyannaSettings.CallbackPath,
+                    // The OIDC handlers answer their callbacks themselves, before routing picks an
+                    // endpoint. The path names only the provider's key.
+                    null when Callback(context) is { } callback => callback,
                     null => context.Response.StatusCode == StatusCodes.Status404NotFound ? "(no route)" : "(static)",
                 };
                 if (route != "/healthz" || context.Response.StatusCode != StatusCodes.Status200OK)
@@ -62,6 +63,10 @@ public static class Middleware
             }
         });
     }
+
+    static string? Callback(HttpContext context) =>
+        context.RequestServices.GetRequiredService<Auth.ProviderRegistry>()
+            .FirstOrDefault(p => context.Request.Path.Equals(p.CallbackPath, StringComparison.OrdinalIgnoreCase))?.CallbackPath;
 
     static string RoutePatternText(RoutePattern pattern) =>
         string.Join('/', pattern.PathSegments.Select(s => string.Concat(s.Parts.Select(p => p switch

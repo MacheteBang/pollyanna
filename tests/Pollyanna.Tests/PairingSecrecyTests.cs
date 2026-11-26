@@ -20,7 +20,8 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
 {
     TestApp app = null!;
 
-    public async Task InitializeAsync() => app = await TestApp.StartAsync();
+    // A second provider, so /account renders its whole "Ways to sign in" section, add buttons included.
+    public async Task InitializeAsync() => app = await TestApp.StartAsync(providers: [new("google", "Google")]);
     public async Task DisposeAsync() => await app.DisposeAsync();
 
     public enum Viewer { Organizer, Participant, OrganizerWhoTakesPart }
@@ -28,10 +29,13 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
     [GeneratedRegex("name=\"__RequestVerificationToken\" type=\"hidden\" value=\"[^\"]*\"")]
     private static partial Regex Token();
 
-    /// <summary>Every page the viewer can reach in the event, plus the leave confirmations.</summary>
-    static async Task<List<string>> PagesAsync(TestBrowser browser, Guid ev, Viewer viewer, bool archived)
+    /// <summary>
+    /// Every page the viewer can reach in the event, plus the leave confirmations, plus the manage
+    /// page of <paramref name="upcoming"/>, a draft whose add-people control lists the event's people.
+    /// </summary>
+    static async Task<List<string>> PagesAsync(TestBrowser browser, Guid ev, Viewer viewer, bool archived, Guid upcoming)
     {
-        var paths = new List<string> { "/", "/account", "/account/delete", "/past", $"/events/{ev}" };
+        var paths = new List<string> { "/", "/account", "/account/delete", "/past", $"/events/{ev}", $"/events/{upcoming}/manage" };
         if (viewer != Viewer.Participant)
             paths.Add($"/events/{ev}/manage");
         if (viewer != Viewer.Organizer)
@@ -72,6 +76,7 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         Guid[] organizers = viewer == Viewer.Participant ? [org] : [me];
         Guid[] people = viewer == Viewer.Organizer ? [a, b, c, d, org] : [me, a, b, c, d];
         var ev = await app.EventAsync("Gifts", EventStatus.Open, organizers, people);
+        var upcoming = await app.EventAsync("Next year", EventStatus.Draft, [me], [me]);
         var (p0, p1, p2, p3, p4) = (people[0], people[1], people[2], people[3], people[4]);
 
         // The first person in the list keeps their recipient (that's Pat when Pat takes part);
@@ -109,9 +114,9 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         }
 
         await SealWithThreadsAsync(first);
-        var before = await PagesAsync(browser, ev, viewer, archived);
+        var before = await PagesAsync(browser, ev, viewer, archived, upcoming);
         await SealWithThreadsAsync(second);
-        var after = await PagesAsync(browser, ev, viewer, archived);
+        var after = await PagesAsync(browser, ev, viewer, archived, upcoming);
 
         Assert.Equal(before.Count, after.Count);
         for (var i = 0; i < before.Count; i++)
@@ -141,6 +146,8 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
             Assert.DoesNotContain("reveal-name", string.Concat(before));
             Assert.DoesNotContain("passed-note", string.Concat(before));
         }
+        // The add-people control on the draft lists the event's people.
+        Assert.Contains($"for=\"add-{a}\"", before.Single(p => p.StartsWith($"/events/{upcoming}/manage ")));
         Assert.DoesNotContain(" asks ", string.Concat(before));
         Assert.DoesNotContain("class=\"pairings\"", string.Concat(before));
         if (archived)

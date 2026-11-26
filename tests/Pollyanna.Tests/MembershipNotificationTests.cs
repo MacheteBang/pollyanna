@@ -27,8 +27,12 @@ public sealed class MembershipNotificationTests : IAsyncLifetime
 
     static string Manage(Guid ev) => $"/events/{ev}/manage";
 
-    Task AddAsync(Guid ev, Guid person) =>
-        browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/addperson", Form(("personId", person.ToString())));
+    // Added by their address, which reaches anyone, the organizer included.
+    async Task AddAsync(Guid ev, Guid person)
+    {
+        var email = await app.WithDbAsync(db => db.People.Where(p => p.Id == person).Select(p => p.Email!).SingleAsync());
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/addpeople", Form(("email", email)));
+    }
 
     [Fact]
     public async Task Someone_added_to_an_open_event_is_emailed()
@@ -86,7 +90,7 @@ public sealed class MembershipNotificationTests : IAsyncLifetime
         var ann = await app.PersonAsync("Ann", "ann@example.com");
         var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me]);
 
-        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/invite", Form(("email", "Ann@Example.com")));
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/addpeople", Form(("email", "Ann@Example.com")));
         await app.SendMailAsync();
 
         Assert.Contains(ann, await app.ParticipantsAsync(ev));
@@ -101,7 +105,7 @@ public sealed class MembershipNotificationTests : IAsyncLifetime
         var open = await app.EventAsync("Open one", EventStatus.Open, [me], [me]);
         var draft = await app.EventAsync("Draft one", EventStatus.Draft, [me], [me]);
         foreach (var ev in new[] { open, draft })
-            await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/invite", Form(("email", "sue@example.com")));
+            await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/addpeople", Form(("email", "sue@example.com")));
         await app.SendMailAsync();
         app.Mail.Sent.Clear(); // whatever the invitations themselves send
 
@@ -126,6 +130,7 @@ public sealed class MembershipNotificationTests : IAsyncLifetime
         var bob = await app.PersonAsync("Bob", "bob@example.com");
         var cy = await app.PersonAsync("Cy", "cy@example.com");
         var dee = await app.PersonAsync("Dee", "dee@example.com");
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, dee]);
         var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy]);
         await app.SealAsync(ev, Loop(ann, bob, cy));
 
@@ -152,6 +157,7 @@ public sealed class MembershipNotificationTests : IAsyncLifetime
         var bob = await app.PersonAsync("Bob", "bob@example.com");
         var cy = await app.PersonAsync("Cy", "cy@example.com");
         var dee = await app.PersonAsync("Dee", "dee@example.com");
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, dee]);
         var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy]);
         await app.SealAsync(ev, Loop(ann, bob, cy));
         await app.HouseholdAsync(ev, "The Parks", ann, bob);
@@ -166,8 +172,12 @@ public sealed class MembershipNotificationTests : IAsyncLifetime
         Assert.Empty(await app.WithDbAsync(db => db.Notifications.ToListAsync()));
     }
 
-    Task AddOrganizerAsync(Guid ev, Guid person) =>
-        browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/addorganizer", Form(("personId", person.ToString())));
+    /// <summary>Makes someone an organizer through the picker, after a shared exchange puts them on Pat's list.</summary>
+    async Task AddOrganizerAsync(Guid ev, Guid person)
+    {
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, person]);
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/addorganizer", Form(("personId", person.ToString())));
+    }
 
     [Theory]
     [InlineData(EventStatus.Draft)]

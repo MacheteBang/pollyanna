@@ -68,6 +68,8 @@ public sealed class NotificationSecrecyTests
     {
         var (pat, ann, bob, carol, dave, eve) = (people["Pat"], people["Ann"], people["Bob"], people["Carol"], people["Dave"], people["Eve"]);
         Guid[] inTheHat = [pat.Id, ann.Id, bob.Id, carol.Id, dave.Id];
+        // Last year's exchange puts Eve on Pat's late-joiner list.
+        await app.EventAsync("Gifts 2025", EventStatus.Archived, [pat.Id], [pat.Id, eve.Id]);
         var ev = await app.EventAsync("Gifts 2026", EventStatus.Open, [pat.Id], inTheHat);
         await app.SealAsync(ev, pairs);
         var page = $"/events/{ev}";
@@ -163,7 +165,7 @@ public sealed class NotificationSecrecyTests
 
     /// <summary>
     /// Sets off every notification kind in one event, through the pages: an invitation and a new
-    /// organizer while it's a draft, opening it, adding someone, everyone's notes, a draw, a redraw
+    /// organizer while it's a draft, opening it, adding someone through the add-people control, everyone's notes, a draw, a redraw
     /// and a new draw, everyone's question, a late joiner patched in, a request to leave that
     /// needs a redraw, and the reveal. Peregrine organizes and takes part and does the organizing;
     /// Ottoline is made an organizer. Before each send, the rows waiting in the outbox are kept.
@@ -179,6 +181,9 @@ public sealed class NotificationSecrecyTests
                 foreach (var (browser, _) in people.Values)
                     await browser.SubmitOnAsync("/account", "/account/emails");
 
+            // Last year's exchange puts Evangeline, Fitzgerald and Ottoline on Peregrine's lists.
+            await app.EventAsync("Gifts 2025", EventStatus.Archived, [Id("Peregrine")],
+                [Id("Peregrine"), Id("Evangeline"), Id("Fitzgerald"), Id("Ottoline")]);
             var ev = await app.EventAsync("Gifts 2026", EventStatus.Draft, [Id("Peregrine")],
                 [Id("Peregrine"), Id("Annabel"), Id("Bartholomew"), Id("Cordelia"), Id("Desmond")]);
             var page = $"/events/{ev}";
@@ -193,12 +198,12 @@ public sealed class NotificationSecrecyTests
                     run.Mail.Add(new Sent(step, m));
             }
 
-            await ManageAsync(org, ev, "invite", Form(("email", "sue@example.com")));
+            await ManageAsync(org, ev, "addpeople", Form(("email", "sue@example.com")));
             await ManageAsync(org, ev, "addorganizer", Form(("personId", Id("Ottoline").ToString())));
             await StepAsync("draft");
             await ManageAsync(org, ev, "open");
             await StepAsync("open");
-            await ManageAsync(org, ev, "addperson", Form(("personId", Id("Evangeline").ToString())));
+            await ManageAsync(org, ev, "addpeople", Form(("personIds", Id("Evangeline").ToString())));
             await StepAsync("added");
             // A waiting invitation blocks the draw.
             await ManageAsync(org, ev, "cancelinvite");
@@ -244,6 +249,8 @@ public sealed class NotificationSecrecyTests
         }
     }
 
+    static readonly TestProvider[] OpenProvider = [new("google", "Google", "open")];
+
     /// <summary>The kind an email is, told from its subject alone.</summary>
     static NotificationKind KindOf(OutgoingMail mail) => mail.Subject switch
     {
@@ -261,13 +268,15 @@ public sealed class NotificationSecrecyTests
     [Fact]
     public async Task No_email_of_any_kind_holds_a_message_notes_or_a_givers_or_recipients_name()
     {
-        await using var app = await TestApp.StartAsync(mail: true);
+        // An open provider adds its line to the invitation, which must hold to the same rules.
+        await using var app = await TestApp.StartAsync(mail: true, providers: OpenProvider);
         var run = await EveryKindAsync(app);
 
         Assert.Equal(Enum.GetValues<NotificationKind>().Order(), run.Mail.Select(s => KindOf(s.Mail)).Distinct().Order());
         Assert.Contains(run.Mail, s => s.Mail.Body.Contains("drawn again"));
         Assert.Contains(run.Mail, s => s.Step == "added" && KindOf(s.Mail) == NotificationKind.AddedToEvent);
         Assert.Contains(run.Mail, s => s.Step == "late joiner" && KindOf(s.Mail) == NotificationKind.AddedToEvent);
+        Assert.Contains(run.Mail, s => s.Mail.Body.Contains("Sign in with Google using this address (sue@example.com)."));
 
         foreach (var (step, mail) in run.Mail)
         {
@@ -292,7 +301,8 @@ public sealed class NotificationSecrecyTests
     [Fact]
     public async Task No_email_of_any_kind_mentions_Santa_or_stockings()
     {
-        await using var app = await TestApp.StartAsync(mail: true);
+        // An open provider adds its line to the invitation, which must hold to the same rules.
+        await using var app = await TestApp.StartAsync(mail: true, providers: OpenProvider);
         var run = await EveryKindAsync(app);
 
         foreach (var (step, mail) in run.Mail)

@@ -72,8 +72,8 @@ public sealed class ManageTests : IAsyncLifetime
         Assert.Contains("Ann, Bob", page.QuerySelector(".household")!.TextContent);
         Assert.Contains("You're the only organizer", page.QuerySelector("#organizers")!.TextContent);
         // The pick lists offer only people who aren't in yet.
-        Assert.DoesNotContain(page.QuerySelectorAll("#add-person option"), o => o.GetAttribute("value") is { Length: > 0 });
-        Assert.Contains("Ann — ann@example.com", page.QuerySelector("#add-organizer")!.TextContent);
+        Assert.Empty(page.QuerySelectorAll("input[name=personIds]"));
+        Assert.Contains("Ann", page.QuerySelector($"form[action='{Manage(ev)}/addorganizer']")!.TextContent);
     }
 
     [Fact]
@@ -81,6 +81,7 @@ public sealed class ManageTests : IAsyncLifetime
     {
         var carol = await app.PersonAsync("Carol", "carol@example.com");
         var dave = await app.PersonAsync("Dave");
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, carol]);
         var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me, dave]);
         await app.WithDbAsync(async db =>
         {
@@ -88,11 +89,11 @@ public sealed class ManageTests : IAsyncLifetime
             await db.SaveChangesAsync();
         });
 
-        await ActAsync(ev, "addperson", Form(("personId", carol.ToString())));
+        await ActAsync(ev, "addpeople", Form(("personIds", carol.ToString())));
         Assert.Contains(carol, await app.ParticipantsAsync(ev));
         Assert.Equal("Added Carol.", await NoticeAsync(ev));
 
-        await ActAsync(ev, "addperson", Form(("personId", carol.ToString())));
+        await ActAsync(ev, "addpeople", Form(("email", "carol@example.com")));
         Assert.Contains("already in the hat", await NoticeAsync(ev));
 
         // Removing someone takes their rules with them.
@@ -102,22 +103,10 @@ public sealed class ManageTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task People_who_never_signed_in_or_deleted_their_account_cant_be_picked()
-    {
-        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me]);
-        var tombstone = new Person { CreatedAt = DateTime.UtcNow };
-        await app.WithDbAsync(async db => { db.People.Add(tombstone); await db.SaveChangesAsync(); });
-
-        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/addperson", Form(("personId", tombstone.Id.ToString())));
-        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/addperson", Form(("personId", Guid.NewGuid().ToString())));
-
-        Assert.Equal([me], await app.ParticipantsAsync(ev));
-    }
-
-    [Fact]
     public async Task Organizers_can_be_added_and_removed_but_never_the_last_one()
     {
         var carol = await app.PersonAsync("Carol");
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, carol]);
         var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], []);
 
         // The only organizer can't step down.
@@ -132,6 +121,85 @@ public sealed class ManageTests : IAsyncLifetime
         Assert.Empty(await app.ParticipantsAsync(ev));
 
         await ActAsync(ev, "removeorganizer", match: With("personId", carol));
+        Assert.Equal([me], await app.OrganizersAsync(ev));
+    }
+
+    // ---------- The organizer picker (spec §4 Organizer, §7) ----------
+
+    string AddOrganizer(Guid ev) => $"{Manage(ev)}/addorganizer";
+
+    async Task<AngleSharp.Dom.IElement> OrganizerPickerAsync(Guid ev) =>
+        (await browser.GetPageAsync(Manage(ev))).QuerySelector($"form[action='{AddOrganizer(ev)}']")
+        ?? throw new InvalidOperationException("No organizer picker.");
+
+    [Fact]
+    public async Task The_organizer_picker_lists_the_add_people_controls_people_minus_organizers_without_emails()
+    {
+        var ann = await app.PersonAsync("Ann", "ann@example.com");
+        var bob = await app.PersonAsync("Bob", "bob@example.com");
+        var carol = await app.PersonAsync("Carol", "carol@example.com");
+        var dave = await app.PersonAsync("Dave", "dave@example.com");
+        await app.PersonAsync("Stranger", "stranger@example.com");
+        var gone = new Person { CreatedAt = DateTime.UtcNow };
+        await app.WithDbAsync(async db => { db.People.Add(gone); await db.SaveChangesAsync(); });
+        await app.EventAsync("Old", EventStatus.Archived, [carol], [me, ann, bob, gone.Id]);
+        // Dave is in this event but doesn't organize it, so he can still be made an organizer; Bob already organizes it.
+        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me, bob], [me, dave]);
+
+        var picker = await OrganizerPickerAsync(ev);
+
+        var picks = picker.QuerySelectorAll("input[name=personId]").ToList();
+        Assert.Equal(["Ann", "Carol", "Dave"], picks.Select(i => picker.QuerySelector($"label[for='{i.Id}']")!.TextContent.Trim()));
+        Assert.Equal(new[] { ann, carol, dave }.Select(g => g.ToString()), picks.Select(i => i.GetAttribute("value")));
+        foreach (var name in new[] { "ann", "bob", "carol", "dave", "stranger", "pat" })
+            Assert.DoesNotContain($"{name}@example.com", picker.OuterHtml);
+        // Without the script: a visible email field and a submit button.
+        Assert.NotNull(picker.QuerySelector("input[type=email][name=email]:not([disabled])"));
+        Assert.NotNull(picker.QuerySelector("button[type=submit]"));
+    }
+
+    [Fact]
+    public async Task A_typed_address_makes_an_existing_person_an_organizer_even_one_Pat_doesnt_know()
+    {
+        var carol = await app.PersonAsync("Carol", "carol@example.com");
+        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me]);
+
+        await browser.SubmitOnAsync(Manage(ev), AddOrganizer(ev), Form(("email", "CAROL@example.com")));
+
+        Assert.Equal(new[] { me, carol }.Order(), (await app.OrganizersAsync(ev)).Order());
+        Assert.Equal("Carol is now an organizer.", await NoticeAsync(ev));
+    }
+
+    [Fact]
+    public async Task An_unknown_or_ambiguous_address_in_the_organizer_picker_changes_nothing_and_invites_nobody()
+    {
+        await app.PersonAsync("Carol", "family@example.com");
+        await app.PersonAsync("Carl", "Family@example.com");
+        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me]);
+
+        await browser.SubmitOnAsync(Manage(ev), AddOrganizer(ev), Form(("email", "sue@example.com")));
+        Assert.Equal([me], await app.OrganizersAsync(ev));
+        Assert.Contains("Nobody uses that address", await NoticeAsync(ev));
+
+        await browser.SubmitOnAsync(Manage(ev), AddOrganizer(ev), Form(("email", "family@example.com")));
+        Assert.Equal([me], await app.OrganizersAsync(ev));
+        var notice = await NoticeAsync(ev);
+        Assert.Contains("More than one person uses that address", notice);
+        Assert.DoesNotContain("Carol", notice);
+        Assert.DoesNotContain("Carl", notice);
+
+        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+    }
+
+    [Fact]
+    public async Task Picking_an_organizer_outside_the_list_is_refused()
+    {
+        var stranger = await app.PersonAsync("Stranger");
+        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me]);
+
+        foreach (var outsider in new[] { stranger, Guid.NewGuid() })
+            Assert.Equal(HttpStatusCode.NotFound, (await browser.PostWithTokenAsync(Manage(ev), AddOrganizer(ev),
+                Form(("personId", outsider.ToString())))).StatusCode);
         Assert.Equal([me], await app.OrganizersAsync(ev));
     }
 

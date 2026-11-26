@@ -165,9 +165,9 @@ public sealed class OutboxSender(
             address = row.Email;
         else
         {
-            person = await db.People.AsNoTracking().SingleOrDefaultAsync(p => p.Id == row.PersonId, cancellationToken);
-            // A deleted account leaves a tombstone without its sign-in or email.
-            if (person is null || person.OidcSub is null)
+            // A deleted account leaves a tombstone without its logins or email.
+            person = await db.People.Living().AsNoTracking().SingleOrDefaultAsync(p => p.Id == row.PersonId, cancellationToken);
+            if (person is null)
                 return null;
             // The email switch is read now, not when the row was queued (spec §15).
             if (!person.EmailsOn)
@@ -190,6 +190,7 @@ public sealed class OutboxSender(
             Hat = hat,
             Now = now,
             PublicUrl = settings.PublicUrl,
+            Providers = settings.Providers,
         };
         if (!await kind.IsStillWantedAsync(context, cancellationToken))
             return null;

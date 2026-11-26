@@ -18,15 +18,13 @@ public sealed class PageTests : IAsyncLifetime
     {
         var browser = app.NewBrowser();
         await browser.SignInAsync(identity);
-        var id = await app.WithDbAsync(db => db.People.Where(p => p.OidcSub == identity.Sub).Select(p => p.Id).SingleAsync());
+        var id = await app.PersonIdAsync(TestApp.Issuer, identity.Sub);
         return (browser, id);
     }
 
     async Task<Guid> SeedPersonAsync(string name)
     {
-        var p = new Person { OidcIssuer = "https://other.test", OidcSub = name, DisplayName = name, CreatedAt = DateTime.UtcNow };
-        await app.WithDbAsync(async db => { db.People.Add(p); await db.SaveChangesAsync(); });
-        return p.Id;
+        return await app.PersonAsync(name, logins: [("https://other.test", name)]);
     }
 
     async Task SeedEventAsync(string name, EventStatus status, Guid creator, Guid[] organizers, Guid[] participants, string budget = "$25")
@@ -139,16 +137,14 @@ public sealed class PageTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Account_page_shows_name_and_email_as_sent_and_a_sign_out_form()
+    public async Task Account_page_shows_the_ways_to_sign_in_and_a_sign_out_form()
     {
         var (browser, _) = await SignInAsync(new("pat", "Pat Example", "pat@example.com", false, null));
         using var _b = browser;
         var page = await browser.GetPageAsync("/account");
-        var text = page.Body!.TextContent;
 
-        Assert.Contains("Pat Example", text);
-        Assert.Contains("pat@example.com", text);
-        Assert.Contains("(not verified)", text);
+        Assert.Contains("Pat Example", page.QuerySelector(".whoami")!.TextContent);
+        Assert.Contains("pat@example.com", page.QuerySelector("#logins")!.TextContent);
         var form = page.QuerySelector("main form[action='/auth/signout']")!;
         Assert.Equal("post", form.GetAttribute("method"));
         Assert.NotNull(form.QuerySelector("input[name='__RequestVerificationToken']"));

@@ -8,13 +8,15 @@ You need:
 - A Linux x86-64 host with Docker and the Compose plugin.
 - A reverse proxy that terminates TLS (Caddy, nginx, Traefik, Nginx Proxy Manager, …).
 - An OpenID Connect provider (Pocket ID, Authelia, Authentik, Keycloak, …) where you can
-  register a client. Everyone who takes part needs an account there.
+  register a client. Everyone who takes part needs an account there, or at another provider
+  you add next to it, such as Google (section 1, "More than one provider"). Extra providers
+  are optional: Pollyanna relies only on the services you choose to configure.
 
 What the container does on start: it checks every setting and refuses to start (listing every
 problem) if one is missing or invalid, creates the draw key if there is none, brings the
 database schema up to date, then serves plain HTTP on port 8080. It needs no internet
-access beyond the identity provider, the hosts that serve people's profile pictures and, if
-you set one up, the mail relay.
+access beyond the identity providers you configure, the hosts that serve people's profile
+pictures and, if you set one up, the mail relay.
 
 The image carries its own short reference and this guide, for when you have only the image:
 
@@ -43,9 +45,10 @@ Create an OIDC client (often called an "application" or "OIDC client") with:
 | Logout / post-logout URI | None. Signing out ends only the Pollyanna session, not the provider's. |
 | Pushed authorization requests (PAR) | Optional. Pollyanna uses PAR when the provider advertises it. |
 
-Pollyanna prints its redirect URI in the startup log (`Pollyanna … is ready at …; OIDC redirect
-URI: …`) and, if other settings are still missing, at the end of the settings error, so you
-can copy it from `docker compose logs` before anyone signs in.
+Pollyanna prints its redirect URI in the startup log, on the line after `Pollyanna … is ready
+at …` (`sign-in provider "…" (default, trusted): redirect URI https://pollyanna.example/auth/callback`)
+and, if other settings are still missing, at the end of the settings error, so you can copy it
+from `docker compose logs` before anyone signs in.
 
 Note the client ID and secret for `.env`, and the provider's issuer URL: the base URL whose
 `/.well-known/openid-configuration` returns its discovery document. It must be `https`.
@@ -54,21 +57,123 @@ Claims Pollyanna reads: `sub`, `name` (or `preferred_username`), `email`, `email
 `picture`. The two email claims matter for two features:
 
 - **Invitations by email** (an organizer invites someone before they first sign in) need the
-  provider to send `email`. They match unless the provider sends `email_verified: false`;
-  with no `email_verified` claim at all they still match.
-- **Re-linking** (a recreated provider account, or a new provider, finding its existing
-  Pollyanna person by email) needs `email_verified: true`.
+  provider to send `email`. Through a trusted provider they match unless the provider sends
+  `email_verified: false`; with no `email_verified` claim at all they still match.
+- **Linking by email** (a recreated provider account, or another provider, finding its
+  existing Pollyanna person by email and adding a login to them) needs `email_verified: true`.
+  So does every first sign-in through an open provider (below).
 
 So if your provider has a setting for sending `email_verified` (some make it optional), turn it
-on. If it never sends the claim, Pollyanna logs one line saying so on the first such sign-in
-after each start.
+on. If it never sends the claim, Pollyanna logs one line naming the provider on the first such
+sign-in after each start.
 
-Pollyanna does no group or role checks of its own. Anyone the provider lets in can use it, so
-limit who can sign in at the provider (e.g. allow the Pollyanna client only for a "family" group).
+Pollyanna does no group or role checks of its own. Anyone a trusted provider (the default)
+lets in can use it, so limit who can sign in at the provider (e.g. allow the Pollyanna client
+only for a "family" group).
 
-People are identified by the provider's issuer plus their `sub`. If you later move to a
-different provider or issuer URL, people are re-linked by verified email on their next
-sign-in. Anyone without a verified email would arrive as a new, empty person.
+Each person has one or more **logins**: a provider's issuer plus their `sub` there. If you
+later move to a different provider or issuer URL, the new login is added to the existing
+person by verified email on their next sign-in, next to the old one. Anyone without a
+verified email would arrive as a new, empty person. Once there's more than one provider,
+people can also add a login themselves, under "Ways to sign in" on `/account`.
+
+### More than one provider
+
+You can configure several providers side by side: your own, plus a public one such as Google
+for relatives who don't have an account on yours. Extra providers are optional, and none is
+built in: Pollyanna talks only to the providers you configure. With one provider, `/auth/login`
+goes straight to it, as before. With several, it shows "Sign in to Pollyanna" with one equal
+"Sign in with <label>" button per provider.
+
+The `POLLYANNA_OIDC_*` provider above keeps its settings and its `/auth/callback` redirect URI.
+Each extra provider gets a key in `POLLYANNA_OIDC_PROVIDERS` (lowercase letters and digits,
+starting with a letter, e.g. `google`), its own settings named `POLLYANNA_OIDC_<KEY>_*`, and its
+own redirect URI, `https://pollyanna.example/auth/callback/<key>`. Register one client per
+provider, as in the table above but with that provider's redirect URI. The startup log prints
+one line per provider with its label, key, admission and redirect URI. The settings are in
+section 3.
+
+Every provider is either **trusted** or **open**:
+
+- **Trusted:** anyone the provider authenticates gets in, as described above. This is the
+  default for the `POLLYANNA_OIDC_*` provider.
+- **Open:** a sign-in through it gets in only with a login a person already holds, or when
+  the provider says the email is verified (`email_verified: true`) and that email belongs to a
+  Pollyanna person or has a pending invitation. Anyone else is refused, with nothing about
+  them stored, and sees a page saying why and offering every way to sign in again.
+
+> [!WARNING]
+> **With an open provider configured, anyone a Pollyanna person invites can sign in.** Any
+> person can create an event and invite any address, so with an open provider the people in
+> Pollyanna, not you, decide who gets in.
+
+Configure only providers whose `email_verified` claim is honest. A verified email links a new
+login to the person who already has that email, through trusted and open providers alike, so
+a provider that calls an address verified without checking it could let someone into another
+person's account.
+
+Changing a provider between `trusted` and `open` takes effect at the next start and affects
+only logins nobody holds yet, so it never locks anyone out.
+
+Removing a provider leaves people whose only login came through it unable to sign in until
+they use another provider with the same verified email. Their logins stay stored (marked
+"no longer set up" on `/account`), so adding the provider back restores them.
+
+### Adding Google
+
+Google accepts a redirect URI only on a public domain over HTTPS, or `http://localhost` for
+development. LAN-only names (`.lan`, `.local`, `.internal`) and raw IP addresses are refused,
+so this needs a public host name for Pollyanna, even if only your own network can reach it.
+(`pollyanna.example` below stands for your real host name; Google would refuse it too.)
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project for
+   Pollyanna (or pick one).
+2. Under **Google Auth Platform**, set up the app: a name, a support email, the audience
+   **External** (any Google account) and a developer contact email.
+3. Under **Data access**, keep only the scopes `openid`, `email` and `profile`. With only
+   these, Google needs no app verification and no test-user list, whether the app is in
+   Testing or In production.
+4. Under **Clients**, create a client of type **Web application** and add the authorized
+   redirect URI `https://pollyanna.example/auth/callback/google`, exactly. The last part is
+   the key you choose in `POLLYANNA_OIDC_PROVIDERS`.
+5. Copy the client ID and the client secret. Google may show the secret only once, so keep it
+   somewhere safe (e.g. in a file for `POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET_FILE`).
+6. Add the provider to `.env` and run `docker compose up -d`:
+
+   ```sh
+   POLLYANNA_OIDC_PROVIDERS=google
+   POLLYANNA_OIDC_GOOGLE_ISSUER=https://accounts.google.com
+   POLLYANNA_OIDC_GOOGLE_CLIENT_ID=<client ID>.apps.googleusercontent.com
+   POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET=<client secret>
+   POLLYANNA_OIDC_GOOGLE_LABEL=Google
+   POLLYANNA_OIDC_GOOGLE_ADMISSION=open
+   ```
+
+Google doesn't limit who signs in to an External app, so as a trusted provider it would let
+in every Google account. Make it `open` unless that's what you want. Google always sends
+`email_verified`, and it doesn't support PAR, so Pollyanna sends it a plain authorization
+request.
+
+### Button icons
+
+Without an icon, a provider's button shows only its label. To put the provider's logo beside
+it, set `POLLYANNA_OIDC_ICON_FILE` (the `POLLYANNA_OIDC_*` provider) or
+`POLLYANNA_OIDC_<KEY>_ICON_FILE` (a listed one) to the container path of an image file you
+mount read-only (readable by uid 1654): PNG, JPEG, GIF, WebP or SVG, at most 1 MB. Pollyanna checks it at start and
+serves it itself, so the strict CSP holds. The repository ships no third-party logos: use the
+provider's official artwork under its branding rules. For Google, the
+[branding guidelines](https://developers.google.com/identity/branding-guidelines) link a
+download of its sign-in assets (SVG and PNG); use the standard-color "G" logo from it,
+unchanged, as those rules require.
+
+```yaml
+    volumes:
+      - ./icons:/icons:ro
+```
+
+```sh
+POLLYANNA_OIDC_GOOGLE_ICON_FILE=/icons/google.svg
+```
 
 ## 2. Install
 
@@ -104,8 +209,9 @@ docker compose logs -f
 ```
 
 You should see `Created a new draw key at /draw-key/draw.key` (the only warning a healthy
-first start logs), the migrations, then `Pollyanna 0.0.1 is ready at https://pollyanna.example;
-OIDC redirect URI: https://pollyanna.example/auth/callback`. `docker compose ps` shows the container as
+first start logs), the migrations, then `Pollyanna 0.0.1 is ready at https://pollyanna.example`
+followed by one line per sign-in provider, e.g. `sign-in provider "id.example" (default,
+trusted): redirect URI https://pollyanna.example/auth/callback`. `docker compose ps` shows the container as
 `healthy` once `/healthz` answers. **Back up the draw key now** (section 6).
 
 If you use rootless Docker or user-namespace remapping, uid 1654 inside the container is a
@@ -113,18 +219,41 @@ different uid on the host. Give the directories to that mapped uid instead.
 
 ## 3. Settings
 
-All settings are environment variables, and all are required except the email settings
-further down. In the Compose setup the first four come from `.env`, and the two paths are
-fixed in `compose.yaml` to match its mounts.
+All settings are environment variables, and all are required except the optional provider
+settings and the email settings further down. In the Compose setup the first four come from
+`.env`, and the two paths are fixed in `compose.yaml` to match its mounts.
 
 | Variable | What it is |
 |---|---|
-| `POLLYANNA_PUBLIC_URL` | The address people open, e.g. `https://pollyanna.example`: a bare origin with no path. Pollyanna takes the browser's scheme from it (the proxy terminates TLS) and never trusts forwarded headers, so it must be the `https` URL people actually use. The OIDC callback is this plus `/auth/callback`. |
+| `POLLYANNA_PUBLIC_URL` | The address people open, e.g. `https://pollyanna.example`: a bare origin with no path. Pollyanna takes the browser's scheme from it (the proxy terminates TLS) and never trusts forwarded headers, so it must be the `https` URL people actually use. The OIDC callback is this plus `/auth/callback` (or `/auth/callback/<key>` for a listed provider). |
 | `POLLYANNA_OIDC_ISSUER` | The provider's issuer URL (discovery at `/.well-known/openid-configuration`). Must be `https`; plain `http` is accepted only for a provider on localhost, which is for development. |
 | `POLLYANNA_OIDC_CLIENT_ID` | The client ID from section 1. |
 | `POLLYANNA_OIDC_CLIENT_SECRET` | The client secret. **Or** `POLLYANNA_OIDC_CLIENT_SECRET_FILE`: the path, inside the container, of a file holding only the secret (surrounding whitespace is ignored). Set exactly one of the two. |
 | `POLLYANNA_DRAW_KEY_FILE` | Path of the draw key: 32 raw bytes, created with mode 0600 if absent, in which case its directory must be writable. Compose: `/draw-key/draw.key`. |
 | `POLLYANNA_DATA_DIR` | Directory for `pollyanna.db` (SQLite in WAL mode, so `pollyanna.db-wal` and `pollyanna.db-shm` sit beside it) and `keys/` (the key ring that protects sign-in state and form tokens; stored unencrypted on purpose, so keep the directory private). Must be writable. Compose: `/data`. |
+
+### Sign-in providers (optional)
+
+These add to the `POLLYANNA_OIDC_*` provider above, or describe more providers next to it
+(section 1, "More than one provider"). With at least one listed provider, the
+`POLLYANNA_OIDC_*` provider itself becomes optional, but at least one provider must exist.
+
+| Variable | What it is |
+|---|---|
+| `POLLYANNA_OIDC_LABEL` | The name on the `POLLYANNA_OIDC_*` provider's sign-in button, e.g. `Family account`. Default: the issuer's host name. |
+| `POLLYANNA_OIDC_ADMISSION` | `trusted` (the default: anyone the provider authenticates gets in) or `open` (only a verified email that matches a person or a pending invitation gets in). |
+| `POLLYANNA_OIDC_ICON_FILE` | The container path of a logo for its button (section 1, "Button icons"). Without it, the button is text only. |
+| `POLLYANNA_OIDC_PROVIDERS` | The keys of the extra providers, separated by commas or spaces, e.g. `google`. A key is lowercase letters and digits, starting with a letter; `default` is reserved. They follow the `POLLYANNA_OIDC_*` provider in this order on every list of buttons. |
+| `POLLYANNA_OIDC_<KEY>_ISSUER` | For each listed key, uppercased (e.g. `POLLYANNA_OIDC_GOOGLE_ISSUER`): the provider's issuer URL, under the same `https` rule. Required. |
+| `POLLYANNA_OIDC_<KEY>_CLIENT_ID` | The client ID registered there. Required. |
+| `POLLYANNA_OIDC_<KEY>_CLIENT_SECRET` | The client secret, **or** `POLLYANNA_OIDC_<KEY>_CLIENT_SECRET_FILE`, the path of a file holding it. Set exactly one. |
+| `POLLYANNA_OIDC_<KEY>_LABEL` | The name on its button, e.g. `Google`. Required. |
+| `POLLYANNA_OIDC_<KEY>_ADMISSION` | `trusted` or `open`, as above. Required: there's no default for a listed provider. |
+| `POLLYANNA_OIDC_<KEY>_ICON_FILE` | Optional: a logo for its button, as for `POLLYANNA_OIDC_ICON_FILE`. |
+
+Two providers can't share an issuer, and a `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't
+listed in `POLLYANNA_OIDC_PROVIDERS` stops the start, so a misspelled key can't silently drop a
+provider.
 
 ### Email notifications (optional)
 
@@ -319,7 +448,10 @@ family uses it, do this once with the production provider, with at least three r
    `Content-Security-Policy`, `X-Frame-Options` and `Referrer-Policy` headers.
 2. **Sign-in.** Open the public URL. You are sent to the provider, back to
    `/auth/callback`, then land on the home page. Your name, email and picture (if the provider
-   has one) show on `/account`. If sign-in fails, see section 9.
+   has one) show on `/account`. If sign-in fails, see section 9. With several providers,
+   sign in once through each, and add a second login on `/account` under "Ways to sign in".
+   With an open provider, also try an address nobody invited: it must be refused, with the
+   reason, on Pollyanna's page.
 3. **Access control.** Try with an account the provider shouldn't let in, if you restricted
    access. It must be refused at the provider.
 4. **Sessions.** Sign out (ends the Pollyanna session only), then sign in again. Restart the
@@ -345,20 +477,30 @@ family uses it, do this once with the production provider, with at least three r
   `Pollyanna is not configured correctly:` and one line per problem: missing settings, a
   non-`https` issuer, a public URL with a path, both or neither client-secret variable, an
   unreadable secret file, a draw key that isn't 32 raw bytes, or a data or draw-key directory the
-  app can't write to (`sudo chown 1654:1654 data draw-key`).
+  app can't write to (`sudo chown 1654:1654 data draw-key`). With several providers it can also
+  be a key `POLLYANNA_OIDC_PROVIDERS` doesn't list, a misspelled setting of a listed provider,
+  two providers with the same issuer, or an
+  icon file that's missing or isn't a usable image.
 - **"Sign-in didn't work" straight away, before the provider's page.** Pollyanna couldn't start
-  the sign-in. The log has `Sign-in could not start:` and says why: the provider rejected the
-  client (`invalid_client`: check the client ID, secret and registration), answered with another
-  error, or its configuration couldn't be loaded from `POLLYANNA_OIDC_ISSUER`.
-- **"Sign-in didn't work" after the provider.** The log has `Sign-in failed:` with the
-  provider's error code (or the error type). Check that the redirect URI at the provider is exactly the public URL plus
-  `/auth/callback`, that the client ID and secret match, that `POLLYANNA_PUBLIC_URL` is the
-  `https` address the browser shows, and that the host's clock is right (tokens are
-  time-limited).
+  the sign-in. The log has `Sign-in through provider <key> could not start:` and says why: the
+  provider rejected the client (`invalid_client`: check the client ID, secret and
+  registration), answered with another error, or its configuration couldn't be loaded from its
+  issuer. The settings it names are that provider's.
+- **"Sign-in didn't work" after the provider.** The log has `Sign-in through provider <key>
+  failed:` with the provider's error code (or the error type). Check that the redirect URI at
+  the provider is exactly the one the startup log prints for it, that the client ID and secret
+  match, that `POLLYANNA_PUBLIC_URL` is the `https` address the browser shows, and that the
+  host's clock is right (tokens are time-limited).
 - **Redirect-URI error at the provider before sign-in.** The provider's registered callback
-  doesn't match `POLLYANNA_PUBLIC_URL` + `/auth/callback`.
+  doesn't match `POLLYANNA_PUBLIC_URL` + `/auth/callback` (or `/auth/callback/<key>` for a
+  listed provider). Google calls this `redirect_uri_mismatch`, and refuses LAN-only names and
+  raw IPs outright (section 1, "Adding Google").
+- **Someone is refused through an open provider.** The log has `Refused a sign-in through
+  provider <key>:` with the reason, never the address: `no invitation or person` (invite the
+  address they used), `email not verified` (they confirm it with the provider, or sign in
+  another way) or `ambiguous: N matches` (more than one person has that email).
 - **The container can't reach the provider at start or sign-in.** It fetches discovery and
-  keys from `POLLYANNA_OIDC_ISSUER` itself, so the provider's host name must resolve and be
+  keys from each provider's issuer itself, so the provider's host name must resolve and be
   reachable from inside the container, with a certificate it trusts.
 - **No emails arrive.** Check the log for `Email notifications are off` (no
   `POLLYANNA_SMTP_HOST`), `can't be reached` (host, port or network) or `Couldn't send a

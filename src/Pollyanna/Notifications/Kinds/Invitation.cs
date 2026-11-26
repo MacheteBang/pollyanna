@@ -30,10 +30,16 @@ sealed class Invitation : NotificationKindDefinition<Invitation.Cause>
     {
         // Who invited isn't secret: the manage page shows it. A deleted account has no name left.
         var inviter = context.NamedPerson?.DisplayName is { Length: > 0 } name ? name : "Someone";
-        return new(
-            $"You're invited to {context.Event.Name} on Pollyanna",
-            $"{inviter} invited you to \"{context.Event.Name}\", a gift exchange on Pollyanna. "
-            + "To join, sign in with this email address.",
-            context.EventUrl);
+        var body = $"{inviter} invited you to \"{context.Event.Name}\", a gift exchange on Pollyanna. "
+            + "To join, sign in with this email address.";
+        // An open provider lets in only an invited or known verified address, so say which to use.
+        // Trusted providers let anyone in and go unmentioned.
+        if (context.Providers.OpenLabels is { Count: > 0 } open)
+            body += $"\nSign in with {Either(open)} using this address ({context.Row.Email}).";
+        return new($"You're invited to {context.Event.Name} on Pollyanna", body, context.EventUrl);
     }
+
+    /// <summary>"A", "A or B", "A, B or C".</summary>
+    static string Either(IReadOnlyList<string> labels) =>
+        labels.Count == 1 ? labels[0] : $"{string.Join(", ", labels.Take(labels.Count - 1))} or {labels[^1]}";
 }

@@ -23,7 +23,9 @@ public sealed record NewEvent(
     Guid? PreviousEventId,
     int NoRepeatDepth,
     bool TakePart,
-    IReadOnlyCollection<Guid> CopyPeople);
+    IReadOnlyCollection<Guid> CopyPeople,
+    IReadOnlyCollection<Guid>? AddPeople = null,
+    string? Email = null);
 
 /// <summary>
 /// Creating and managing events (spec §4). Callers check who may act (<see cref="Membership"/>);
@@ -41,9 +43,6 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     public const int MaxNoRepeatDepth = 3;
 
     DateTime Now => clock.GetUtcNow().UtcDateTime;
-
-    /// <summary>People who have signed in and whose account still exists, so they can be picked.</summary>
-    public IQueryable<Person> SignedInPeople => db.People.Where(p => p.OidcSub != null);
 
     // ---------- Creating and editing ----------
 
@@ -93,7 +92,10 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
 
     /// <summary>
     /// Creates a draft with <paramref name="me"/> as its organizer. Linked to an earlier event,
-    /// it takes the ticked people from it and copies their households.
+    /// it takes the ticked people from it and copies their households. The add-people control's
+    /// ticked people and address (spec §4, §7) come in with it: the address adds the one person
+    /// who uses it, or is invited, and one that several people use refuses the whole form. The
+    /// caller checks that the ticked people are ones the creator may pick (<see cref="KnownTo"/>).
     /// </summary>
     public async Task<(Event? Event, string? Error)> CreateAsync(Guid me, NewEvent input)
     {
@@ -108,6 +110,11 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
             if (previous is null)
                 return (null, "You can only link to an earlier event you organize.");
         }
+
+        var email = input.Email?.Trim() ?? "";
+        var address = email == "" ? null : await ResolveAddressAsync(email);
+        if (address?.Error is { } addressError)
+            return (null, addressError);
 
         var ev = new Event
         {
@@ -127,9 +134,13 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (previous is not null)
         {
             var previousPeople = previous.Participants.Select(p => p.PersonId).ToList();
-            var alive = await SignedInPeople.Where(p => previousPeople.Contains(p.Id)).Select(p => p.Id).ToListAsync();
+            var alive = await db.People.Living().Where(p => previousPeople.Contains(p.Id)).Select(p => p.Id).ToListAsync();
             people.UnionWith(input.CopyPeople.Where(id => id != me && alive.Contains(id)));
         }
+        if (input.AddPeople is { Count: > 0 } ticked)
+            people.UnionWith(await db.People.Living().Where(p => ticked.Contains(p.Id)).Select(p => p.Id).ToListAsync());
+        if (address?.Person is { } byAddress)
+            people.Add(byAddress.Id);
         foreach (var id in people)
             ev.Participants.Add(new Participant { PersonId = id, JoinedAt = Now });
 
@@ -149,6 +160,9 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         }
 
         db.Events.Add(ev);
+        // The invitation's email waits until the draft opens (spec §4, §15).
+        if (address?.Invite is { } normalizedEmail)
+            AddInvitation(ev.Id, email, normalizedEmail, me);
         await db.SaveChangesAsync();
         return (ev, null);
     }
@@ -207,7 +221,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     {
         if (!m.PeopleChangeable)
             return Outcome.Fail("People can't be added any more.");
-        var person = await SignedInPeople.SingleOrDefaultAsync(p => p.Id == personId);
+        var person = await db.People.Living().SingleOrDefaultAsync(p => p.Id == personId);
         if (person is null)
             return Outcome.Fail("Pick someone from the list.");
         if (m.IsLive)
@@ -225,46 +239,100 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         return Outcome.Done($"Added {person.DisplayName}.");
     }
 
+    public const string AmbiguousAddress =
+        "More than one person uses that address. Pick them from the list if they're there, or ask them which one to use.";
+
     /// <summary>
-    /// Invites by email (spec §4). Someone who has already signed in with that email is added
-    /// straight away; otherwise the invitation waits for a matching sign-in.
+    /// The add-people control (spec §4, §7): adds each of <paramref name="personIds"/>, and adds
+    /// or invites <paramref name="email"/>. An address that belongs to exactly one person adds
+    /// them; one that belongs to nobody is invited; one that belongs to several stores nothing,
+    /// and then nobody at all is added. The caller checks that the people are ones the organizer
+    /// may pick (<see cref="KnownTo"/>).
     /// </summary>
-    public async Task<Outcome> InviteAsync(Membership m, Guid me, string? email)
+    public async Task<Outcome> AddPeopleAsync(Membership m, Guid me, IReadOnlyCollection<Guid> personIds, string? email)
     {
         if (!m.PeopleEditable)
-            return Outcome.Fail("Invitations can't be sent after the draw.");
+            return Outcome.Fail("People can't be added here after the draw.");
         email = email?.Trim() ?? "";
-        if (!IsEmail(email))
-            return Outcome.Fail("That doesn't look like an email address.");
-        var normalized = Person.NormalizeEmail(email)!;
+        if (personIds.Count == 0 && email == "")
+            return Outcome.Fail("Tick someone, or type their email.");
 
-        // Same matching as on sign-in: case-insensitive, and never an email marked unverified.
-        var matches = await SignedInPeople
-            .Where(p => p.EmailNormalized == normalized && p.EmailVerified != false)
-            .OrderBy(p => p.Id).Take(2).ToListAsync();
-        if (matches.Count > 1)
-            return Outcome.Fail("More than one person has signed in with that email. Pick them from the list instead.");
-        if (matches.Count == 1)
+        var people = await db.People.Living().Where(p => personIds.Contains(p.Id)).ToListAsync();
+        var address = email == "" ? null : await ResolveAddressAsync(email);
+        if (address?.Error is { } error)
+            return Outcome.Fail(error);
+        var byAddress = address?.Person;
+        var normalized = address?.Invite;
+
+        var toAdd = people.OrderBy(p => p.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .Select(p => (Person: p, ByAddress: false)).ToList();
+        if (byAddress is not null && !people.Any(p => p.Id == byAddress.Id))
+            toAdd.Add((byAddress, true));
+
+        var already = await db.Participants.Where(p => p.EventId == m.Event.Id).Select(p => p.PersonId).ToListAsync();
+        var added = new List<string>();
+        var messages = new List<string>();
+        var ok = true;
+        foreach (var (person, viaAddress) in toAdd)
         {
-            var added = await AddAsync(m.Event, me, matches[0]);
-            return added.Ok ? Outcome.Done($"{matches[0].DisplayName} has already signed in, so they're in the hat now.") : added;
+            if (already.Contains(person.Id))
+            {
+                messages.Add($"{person.DisplayName} is already in the hat.");
+                ok = false;
+                continue;
+            }
+            db.Participants.Add(new Participant { EventId = m.Event.Id, PersonId = person.Id, JoinedAt = Now });
+            await outbox.QueueAsync(new AddedToEvent.Cause(m.Event.Id, person.Id, me));
+            if (viaAddress)
+                messages.Add($"{person.DisplayName} has already signed in, so they're in the hat now.");
+            else
+                added.Add(person.DisplayName ?? "");
         }
+        if (added.Count > 0)
+            messages.Insert(0, $"Added {Names(added)}.");
 
-        if (await db.Invitations.AnyAsync(i => i.EventId == m.Event.Id && i.EmailNormalized == normalized))
-            return Outcome.Fail($"{email} is already invited.");
-        db.Invitations.Add(new Invitation
+        if (normalized is not null)
         {
-            EventId = m.Event.Id,
-            Email = email,
-            EmailNormalized = normalized,
-            InvitedBy = me,
-            CreatedAt = Now,
-        });
-        // A draft's invitations are emailed when it opens (spec §4, §15).
-        if (m.ShownToParticipants)
-            await outbox.QueueAsync(new Notifications.Kinds.Invitation.Cause(m.Event.Id, email, me, me));
+            if (await db.Invitations.AnyAsync(i => i.EventId == m.Event.Id && i.EmailNormalized == normalized))
+            {
+                messages.Add($"{email} is already invited.");
+                ok = false;
+            }
+            else
+            {
+                AddInvitation(m.Event.Id, email, normalized, me);
+                // A draft's invitations are emailed when it opens (spec §4, §15).
+                if (m.ShownToParticipants)
+                    await outbox.QueueAsync(new Notifications.Kinds.Invitation.Cause(m.Event.Id, email, me, me));
+                messages.Add($"Invited {email}. They join the moment they sign in with that email.");
+            }
+        }
         await db.SaveChangesAsync();
-        return Outcome.Done($"Invited {email}. They join the moment they sign in with that email.");
+        return new Outcome(ok, string.Join(" ", messages));
+    }
+
+    /// <summary>Stores a pending invitation of <paramref name="email"/> to an event, made by <paramref name="me"/>.</summary>
+    void AddInvitation(Guid eventId, string email, string normalized, Guid me) =>
+        db.Invitations.Add(new Invitation { EventId = eventId, Email = email, EmailNormalized = normalized, InvitedBy = me, CreatedAt = Now });
+
+    /// <summary>
+    /// What a typed address in the add-people control means (spec §4 Invitation): the one person
+    /// who uses it, or the normalized address to invite, or why it's refused.
+    /// </summary>
+    sealed record Address(string? Error, Person? Person, string? Invite);
+
+    async Task<Address> ResolveAddressAsync(string email)
+    {
+        if (!IsEmail(email))
+            return new("That doesn't look like an email address.", null, null);
+        var normalized = Person.NormalizeEmail(email)!;
+        var matches = await UsingAddress(normalized).OrderBy(p => p.Id).Take(2).ToListAsync();
+        return matches.Count switch
+        {
+            > 1 => new(AmbiguousAddress, null, null),
+            1 => new(null, matches[0], null),
+            _ => new(null, null, normalized),
+        };
     }
 
     internal static bool IsEmail(string email) =>
@@ -369,7 +437,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     {
         if (!m.Editable)
             return Outcome.Fail("This event is archived.");
-        var person = await SignedInPeople.SingleOrDefaultAsync(p => p.Id == personId);
+        var person = await db.People.Living().SingleOrDefaultAsync(p => p.Id == personId);
         if (person is null)
             return Outcome.Fail("Pick someone from the list.");
         if (await db.Organizers.AnyAsync(o => o.EventId == m.Event.Id && o.PersonId == personId))

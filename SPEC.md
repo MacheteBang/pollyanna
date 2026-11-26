@@ -19,17 +19,20 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 - The draw stays sealed from the operator: no screen, API or log shows pairings,
   and the database alone is not enough to reconstruct them.
 - One event per exchange ("Family gifts 2026"), with history across years.
-- Fully self-hosted: the app relies on no service the family doesn't run
-  itself. Its only network dependencies are the identity provider, which is
-  also self-hosted, and, if email notifications are turned on (§15), a mail
-  relay the operator chooses.
+- Fully self-hosted: the app relies only on services the operator chooses to
+  configure. Its only network dependencies are the identity providers the
+  operator configures (§2, §3), the hosts that serve people's profile
+  pictures and, if email notifications are turned on (§15), a mail relay the
+  operator chooses. External providers such as Google are optional: the
+  family's own provider can be the only one.
 
 **Non-goals (v1)**
 - Wishlists with item links, claiming, or price tracking.
 - Notifications other than email (§15): no web push, no app push, no
   in-app notification list.
 - Participants without an identity-provider account (proxies). Everyone who
-  takes part, children included, gets their own account at the provider.
+  takes part, children included, signs in with their own account at one of
+  the configured providers (ADR-0006).
 - Mobile apps. The web UI must work well on phones.
 - Languages other than English. Text lives in the code; dates use one fixed
   English format (in the viewer's time zone, §4).
@@ -63,24 +66,90 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 | Public URL | e.g. `https://pollyanna.home.example` |
 | OIDC issuer | Identity provider base URL (discovery at `/.well-known/openid-configuration`) |
 | Client ID / secret | OIDC client credentials; the secret is kept out of plain config |
+| Provider label / admission (optional) | The unnamed provider's button label (default: the issuer's host) and admission (default: `trusted`) |
+| More providers (optional) | `POLLYANNA_OIDC_PROVIDERS` lists extra provider keys; each key has its own issuer, client ID, secret (value or file), label and admission, all required |
+| Provider icons (optional) | `POLLYANNA_OIDC_ICON_FILE`, or `POLLYANNA_OIDC_<KEY>_ICON_FILE` for a listed provider: an image the operator supplies for that provider's buttons |
 | Draw key location | Where the draw key lives (§5.3); generated on first start if absent |
 | Data location | Where the app's data is stored |
 | Mail relay (optional) | SMTP host, port, TLS mode, login and From address for email notifications (§15); the password is kept out of plain config. Unset: no email. |
+
+- Providers are set by environment variables only, with no settings file:
+  - The unnamed set (`POLLYANNA_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`
+    or `_CLIENT_SECRET_FILE`) is a full provider with the key `default`. It
+    gains an optional `POLLYANNA_OIDC_LABEL` (default: the issuer's host), an
+    optional `POLLYANNA_OIDC_ADMISSION` (default: `trusted`) and an optional
+    `POLLYANNA_OIDC_ICON_FILE`. It may be
+    the only provider or sit next to listed ones. At least one provider must
+    exist, so with nothing listed the unnamed set is required.
+  - `POLLYANNA_OIDC_PROVIDERS` lists extra keys, separated by commas or
+    spaces. Keys match `[a-z][a-z0-9]*` and are uppercased in setting names;
+    `default` is reserved. Each key needs `POLLYANNA_OIDC_<KEY>_ISSUER`,
+    `_CLIENT_ID`, exactly one of `_CLIENT_SECRET` or `_CLIENT_SECRET_FILE`,
+    `_LABEL` and `_ADMISSION` (`trusted` or `open`, no default).
+    `_ICON_FILE` is optional.
+  - An icon file is an image the operator supplies, such as a provider's
+    downloadable button artwork; the repo ships no third-party logos. It is
+    read and checked at startup: it must be readable, at most 1 MB, and a
+    PNG, JPEG, GIF or WebP (by its first bytes) or an SVG (well-formed XML
+    with an `svg` root in the SVG namespace and no DTD).
+  - Order: the unnamed provider first, then the list's order.
+  - Admission is `trusted` (anyone it authenticates gets in) or `open` (only
+    a verified email that matches a person or a pending invitation gets in,
+    §3). A switch between them takes effect at the next start and affects
+    only logins no person holds yet.
+  - Settings errors, each naming its setting in full: two providers with the
+    same issuer once trailing slashes are trimmed (naming both settings); a
+    `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't listed; an unknown
+    field of a listed key, such as a misspelled `..._LABLE` ("isn't a setting
+    Pollyanna knows"); a repeated,
+    malformed or reserved key; any provider field missing or invalid, under
+    the same secret and https rules for every provider; an icon file that is
+    missing or isn't a usable image. When the public URL is
+    valid, the closing hint lists the redirect URI of every provider the
+    settings name.
+  - The startup line `Pollyanna <version> is ready at <url>` is followed by
+    one line per provider, e.g. `sign-in provider "Google" (google, trusted):
+    redirect URI https://pollyanna.example/auth/callback/google`. The unnamed
+    provider shows as `(default, trusted)`.
 
 ## 3. Authentication and authorization
 
 - Every page requires authentication, except `/healthz` and the sign-in
   routes themselves (`/auth/...`).
 - The only way to authenticate is OpenID Connect: authorization-code flow
-  with PKCE against one configured provider. The app must work with any
-  standards-compliant provider. Which provider is used is deployment
-  configuration (§2), not part of the app. Development and tests use a
-  local test provider.
+  with PKCE against one or more configured providers. The app must work with
+  any standards-compliant provider, and no provider is special-cased in code.
+  Which providers are used is deployment configuration (§2), not part of the
+  app. Development and tests use local test providers.
+- One module, the provider registry, owns the configured providers: key,
+  label, issuer, admission, callback path and optional icon, in configured
+  order. Each
+  provider has its own OpenID Connect authentication scheme. PKCE, the scopes,
+  the `state` and `nonce` rules, and a pushed authorization request when the
+  provider advertises one apply to every provider alike.
 - `state` and `nonce` are random values of at least 128 bits.
-- Scopes: `openid profile email`. Callback: `<public URL>/auth/callback`.
-  No post-logout redirect URI is needed. The startup log and the settings
-  error report the callback URL so the client can be registered before the
-  first sign-in (§11).
+- Scopes: `openid profile email`. Callback: `<public URL>/auth/callback` for
+  the unnamed provider, `<public URL>/auth/callback/<key>` for a listed one,
+  so each client gets its own redirect URI and an existing registration still
+  matches. No post-logout redirect URI is needed. The startup log and the
+  settings error report every provider's callback URL so the clients can be
+  registered before the first sign-in (§2, §11).
+- `/auth/login`: with one provider, it goes straight to that provider. With
+  several, it shows a chooser: "Sign in to Pollyanna", "Choose how you'd like
+  to sign in.", then one equal, full-width "Sign in with <label>" button per
+  provider in configured order, and the about line. Each button links to
+  `/auth/login/<key>` and carries the return URL. The chooser remembers
+  nothing and stores no cookie.
+- Provider icons: with an icon file (§2), the provider's logo sits in an
+  `<img>` (empty `alt`, since the label names the provider) before the label
+  on every button for that provider: the chooser, the refused page and the
+  account page's "Add" buttons. Without one, the button is text only.
+  Pollyanna serves the icon itself at `/auth/icon/<key>` to anyone, signed in
+  or not, with its checked content type, `nosniff` and a CSP that blocks
+  everything (so an SVG opened on its own runs nothing). Buttons link to it
+  with a content hash (`?v=`) and it may be cached for a day, so a changed
+  file reaches browsers at the next start. No provider is special-cased: Google's logo is
+  just a file the operator names.
 - Sign-in failures go to `/auth/failed` ("Sign-in didn't work"), never the
   general error page. That includes failures before the redirect to the
   provider (discovery, metadata, a rejected pushed authorization request).
@@ -88,37 +157,116 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   adds: "The sign-in service turned Pollyanna away. Whoever runs this site
   needs to check its settings." The log names the provider's `error` code
   (e.g. `invalid_client`) and the settings to check; the page shows no
-  details, and the client secret is never logged.
-- A person is identified by the provider's issuer plus `sub` claim, mapped to
-  Pollyanna's own person ID. Everything else in the app (participation,
-  sealed pairings, history) uses the Pollyanna person ID, so a change of
-  provider account doesn't lose anything.
-- Re-linking: if a sign-in has an unknown issuer/`sub` but a verified email
-  that matches exactly one existing person, that person is re-linked to the
-  new account instead of a new person being created. This covers a recreated
-  account or a switch of provider.
+  details, and the client secret is never logged. The log names the provider
+  that failed, and the settings it names are that provider's (e.g.
+  `POLLYANNA_OIDC_GOOGLE_CLIENT_ID`).
+- A person signs in through one or more **logins** (§4). A login is one
+  provider account: the provider's issuer plus `sub` claim, unique across all
+  logins. It maps to Pollyanna's own person ID. Everything else in the app
+  (participation, sealed pairings, history) uses the Pollyanna person ID, so
+  a change of provider account doesn't lose anything.
+- Linking by email: if a sign-in has an unknown login but a verified email
+  that matches the current email of exactly one person (tombstones never
+  count), the login is added to that person instead of a new person being
+  created. It is added next to their other logins and never replaces one, so
+  the earlier login keeps working. This covers a recreated account or a
+  switch of provider.
   - "Verified" here means the provider sent `email_verified: true`. An email
-    with no `email_verified` claim is never used for re-linking (unlike
+    with no `email_verified` claim is never used for linking (unlike
     invitations, §4). Matching is case-insensitive.
-  - The first sign-in in a process run that has no `email_verified` claim
-    logs one info line, naming nobody: invitations by email still match,
-    but re-linking by email won't work with this provider.
-- Display name, email and picture are refreshed from claims on every login.
+  - If the email matches two or more people, nothing is linked and a new
+    person is created. One info line gives the number of matches, naming
+    nobody.
+  - The first sign-in through each provider in a process run that has no
+    `email_verified` claim logs one info line, naming the provider and
+    nobody else. For a trusted provider: invitations by email still match,
+    but adding a login by verified email won't happen with this provider.
+    For an open provider: new sign-ins through it are refused and it accepts
+    no invitations, because a missing claim counts as unverified.
+- On every sign-in, display name, email and picture take the values just
+  received, but a claim that isn't sent never clears a stored value. The
+  login's last email is updated the same way.
+- Managing logins ("Ways to sign in" on `/account`, §7):
+  - **Adding.** With more than one provider, each "Add <label>" button
+    (a POST) challenges that provider with the intent "add a login" and the
+    signed-in person carried in the protected authentication properties. On
+    return, the callback checks that the session still belongs to that
+    person; if not, nothing changes and the person lands on `/auth/failed`.
+    A fresh round trip proves control, so the login is attached with no
+    email match, no `email_verified` check and no open-provider admission
+    check. It counts as a sign-in for name, email and picture, and accepts
+    invitations to the new email under the same rule as any sign-in (§4):
+    through an open provider, only with `email_verified: true`. Two logins
+    from the same provider are
+    allowed. No new session is made; the current one carries on. Notice:
+    "Added."
+  - A login another (living) person already holds is refused with "That
+    sign-in already belongs to another Pollyanna account." Nothing is merged.
+    A login the person already holds gives "That's already one of your ways
+    to sign in." and changes nothing.
+  - **Removing.** A plain POST per login, no confirmation page, notice
+    "Removed." Any login can be removed, including the one the session was
+    made through (the session belongs to the person and carries on) and
+    logins from removed providers. Removing the last login is refused with
+    an error notice that points to deleting the account instead, and the
+    list's own text links to `/account/delete`. Removed logins aren't
+    remembered or blocked: a matching verified email adds one back on its
+    next sign-in, and the page says so.
+  - One info log line each for a login added, removed, or refused as another
+    person's, giving the provider key and the person ID, never the email. No
+    email is sent about any of these.
 - Profile pictures: on login, the server downloads the `picture` URL and
   stores the image; the browser only ever loads it from Pollyanna
   (`/people/{id}/picture`), so the strict CSP holds.
   - Fetch rules: `http`/`https` only, 5-second timeout, at most 1 MB, PNG,
     JPEG, WebP or GIF only (no SVG). Served with its checked content type and
     `X-Content-Type-Options: nosniff`.
-  - Any failure keeps the previous image, or shows the person's initials if
-    there is none. A failed fetch never blocks sign-in.
+  - Any failure keeps the previous image, and so does a sign-in that sends no
+    `picture`. Initials show only when no picture was ever stored. A failed
+    fetch never blocks sign-in.
   - Only people who share an event with the person, or an organizer adding
     people (an organizer of any event in `draft` or `open`), can load it. It
     is deleted with the account.
   - Pictures appear small beside names in the people lists (event page,
     manage page, new-event form): the picture, or the initials on paper.
-- Anyone the provider authenticates may use the app. The app does no group
-  checks of its own; limiting who can sign in is the provider's job.
+- Admission: anyone a **trusted provider** authenticates may use the app.
+  The app does no group checks of its own; limiting who can sign in is the
+  provider's job. An **open provider** lets in only someone whose verified
+  email matches a person or a pending invitation. The gate runs only for a
+  login no person holds: a known login always signs in, whatever the
+  provider's admission, even after every invitation and event that let it in
+  is gone. For an unknown login through an open provider:
+  - `email_verified` must be `true`; a missing claim counts as `false`.
+  - An email that matches exactly one person's current email (tombstones
+    never count) adds the login to that person, as in linking by email
+    above.
+  - Two or more matching people refuse the sign-in, even when an invitation
+    for the address is also pending.
+  - Otherwise at least one pending invitation for the address must exist
+    (pending invitations exist only in `draft` and `open` events, and a
+    canceled one is deleted, so it never counts). A new person is created
+    and the invitations turn into participants (§4).
+  - Someone admitted this way is a full person, and nothing records which
+    provider admitted them.
+- Refusals (open providers only): no session, person or login is stored. One
+  info log line names the provider key and the reason (`no invitation or
+  person`, `email not verified`, `ambiguous: N matches`), never the email or
+  `sub`. The person lands on `/auth/failed` with a heading and text per
+  reason, then every provider's "Sign in with <label>" button again,
+  outlined, in configured order and carrying the return URL:
+  - No invitation or person: "Pollyanna doesn't know you yet" / "Pollyanna
+    doesn't know **<address>** yet. Ask whoever organizes your family's
+    exchange to invite that address, or sign in another way."
+  - Email not verified: "<Provider> hasn't confirmed this address" /
+    "<Provider> says it hasn't verified **<address>**, so Pollyanna can't use
+    it to let you in. Confirm it with <Provider>, or sign in another way."
+  - Ambiguous: "Pollyanna can't tell who you are" / "More than one person in
+    Pollyanna uses **<address>**. Ask whoever organizes your family's
+    exchange to sort it out, or sign in another way."
+  - The provider, reason, address and return URL reach the page as
+    protected data that expires after 10 minutes, never as plain query
+    values, so a crafted URL can't make the page show an address. A missing,
+    altered or expired one shows the general "Sign-in didn't work" page.
 - There are no site-wide admins. All management is per event, by that
   event's organizers (§4).
 - Devices are assumed to be personal. "Sign out" ends only the Pollyanna
@@ -133,10 +281,20 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 
 ## 4. Domain model
 
-**Person** — created on first login.
-`id`, `oidc_issuer` + `oidc_sub` (unique together), `display_name`,
-`email`, `email_verified`, `picture_url`, `picture` (stored image and its
-type), `created_at`, `last_login_at`.
+**Person** — created on first sign-in.
+`id`, `display_name`, `email`, `email_verified`, `picture_url`, `picture`
+(stored image and its type), `created_at`, `last_login_at`. A person has one
+or more logins.
+
+**Login** — one provider account linked to a person (§3).
+`id`, `person_id`, `issuer` + `sub` (unique together across all logins),
+`last_email` (the email that login last sent), `created_at`, `last_used_at`.
+- A person holds at least one login; only a tombstone (below) has none, and
+  "has no logins" is how a tombstone is told apart: it can't sign in, be
+  picked, match an email or be emailed.
+- Upgrading from a single issuer and `sub` per person turned each person's
+  pair into one login whose last email is the person's current email.
+  Tombstones got no login.
 
 **Deleting an account.** A person can delete their own Pollyanna account:
 - It is blocked while they are the last organizer of any event that isn't
@@ -153,16 +311,16 @@ type), `created_at`, `last_login_at`.
     "wants to leave — redraw needed" request, and the account page says
     deletion waits for that redraw. Once nothing blocks it, deletion leaves
     every event at once.
-- Their profile (name, email, picture, provider link) and all their notes
-  are deleted. The person row itself stays as an empty tombstone (its `id`
+- Their profile (name, email, picture), every login and all their notes are
+  deleted. The person row itself stays as an empty tombstone (its `id`
   only), so foreign keys and sealed pairings stay valid. In archived and
   revealed events they appear as "Former participant", and revealed lists
   and the no-repeat rule keep working without a name.
 - Messages they wrote in revealed and archived threads stay, so the other
   side keeps their conversation; the deleted side is shown as "Former
   participant".
-- Signing in again later creates a fresh person, with no link to the old
-  history.
+- Signing in again later, through any of their old logins, creates a fresh
+  person, with no link to the old history.
 
 **Event**
 `id`, `name`, `year`, `budget_text` (free text, e.g. "$25"),
@@ -175,7 +333,14 @@ no-repeat rule), `no_repeat_depth` (N, default 1), `pairings_revealed`
 - When an event is created linked to a previous one, its participants are
   pre-filled from that event; the organizer unticks anyone not joining.
   The new-event form preselects the most recent event the creator organizes.
-  Anyone else is added on the manage page after "Create draft".
+  Next to those people, the form has the same add-people control as the
+  manage page (Participant, below), so the whole exchange can be set up
+  before "Create draft": ticked people become participants of the new
+  draft, and a typed address adds its person or becomes an invitation
+  created with it, whose email waits until the event opens (§15). A refused
+  form (such as an address more than one person uses) creates nothing and
+  comes back with what was ticked and typed. Anyone else can still be added
+  on the manage page afterward.
 - The previous-event link can never form a loop (an event whose own chain
   leads back to this one isn't offered). It and `no_repeat_depth` (1 to 3)
   can't change after the draw.
@@ -187,6 +352,15 @@ no-repeat rule), `no_repeat_depth` (N, default 1), `pairings_revealed`
 details, add and remove participants, households, exclusions, and run the
 status changes below.
 - Any organizer can make another signed-in person an organizer, or remove one.
+  The manage page's "Add an organizer" picker lists the same people as the
+  add-people control (§4 Participant), names and pictures only, minus people
+  who already organize the event, and they pick one. A typed address only
+  finds an existing person and never creates an invitation, since an
+  organizer must already have an account. An address that matches nobody, or
+  more than one person, gives a notice naming nobody, and nothing changes. A
+  picked person who isn't on the list is refused (not found). Like the
+  add-people control, it works as a plain form, and the script adds the
+  filter box.
 - An event always has at least one organizer; the last one cannot be removed.
 - There is no recovery path if every organizer is gone; the event stays as
   it is, and a new one can be created. The manage page suggests adding a
@@ -244,10 +418,25 @@ Without the script, the page falls back to the date alone.
 (counter, bumped on each edit), `done_shopping` (bool), `joined_at`.
 - Only the participant edits their own notes and `done_shopping`. The
   "done shopping" toggle is on the event page once the event is `drawn`.
-- Organizers add participants in two ways: pick from people who have already
-  signed in, or invite by email (below). The manage page has a separate
-  control for each: a dropdown of signed-in people ("Name — email") and an
-  "Invite by email" box.
+- Before the draw, organizers add participants with one control on the
+  manage page (and the same control on the new-event form): a ticklist of the people they know, and an address that adds
+  or invites (below). One post takes the ticked people and an optional
+  address, and adds them all at once.
+  - **The people they know:** every person whose account still exists and
+    who is or was a participant or organizer in any event where the
+    organizer is a participant or organizer, at any status, archived
+    included. People already in the event and the organizer themselves are
+    left out. The list shows names and pictures only; no email reaches the
+    page. One query builds this list, and every people picker uses it.
+  - A ticked person who isn't on the organizer's list is refused like any
+    other bad input (not found), and nothing changes, so the list can't be
+    bypassed by posting IDs.
+  - It works as a plain form: without the script, the ticklist and a visible
+    email field. The script adds a filter box that narrows the list by name;
+    a full address typed into it shows a ticked "Add or invite <address>" row
+    in place of the email field.
+  - After the draw, late joiners are added one at a time (§5.4), through a
+    picker that lists the same people.
 
 **Visibility within an event** (for its participants):
 - The participant list is visible to all participants.
@@ -278,13 +467,23 @@ automatically on sign-in, so declining an invitation means leaving.)
 **Invitation** — `event_id`, `email`, `invited_by`, `created_at`.
 - If the email already belongs to a person who has signed in (same matching
   rules as below, against the email from their last sign-in), they are added
-  as a participant immediately and no invitation is stored. If it belongs to
-  more than one person, nothing is stored and the organizer is asked to pick
-  them by name instead.
+  as a participant immediately and no invitation is stored, whether or not
+  the organizer knows them. If it belongs to more than one person, nothing is
+  stored, nobody is added (not even people ticked in the same post), and the
+  notice reads "More than one person uses that address. Pick them from the
+  list if they're there, or ask them which one to use." It names nobody.
+  (Decided on 2026-11-25.)
 - Otherwise, when someone signs in with a matching email address, each matching
   invitation turns into a Participant row and is deleted. Matching is
   case-insensitive, and uses only an email the provider marks as verified
   when it says so.
+  - Through a trusted provider this leniency holds: an email with
+    `email_verified: true` or no such claim matches, and `false` doesn't.
+  - Through an open provider, only `email_verified: true` counts (a missing
+    claim counts as `false`), on every sign-in: a known login, one the gate
+    just admitted, and a login added from `/account`. A pending invitation is
+    what lets an unknown login in at all (§3). Pending invitations exist only
+    in `draft` and `open` events.
 - Organizers see pending invitations and can cancel them.
 - The draw cannot run while invitations are pending: every participant needs
   an account (§5.2). The organizer waits or cancels the invitation.
@@ -442,6 +641,14 @@ organizer redraws first (back to `open`) and removes the person there.
 and chooses one of two options. The newcomer must already have signed in;
 an email invitation can't be added after the draw while it is pending.
 
+- The "Someone joining late?" picker lists the same people as the add-people
+  control (§4 Participant), names and pictures only, minus people already in
+  the event, and the organizer picks one. A typed address only finds an
+  existing person and never creates an invitation. An address that matches
+  nobody, or more than one person, gives a notice naming nobody, and nothing
+  changes. A picked person who isn't on the list is refused (not found). It
+  works as a plain form, and the script adds the filter box.
+
 - The organizer can put the newcomer in one of the event's existing
   households as they add them; both options respect it.
 - **Patch**: the server picks, at random, one existing pairing (A gives to B)
@@ -526,7 +733,9 @@ who is asking.
 | `/events/{id}/questions` | participant | Threads where the user is the recipient |
 | `/events/{id}/manage` | organizer | Edit details; participants and invitations; organizers; households; exclusions; open, draw, redraw, reveal, archive; once revealed, the full pairing list |
 | `/past` | signed in | Archived events the user took part in or organized |
-| `/account` | signed in | Name and email as the provider sent them; the "Email me about Pollyanna events" switch (§15); sign out; delete account |
+| `/account` | signed in | "Ways to sign in" (§3): one row per login with its provider's label, the email it last sent, "(no longer set up)" when its issuer isn't configured, and a "Remove" button; with more than one provider, an outline "Add <label>" button per provider in configured order; a note that a removed login whose verified email matches is added back on its next sign-in. Then the "Email me about Pollyanna events" switch (§15); sign out; delete account |
+| `/auth/login` | anyone | Starts sign-in. With one provider, goes straight to it; with several, the chooser (§3), whose buttons go to `/auth/login/<key>` |
+| `/auth/icon/<key>` | anyone | A provider's logo for its buttons (§3); 404 without one |
 | `/healthz` | anyone | Liveness, no data |
 
 - `/events/{id}` also holds, by status: "Leave this event" (its confirmation
@@ -535,15 +744,18 @@ who is asking.
   who isn't a participant is sent to `/events/{id}/manage` instead.
 - After sign-in, a user returns to the page they first asked for.
 - The about line says what Pollyanna is and nods to the name. It sits at the
-  bottom of `/` (with or without events) and of `/auth/signed-out`, the one
-  signed-out page that isn't about a failure or a deletion; `/` itself still
+  bottom of `/` (with or without events), of `/auth/signed-out` and of the
+  sign-in chooser, the signed-out pages that aren't about a failure or a
+  deletion; `/` itself still
   needs sign-in (§3). The text: "Every family has a version of this: names on
   folded slips, a hat going round the table, someone squinting at the
   handwriting. Around Philadelphia they call it a Pollyanna. This is the hat,
   minus the squinting."
 
-When adding people, organizers pick from everyone who has signed in (name and
-email), which is acceptable for a family-sized deployment.
+When adding people, organizers pick from the people they've shared an event
+with, by name and picture only, and reach anyone else only by typing their
+exact address (§4 Participant). No page lists everyone who has signed in, and
+no people picker shows another person's email.
 
 The reveal card is hidden behind a "Tap to reveal" button so a phone left on
 the table does not give it away.
@@ -563,7 +775,8 @@ with labels, and the reveal animation turned off under "reduce motion".
   `Referrer-Policy: no-referrer`.
 - The draw key never appears in logs, error messages or the UI.
 - Logs stay quiet when nothing is wrong. Successful `/healthz` requests are
-  not logged. The OIDC callback is logged as `/auth/callback`. EF Core's
+  not logged. Each provider's OIDC callback is logged by its path
+  (`/auth/callback` or `/auth/callback/<key>`). EF Core's
   warning about the SQLite table rebuild (`PRAGMA foreign_keys` outside a
   transaction) is ignored by its event ID; other EF warnings still log. The
   key ring is stored unencrypted on purpose, protected by the data
@@ -583,7 +796,25 @@ with labels, and the reveal animation turned off under "reduce motion".
 - Tests that non-organizers cannot manage an event, and that people outside
   an event cannot see it.
 - Tests that invitations turn into participants on matching sign-in only,
-  and that re-linking by verified email attaches to the right person.
+  through an open provider only with `email_verified: true` (a known login,
+  an admitted one and an added one alike), and that linking by verified
+  email adds a login to the right person.
+- Tests for several providers: settings errors name their setting in full
+  (an unlisted key, a misspelled field of a listed key, a repeated issuer),
+  the chooser and each provider's callback, and the `email_verified` hint
+  once per provider per run, worded for its admission.
+- Tests for open-provider refusals: each reason (`no invitation or person`,
+  `email not verified`, `ambiguous: N matches`) shows its page and stores no
+  session, person or login, its log line names nobody, and the refused page
+  can't be made to show an address by a crafted or altered URL.
+- Tests for managing logins on `/account`: the list and its labels, adding a
+  login (attached with no email match or admission, refused when another
+  person holds it, unchanged when it's already the person's, dropped when
+  the session changed hands), and removing any login but the last.
+- Tests for the add-people lists: a picker lists and accepts only people the
+  viewer shares an event with, never emails; a ticked ID outside the list is
+  a 404; a typed address adds the one person who uses it, invites nobody's
+  address, and stores nothing when several people use it.
 - Tests for changes after the draw: dropout and late-joiner patches keep
   every rule, change only one giver, and fall back correctly when a patch
   isn't possible; self-service leaving and account deletion follow the same
@@ -634,7 +865,7 @@ with labels, and the reveal animation turned off under "reduce motion".
   and would be regenerated on a switch.
 - Settings come from environment variables (documented in the deployment
   notes); the client secret can be read from a file. All are required except
-  the SMTP settings; the app refuses to start and lists every problem if any
+  the optional provider settings and the SMTP settings; the app refuses to start and lists every problem if any
   is missing or invalid.
 
 | Variable | Setting (§2) |
@@ -643,6 +874,9 @@ with labels, and the reveal animation turned off under "reduce motion".
 | `POLLYANNA_OIDC_ISSUER` | OIDC issuer; must be `https` unless the host is loopback (development). |
 | `POLLYANNA_OIDC_CLIENT_ID` | Client ID. |
 | `POLLYANNA_OIDC_CLIENT_SECRET` or `POLLYANNA_OIDC_CLIENT_SECRET_FILE` | Client secret, or a file holding it (exactly one of the two). |
+| `POLLYANNA_OIDC_LABEL`, `POLLYANNA_OIDC_ADMISSION`, `POLLYANNA_OIDC_ICON_FILE` | Optional: the unnamed provider's button label (default: the issuer's host), admission (`trusted` by default, or `open`) and icon file. |
+| `POLLYANNA_OIDC_PROVIDERS` | Optional: extra provider keys, separated by commas or spaces. With at least one, the unnamed set becomes optional. |
+| `POLLYANNA_OIDC_<KEY>_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET` or `_CLIENT_SECRET_FILE`, `_LABEL`, `_ADMISSION`, `_ICON_FILE` | Per listed key, all required except `_ICON_FILE`, under the same rules as the unnamed set; `_ADMISSION` has no default (§2). |
 | `POLLYANNA_DRAW_KEY_FILE` | Draw key file: 32 raw bytes, created with mode 0600 if absent. |
 | `POLLYANNA_DATA_DIR` | Data location: holds `pollyanna.db` and the key ring for sign-in state and form tokens. |
 | `POLLYANNA_SMTP_HOST` | Mail relay host (§15). Unset: email notifications are off and the other SMTP settings must be unset too. |
@@ -672,10 +906,10 @@ with labels, and the reveal animation turned off under "reduce motion".
     print the usage error, which points at `help`. `DEPLOYMENT.md` stays the
     long-form guide.
   - `DEPLOYMENT.md` and `THIRD-PARTY-NOTICES.md` ship in `/app`.
-  - The settings error ends with the callback URL (when the public URL is
-    valid) and "Run `/app/Pollyanna help` for every setting". The ready line
-    reads `Pollyanna <version> is ready at <url>; OIDC redirect URI:
-    <url>/auth/callback`.
+  - The settings error ends with every known provider's callback URL (when
+    the public URL is valid) and "Run `/app/Pollyanna help` for every
+    setting". The ready line reads `Pollyanna <version> is ready at <url>`,
+    followed by one line per provider with its redirect URI (§2).
   - OCI labels: the csproj sets `title` and `description` (pointing at
     `help`). `licenses` is not set yet: the repository has a license now,
     and adding the label is a follow-up issue. CI sets
@@ -1308,6 +1542,82 @@ Decided with the user on 2026-11-25, released as 0.0.4:
 - No database migration: the EF Core 11 model matches the last migration.
 - Released right away rather than after the holidays, at the user's call.
 
+### Done: several providers
+
+Spec issue #17, built as #18 to #27 and decided with the user on 2026-11-25.
+The rules are in §1, §2, §3, §4, §7 and §15; the terms **Login**, **Trusted
+provider** and **Open provider** are in GLOSSARY.md. It's a feature, so it
+gets a minor bump, and the release notes must say that the logins migration
+has no way back. Existing `POLLYANNA_OIDC_*` settings keep working unchanged.
+
+- **Logins (#18).** `Login` (person, issuer, `sub`, last email, created and
+  last-used times; issuer plus `sub` unique) replaces `Person`'s issuer and
+  `sub` columns. The `Logins` migration turns each living person's pair into
+  one login; tombstones get none. "Has no logins" is now the tombstone
+  marker, asked in one place (`PersonQueries.Living` in `Data/Entities.cs`),
+  so a tombstone still keeps only its `id` (ADR-0005, with a dated note).
+  Account deletion deletes every login. Sessions still record only the
+  person.
+- **Sign-in resolution.** `Auth/PersonSignIn.cs` takes the provider and the
+  claims and returns one outcome: a known login signs in whatever the
+  admission; a verified email matching exactly one living person adds a
+  login (never replacing one); otherwise a trusted provider creates a person
+  and an open provider admits only a verified email with a pending
+  invitation, or refuses. A claim that isn't sent never clears a stored
+  name, email or picture. `EmailVerifiedHint` logs once per provider per run.
+- **Providers (#20).** `Auth/ProviderRegistry.cs` reads the settings and owns
+  the providers (key, label, issuer, admission, callback path, icon) in
+  configured order. `Auth/ProviderSchemes.cs` adds one OpenID Connect scheme
+  per provider on first use: `oidc` with `/auth/callback` for the unnamed
+  one, `oidc-<key>` with `/auth/callback/<key>` for a listed one. The ready
+  line is followed by one line per provider, and the settings error lists
+  every known redirect URI. `/auth/login` goes straight to a lone provider
+  and otherwise renders the chooser, whose buttons go to
+  `/auth/login/<key>`. Sign-in failure logs name the provider and its
+  settings.
+- **Open providers (#21).** The admission gate is in `PersonSignIn`;
+  `Auth/RefusedSignIn.cs` carries the refusal (provider, reason, address,
+  return URL) to `/auth/failed` as protected data that expires after 10
+  minutes. Nothing is stored for a refused sign-in, and its log line names
+  only the provider key and the reason.
+- **Icons (#22).** `Auth/ProviderIcon.cs` checks an icon file at startup
+  (readable, at most 1 MB, PNG, JPEG, GIF or WebP by its first bytes, or an
+  SVG with no DTD), and `Auth/ProviderIconEndpoint.cs` serves it at
+  `/auth/icon/<key>`. Every provider button is drawn by
+  `Pages/Shared/_ProviderButton.cshtml`.
+- **Ways to sign in (#23).** `/account` lists each login with its provider
+  label (or "(no longer set up)", from `ProviderRegistry.LabelFor`), its last
+  email and "Remove", then an "Add <label>" button per provider when there
+  are several. `Auth/AddLogin.cs` carries the intent and the person through
+  the challenge, and attaching skips email matching and admission.
+  `PersonSignIn.AddLoginAsync` and `RemoveLoginAsync` hold the rules (the
+  last login stays); the page only maps their results to notices.
+- **Invitation email (#24).** With an open provider configured, the
+  invitation email names every open provider and the invited address (§15).
+- **Adding people (#19, #25, #26).** `EventManager.KnownTo`
+  (`Events/EventManager.KnownPeople.cs`) is the one query for whom a picker
+  lists and accepts: people the viewer shares any event with, names and
+  pictures only. The add-people control (`Pages/Events/_AddPeople.cshtml`,
+  fields in `AddPeopleControl`) is on the manage page and the new-event
+  form; a ticked ID outside the list is a 404, and a typed address that
+  matches several people stores nothing. The organizer and late-joiner
+  pickers (`Pages/Shared/_PickOne.cshtml`, `Events/EventManager.Pickers.cs`)
+  use the same list, and their address field only finds a person. The
+  script in `wwwroot/js/site.js` only filters and adds the address row.
+- **Operator docs (#27).** DEPLOYMENT.md has the provider settings, a Google
+  walkthrough (public HTTPS host names only), the open-provider warning, the
+  honest-`email_verified` rule, icon files and the cost of removing a
+  provider. README.md says extra providers are optional, and `help` and
+  `deploy/.env.example` show a listed provider.
+- **Tests.** `TestApp.StartAsync(providers: …)` takes extra mock providers
+  (`TestProvider`: key, label, admission, icon), each its own mock issuer;
+  `SignInAsync(identity, provider: "<key>")` picks one, and
+  `Seed.PersonAsync` takes logins. New classes: `SeveralProvidersTests`,
+  `OpenProviderTests`, `ProviderIconTests`, `AccountLoginsTests`,
+  `LoginMigrationTests` and `AddPeopleTests`; `ConfigurationTests`,
+  `DeploymentTests`, `RelinkTests`, `PictureTests`, `ManageTests`,
+  `EventCreationTests`, `AfterDrawTests` and the secrecy tests are extended.
+
 ## 15. Email notifications
 
 Built in milestone 7. Email tells people when something in an
@@ -1323,7 +1633,7 @@ other channel (§1).
 | Kind | To | When |
 |---|---|---|
 | Added to an event | the new participant | when added: by an organizer (also by inviting the address of someone who has signed in, and as a late joiner by patch or redraw), or by an invitation accepted at sign-in; for a `draft` event, not until it opens (the "open" email covers it). The wording follows the status when it is sent: "write your notes" while `open`, "see your slip and write your notes" once drawn. It doesn't name who added them. |
-| Invitation | an invited email address with no account yet | when the invitation is made, or when the event opens if it is still a `draft`. Names the organizer who invited ("Someone" if their account is gone). Inviting the address again while its email still waits adds nothing. |
+| Invitation | an invited email address with no account yet | when the invitation is made, or when the event opens if it is still a `draft`. Names the organizer who invited ("Someone" if their account is gone). When at least one open provider is configured (§3), it adds one line naming every open provider by label, in configured order, and the invited address: "Sign in with Google using this address (sue@example.com).", or "Sign in with A or B …" ("A, B or C …") for several. Trusted providers are never named, and with only trusted providers the line is left out. Inviting the address again while its email still waits adds nothing. |
 | Made an organizer | the new organizer | when made one, in any status, `draft` included; names who did it and links to the manage page |
 | Event is open | every participant | `draft → open`: subject "<event> is open: write your notes" |
 | Names are drawn | every participant | after a draw; after a redraw's new draw the wording is "Names were drawn again, take another look" (chosen when sent, from the event's redrawn flag, which stays set). The redraw itself (back to `open`) sends nothing and deletes the "Names are drawn" rows still waiting for the event. |

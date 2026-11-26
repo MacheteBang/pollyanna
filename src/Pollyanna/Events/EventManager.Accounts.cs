@@ -53,7 +53,7 @@ public sealed partial class EventManager
     /// that isn't revealed or archived by the leaving rules: drawn ones by the dropout patch. If
     /// any drawn event can't patch them out, nothing changes except that those events get a
     /// request to leave, and deletion waits for their redraw. Otherwise their organizer roles,
-    /// profile, picture, sessions and notes go, and the person row stays as an empty tombstone,
+    /// profile, logins, picture, sessions and notes go, and the person row stays as an empty tombstone,
     /// so revealed lists, kept messages and the no-repeat rule keep working without a name.
     /// </summary>
     public async Task<Outcome> DeleteAccountAsync(Guid me)
@@ -84,9 +84,8 @@ public sealed partial class EventManager
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.Notes, "").SetProperty(p => p.NotesVersion, p => p.NotesVersion + 1));
             await db.PersonPictures.Where(p => p.PersonId == me).ExecuteDeleteAsync();
             await db.Sessions.Where(s => s.PersonId == me).ExecuteDeleteAsync();
+            await db.Logins.Where(l => l.PersonId == me).ExecuteDeleteAsync();
             await db.People.Where(p => p.Id == me).ExecuteUpdateAsync(s => s
-                .SetProperty(p => p.OidcIssuer, (string?)null)
-                .SetProperty(p => p.OidcSub, (string?)null)
                 .SetProperty(p => p.DisplayName, (string?)null)
                 .SetProperty(p => p.Email, (string?)null)
                 .SetProperty(p => p.EmailNormalized, (string?)null)

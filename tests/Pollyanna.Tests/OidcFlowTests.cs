@@ -82,14 +82,14 @@ public sealed class OidcFlowTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task First_sign_in_creates_a_person_keyed_by_issuer_and_sub()
+    public async Task First_sign_in_creates_a_person_with_one_login_by_issuer_and_sub()
     {
         using var browser = app.NewBrowser();
         await browser.SignInAsync(Alice);
 
         var person = await app.WithDbAsync(db => db.People.SingleAsync());
-        Assert.Equal(TestApp.Issuer, person.OidcIssuer);
-        Assert.Equal("alice-1", person.OidcSub);
+        var login = await app.WithDbAsync(db => db.Logins.SingleAsync());
+        Assert.Equal((person.Id, TestApp.Issuer, "alice-1", "alice@example.com"), (login.PersonId, login.Issuer, login.Subject, login.LastEmail));
         Assert.Equal("Alice Example", person.DisplayName);
         Assert.Equal("alice@example.com", person.Email);
         Assert.True(person.EmailVerified);
