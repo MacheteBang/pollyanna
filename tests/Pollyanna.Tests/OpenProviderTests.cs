@@ -254,6 +254,19 @@ public sealed class OpenProviderTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_missing_email_verified_hint_for_an_open_provider_says_new_sign_ins_are_refused()
+    {
+        await RefusedPageAsync(Sue with { EmailVerified = null });
+
+        var hint = Assert.Single(app.Logs.Entries, e => e.Message.Contains("sent no email_verified claim")).Message;
+        Assert.Contains("provider google", hint);
+        Assert.Contains("new sign-ins through it are refused", hint);
+        Assert.Contains("a missing claim counts as unverified", hint);
+        Assert.DoesNotContain("Invitations by email still match", hint);
+        Assert.DoesNotContain("sue", hint, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task A_trusted_provider_still_creates_a_new_person_for_an_unknown_login()
     {
         var (browser, _) = await app.SignInAsync(Sue with { Sub = "sue-work" }, provider: "work");

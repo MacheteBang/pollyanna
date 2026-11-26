@@ -269,7 +269,8 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
 
 /// <summary>
 /// Whether the provider sends <c>email_verified</c> is its configuration, not the person's: tell
-/// the operator once per provider per process run, naming the provider and nobody else (spec §3).
+/// the operator once per provider per process run, naming the provider and nobody else, with
+/// what a missing claim means for its admission (spec §3).
 /// </summary>
 public sealed class EmailVerifiedHint
 {
@@ -277,10 +278,17 @@ public sealed class EmailVerifiedHint
 
     public void Note(ILogger logger, Provider provider)
     {
-        if (noted.TryAdd(provider.Key, true))
+        if (!noted.TryAdd(provider.Key, true))
+            return;
+        if (provider.Admission == Admission.Open)
             logger.LogInformation(
-                "The OIDC provider {Provider} sent no email_verified claim. Invitations by email still match, but re-linking a "
-                + "recreated account by email won't work for people signing in this way. Turn on email_verified at the "
-                + "provider if it has the setting.", provider.Key);
+                "The OIDC provider {Provider} sent no email_verified claim. It is an open provider, so new sign-ins through it "
+                + "are refused and it accepts no invitations: a missing claim counts as unverified. Turn on email_verified at "
+                + "the provider if it has the setting.", provider.Key);
+        else
+            logger.LogInformation(
+                "The OIDC provider {Provider} sent no email_verified claim. Invitations by email still match, but adding a "
+                + "login to someone by verified email won't happen for people signing in this way. Turn on email_verified at "
+                + "the provider if it has the setting.", provider.Key);
     }
 }

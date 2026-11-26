@@ -177,7 +177,8 @@ public sealed class RelinkTests : IAsyncLifetime
 
         var hint = Assert.Single(app.Logs.Entries, e => e.Message.Contains("no email_verified claim")).Message;
         Assert.Contains("Invitations by email still match", hint);
-        Assert.Contains("re-linking a recreated account by email won't work", hint);
+        Assert.Contains("adding a login to someone by verified email won't happen", hint);
+        Assert.DoesNotContain("re-linking", hint);
         Assert.DoesNotContain("vic", hint, StringComparison.OrdinalIgnoreCase);
     }
 }

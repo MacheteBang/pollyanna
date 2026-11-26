@@ -179,8 +179,10 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     nobody.
   - The first sign-in through each provider in a process run that has no
     `email_verified` claim logs one info line, naming the provider and
-    nobody else: invitations by email still match, but re-linking by email
-    won't work with this provider.
+    nobody else. For a trusted provider: invitations by email still match,
+    but adding a login by verified email won't happen with this provider.
+    For an open provider: new sign-ins through it are refused and it accepts
+    no invitations, because a missing claim counts as unverified.
 - On every sign-in, display name, email and picture take the values just
   received, but a claim that isn't sent never clears a stored value. The
   login's last email is updated the same way.
