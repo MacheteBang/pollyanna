@@ -11,7 +11,7 @@ Someone who has signed in to Pollyanna at least once, through any configured pro
 _Avoid_: User, account, member
 
 **Login**:
-One provider account linked to a person; a person has one or more, and a verified email match adds one.
+One provider account linked to a person; a person has one or more, added by a verified email match or by the person themselves.
 _Avoid_: Account, identity, credential
 
 **Trusted provider**:
