@@ -341,6 +341,15 @@ no-repeat rule), `no_repeat_depth` (N, default 1), `pairings_revealed`
   form (such as an address more than one person uses) creates nothing and
   comes back with what was ticked and typed. Anyone else can still be added
   on the manage page afterward.
+  - People prefilled from the linked event are left out of the add-people
+    ticklist, since they already show, ticked, under that event. Picking
+    another earlier event, or none, brings them back. The check that a
+    ticked person is one the organizer knows stays as it is. (Decided on
+    November 26, 2026.)
+  - When the typed address became an invitation, the "Draft created" notice
+    adds "<address> is invited; they'll get an email when the event opens."
+    It says nothing more when the address added a person, or when none was
+    typed. (Decided on November 26, 2026.)
 - The previous-event link can never form a loop (an event whose own chain
   leads back to this one isn't offered). It and `no_repeat_depth` (1 to 3)
   can't change after the draw.

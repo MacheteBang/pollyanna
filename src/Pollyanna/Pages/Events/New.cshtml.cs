@@ -29,6 +29,8 @@ public sealed class NewModel(PollyannaDb db, EventManager events) : PageModel
     public IReadOnlyList<Candidate> Candidates { get; private set; } = [];
     /// <summary>The add-people control's ticklist: the people the creator knows (spec §7).</summary>
     public IReadOnlyList<PersonRow> Known { get; private set; } = [];
+    /// <summary>The earlier events each person would be prefilled from, so the ticklist can leave them out.</summary>
+    public IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> PreviousGroups { get; private set; } = new Dictionary<Guid, IReadOnlyList<Guid>>();
     public string? Error { get; private set; }
     /// <summary>Who is ticked under each earlier event; everyone, until the form comes back.</summary>
     public Func<Guid, Guid, bool> IsTicked { get; private set; } = (_, _) => true;
@@ -53,12 +55,13 @@ public sealed class NewModel(PollyannaDb db, EventManager events) : PageModel
             ? Request.Form[CopyField(p)].Select(v => Guid.TryParse(v, out var g) ? g : Guid.Empty).ToHashSet()
             : [];
 
-        var (ev, error) = ModelState.IsValid
+        var (ev, invited, error) = ModelState.IsValid
             ? await events.CreateAsync(me, new NewEvent(Name ?? "", BudgetText ?? "", ExchangeDate, PreviousEventId, NoRepeatDepth, TakePart, copy, ticked, Email))
-            : (null, "Check the exchange date and try again.");
+            : (null, null, "Check the exchange date and try again.");
         if (ev is not null)
         {
-            TempData["Notice"] = "Draft created. Add people below, then open it when you're ready.";
+            TempData["Notice"] = "Draft created. Add people below, then open it when you're ready."
+                + (invited is null ? "" : $" {invited} is invited; they'll get an email when the event opens.");
             return LocalRedirect($"/events/{ev.Id}/manage");
         }
 
@@ -82,6 +85,8 @@ public sealed class NewModel(PollyannaDb db, EventManager events) : PageModel
             })
             .ToListAsync();
         Known = await events.KnownRowsAsync(me, []);
+        PreviousGroups = people.GroupBy(p => p.Row.Id)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(p => p.EventId).ToList());
         Candidates = candidates.Select(c => new Candidate(c.Id, c.Name, c.ExchangeDate,
             people.Where(p => p.EventId == c.Id).Select(p => p.Row)
                 .OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase).ToList())).ToList();

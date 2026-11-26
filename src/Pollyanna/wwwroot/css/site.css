@@ -404,6 +404,10 @@ input[type="checkbox"], input[type="radio"] {
 .kicker { margin: 0; font-size: 0.8125rem; font-weight: 700; letter-spacing: 2px; }
 .slip .kicker { margin-top: 8px; }
 
+/* The hidden attribute always hides, even on elements whose class sets a display (.choices, .field):
+   the scripts show and hide parts of forms with it. */
+[hidden] { display: none !important; }
+
 .visually-hidden {
     position: absolute;
     width: 1px;

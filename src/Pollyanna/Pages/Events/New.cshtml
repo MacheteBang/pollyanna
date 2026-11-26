@@ -92,7 +92,7 @@
         @* The same add-people control as on the manage page (spec §7). *@
         <div class="stack add-people" data-add-people>
             <h3 class="kicker">ADD PEOPLE</h3>
-            <partial name="_AddPeople" model="new AddPeopleControl(Model.Known, Model.PersonIds, Model.Email)" />
+            <partial name="_AddPeople" model="new AddPeopleControl(Model.Known, Model.PersonIds, Model.Email, Model.PreviousGroups, Model.PreviousEventId)" />
             <p class="hint">Only people you've been in an exchange with are listed. For anyone else, type their email: if they already use Pollyanna they're added, and if not, the address is invited and they join when they first sign in with it. You can also add people later on the manage page.</p>
         </div>
     </section>
