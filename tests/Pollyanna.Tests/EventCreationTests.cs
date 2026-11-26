@@ -161,6 +161,34 @@ public sealed class EventCreationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Ticked_people_and_an_address_join_the_new_draft_with_the_prefilled_people()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        var ann = await app.PersonAsync("Ann");
+        var bob = await app.PersonAsync("Bob");
+        var carol = await app.PersonAsync("Carol", "carol@example.com");
+        var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann]);
+        await app.EventAsync("Cousins", EventStatus.Revealed, [bob], [me, bob]);
+
+        var form = await browser.GetPageAsync("/events/new");
+        var response = await browser.SubmitAsync(form, "/events/new", Fields(previous: last.ToString(),
+            more: [($"copy-{last}", ann.ToString()), ("personIds", bob.ToString()), ("email", "Sue@Example.com")]));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var ev = await OnlyNewEventAsync(me, last);
+        Assert.Equal(EventStatus.Draft, ev.Status);
+        Assert.Equal(new[] { me, ann, bob }.Order(), ev.Participants.Select(p => p.PersonId).Order());
+        var invitation = await app.WithDbAsync(db => db.Invitations.SingleAsync());
+        Assert.Equal(ev.Id, invitation.EventId);
+        Assert.Equal("Sue@Example.com", invitation.Email);
+        Assert.Equal(me, invitation.InvitedBy);
+        // A draft's invitations are emailed when it opens (spec §15).
+        Assert.Equal(0, await app.WithDbAsync(db => db.Notifications.CountAsync()));
+        Assert.DoesNotContain(carol, ev.Participants.Select(p => p.PersonId));
+    }
+
+    [Fact]
     public async Task The_new_draft_shows_on_the_home_page_with_a_countdown_slot()
     {
         var (browser, me) = await app.SignInAsync(Pat);

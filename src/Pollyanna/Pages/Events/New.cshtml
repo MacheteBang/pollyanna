@@ -69,36 +69,33 @@
         <p class="hint">Either way, you won't see who drew whom.</p>
     </section>
 
-    @if (Model.Candidates.Count > 0)
-    {
-        <section class="slip slip-plain" aria-labelledby="s3">
-            <h2 id="s3"><span class="red-text">3.</span> Who's in the hat</h2>
-            @foreach (var c in Model.Candidates)
-            {
-                <fieldset class="choices" data-previous-group="@c.Id">
-                    <legend>From @c.Name: untick anyone who isn't joining this time.</legend>
-                    @if (c.People.Count == 0)
-                    {
-                        <p class="small">Nobody else was in it.</p>
-                    }
-                    @foreach (var p in c.People)
-                    {
-                        <label class="choice choice-ruled">
-                            <input type="checkbox" name="@NewModel.CopyField(c.Id)" value="@p.Id" checked="@Model.IsTicked(c.Id, p.Id)">
-                            <partial name="_Avatar" model="p" />
-                            <span>@p.Name</span>
-                        </label>
-                    }
-                </fieldset>
-            }
-            <p class="small" data-no-previous hidden>Starting fresh: you'll add people on the next page.</p>
-            <p class="small">You can add anyone else on the next page.</p>
-        </section>
-    }
-    else
-    {
-        <p class="small center">You'll add people on the next page.</p>
-    }
+    <section class="slip slip-plain" aria-labelledby="s3">
+        <h2 id="s3"><span class="red-text">3.</span> Who's in the hat</h2>
+        @foreach (var c in Model.Candidates)
+        {
+            <fieldset class="choices" data-previous-group="@c.Id">
+                <legend>From @c.Name: untick anyone who isn't joining this time.</legend>
+                @if (c.People.Count == 0)
+                {
+                    <p class="small">Nobody else was in it.</p>
+                }
+                @foreach (var p in c.People)
+                {
+                    <label class="choice choice-ruled">
+                        <input type="checkbox" name="@NewModel.CopyField(c.Id)" value="@p.Id" checked="@Model.IsTicked(c.Id, p.Id)">
+                        <partial name="_Avatar" model="p" />
+                        <span>@p.Name</span>
+                    </label>
+                }
+            </fieldset>
+        }
+        @* The same add-people control as on the manage page (spec §7). *@
+        <div class="stack add-people" data-add-people>
+            <h3 class="kicker">ADD PEOPLE</h3>
+            <partial name="_AddPeople" model="new AddPeopleControl(Model.Known, Model.PersonIds, Model.Email)" />
+            <p class="hint">Only people you've been in an exchange with are listed. For anyone else, type their email: if they already use Pollyanna they're added, and if not, the address is invited and they join when they first sign in with it. You can also add people later on the manage page.</p>
+        </div>
+    </section>
 
     <button type="submit" class="button">Create draft</button>
 </form>

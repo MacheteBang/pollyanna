@@ -25,8 +25,6 @@ function previousEventPicker() {
             group.hidden = group.dataset.previousGroup !== select.value;
         for (const el of document.querySelectorAll("[data-needs-previous]"))
             el.hidden = select.value === "";
-        for (const el of document.querySelectorAll("[data-no-previous]"))
-            el.hidden = select.value !== "";
     };
     select.addEventListener("change", update);
     update();
