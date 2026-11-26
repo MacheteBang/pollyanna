@@ -163,7 +163,7 @@ public sealed class NotificationSecrecyTests
 
     /// <summary>
     /// Sets off every notification kind in one event, through the pages: an invitation and a new
-    /// organizer while it's a draft, opening it, adding someone, everyone's notes, a draw, a redraw
+    /// organizer while it's a draft, opening it, adding someone through the add-people control, everyone's notes, a draw, a redraw
     /// and a new draw, everyone's question, a late joiner patched in, a request to leave that
     /// needs a redraw, and the reveal. Peregrine organizes and takes part and does the organizing;
     /// Ottoline is made an organizer. Before each send, the rows waiting in the outbox are kept.
@@ -179,6 +179,8 @@ public sealed class NotificationSecrecyTests
                 foreach (var (browser, _) in people.Values)
                     await browser.SubmitOnAsync("/account", "/account/emails");
 
+            // Last year's exchange puts Evangeline on Peregrine's add-people list.
+            await app.EventAsync("Gifts 2025", EventStatus.Archived, [Id("Peregrine")], [Id("Peregrine"), Id("Evangeline")]);
             var ev = await app.EventAsync("Gifts 2026", EventStatus.Draft, [Id("Peregrine")],
                 [Id("Peregrine"), Id("Annabel"), Id("Bartholomew"), Id("Cordelia"), Id("Desmond")]);
             var page = $"/events/{ev}";
@@ -193,12 +195,12 @@ public sealed class NotificationSecrecyTests
                     run.Mail.Add(new Sent(step, m));
             }
 
-            await ManageAsync(org, ev, "invite", Form(("email", "sue@example.com")));
+            await ManageAsync(org, ev, "addpeople", Form(("email", "sue@example.com")));
             await ManageAsync(org, ev, "addorganizer", Form(("personId", Id("Ottoline").ToString())));
             await StepAsync("draft");
             await ManageAsync(org, ev, "open");
             await StepAsync("open");
-            await ManageAsync(org, ev, "addperson", Form(("personId", Id("Evangeline").ToString())));
+            await ManageAsync(org, ev, "addpeople", Form(("personIds", Id("Evangeline").ToString())));
             await StepAsync("added");
             // A waiting invitation blocks the draw.
             await ManageAsync(org, ev, "cancelinvite");

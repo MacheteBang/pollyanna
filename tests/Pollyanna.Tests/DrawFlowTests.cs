@@ -318,11 +318,11 @@ public sealed class DrawFlowTests : IAsyncLifetime
         var page = await browser.GetPageAsync(Manage(ev));
         Assert.Null(page.QuerySelector($"form[action='{Manage(ev)}/savehousehold']"));
         Assert.Null(page.QuerySelector($"form[action='{Manage(ev)}/addrule']"));
-        Assert.Null(page.QuerySelector($"form[action='{Manage(ev)}/invite']"));
+        Assert.Null(page.QuerySelector($"form[action='{Manage(ev)}/addpeople']"));
 
         await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/savehousehold", Form(("householdName", "X"), ("members", others[0].ToString())));
         await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/addrule", Form(("personA", others[0].ToString()), ("personB", others[1].ToString())));
-        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/invite", Form(("email", "late@example.com")));
+        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/addpeople", Form(("email", "late@example.com")));
         Assert.Equal(0, await app.WithDbAsync(db => db.Households.CountAsync()));
         Assert.Equal(0, await app.WithDbAsync(db => db.Exclusions.CountAsync()));
         Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));

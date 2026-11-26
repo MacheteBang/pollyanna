@@ -174,26 +174,13 @@
 
     @if (editable)
     {
-        <form method="post" asp-page-handler="AddPerson" class="stack">
-            <label for="add-person">Add someone who has signed in</label>
-            <div class="input-row">
-                <select id="add-person" name="personId" required>
-                    <option value="">Pick a person…</option>
-                    @foreach (var p in Model.CanJoin)
-                    {
-                        <option value="@p.Id">@p.Label</option>
-                    }
-                </select>
-                <button type="submit" class="button button-small">Add</button>
-            </div>
-        </form>
-        <form method="post" asp-page-handler="Invite" class="stack">
-            <label for="invite-email">Or invite by email</label>
-            <div class="input-row">
-                <input id="invite-email" name="email" type="email" required maxlength="@EventManager.EmailMax" autocomplete="off" placeholder="sue@example.com">
-                <button type="submit" class="button button-small">Invite</button>
-            </div>
-            <p class="hint">They join when they first sign in with that email. Pollyanna sends no email, so tell them yourself.</p>
+        @* One control for adding people (spec §7): the people the organizer has shared an event
+           with, names and pictures only, and an address that adds or invites (_AddPeople). *@
+        <form method="post" asp-page-handler="AddPeople" class="stack add-people" data-add-people>
+            <h3 class="kicker">ADD PEOPLE</h3>
+            <partial name="_AddPeople" model="new AddPeopleControl(Model.Known, [], null)" />
+            <button type="submit" class="button button-small">Add ticked</button>
+            <p class="hint">Only people you've been in an exchange with are listed. For anyone else, type their email: if they already use Pollyanna they're added, and if not, the address is invited and they join when they first sign in with it.</p>
         </form>
     }
 

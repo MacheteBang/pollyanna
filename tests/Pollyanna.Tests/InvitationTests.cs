@@ -26,7 +26,7 @@ public sealed class InvitationTests : IAsyncLifetime
     }
 
     async Task<HttpResponseMessage> InviteAsync(TestBrowser organizer, Guid ev, string email) =>
-        await organizer.SubmitOnAsync($"/events/{ev}/manage", $"/events/{ev}/manage/invite", Form(("email", email)));
+        await organizer.SubmitOnAsync($"/events/{ev}/manage", $"/events/{ev}/manage/addpeople", Form(("email", email)));
 
     Task<List<Invitation>> InvitationsAsync(Guid ev) => app.WithDbAsync(db => db.Invitations.Where(i => i.EventId == ev).ToListAsync());
 
@@ -145,7 +145,7 @@ public sealed class InvitationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_email_shared_by_two_people_asks_the_organizer_to_pick_by_name()
+    public async Task An_email_shared_by_two_people_stores_nothing()
     {
         var (organizer, ev) = await EventWithOrganizerAsync();
         using var _o = organizer;
@@ -204,7 +204,7 @@ public sealed class InvitationTests : IAsyncLifetime
     {
         var (organizer, ev) = await EventWithOrganizerAsync(EventStatus.Drawn);
         using var _o = organizer;
-        var response = await organizer.PostWithTokenAsync("/account", $"/events/{ev}/manage/invite", Form(("email", "late@example.com")));
+        var response = await organizer.PostWithTokenAsync("/account", $"/events/{ev}/manage/addpeople", Form(("email", "late@example.com")));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Empty(await InvitationsAsync(ev));
     }
