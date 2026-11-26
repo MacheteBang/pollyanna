@@ -36,6 +36,9 @@ public static class Help
                                   issuer's host name).
           POLLYANNA_OIDC_ADMISSION  Optional: trusted (the default): anyone the provider
                                   authenticates gets in.
+          POLLYANNA_OIDC_ICON_FILE  Optional: the path of a logo for its sign-in button
+                                  (PNG, JPEG, GIF, WebP or SVG, at most 1 MB). Without
+                                  it, the button is text only.
           POLLYANNA_DATA_DIR       Directory for pollyanna.db and keys/ (sign-in key ring).
                                   Must be writable. Suggested: /data
           POLLYANNA_DRAW_KEY_FILE   Path of the draw key, e.g. /draw-key/draw.key. Created
@@ -57,12 +60,17 @@ public static class Help
                                   Set exactly one.
           POLLYANNA_OIDC_<KEY>_LABEL      The name on its button, e.g. Google.
           POLLYANNA_OIDC_<KEY>_ADMISSION  trusted (open is not supported yet).
+          And this one is optional:
+          POLLYANNA_OIDC_<KEY>_ICON_FILE  A logo for its button, e.g. the provider's own
+                                  downloadable button artwork (as for
+                                  POLLYANNA_OIDC_ICON_FILE above).
           For example, with POLLYANNA_OIDC_PROVIDERS=google:
             POLLYANNA_OIDC_GOOGLE_ISSUER=https://accounts.google.com
             POLLYANNA_OIDC_GOOGLE_CLIENT_ID=...
             POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET_FILE=/run/secrets/google-client-secret
             POLLYANNA_OIDC_GOOGLE_LABEL=Google
             POLLYANNA_OIDC_GOOGLE_ADMISSION=trusted
+            POLLYANNA_OIDC_GOOGLE_ICON_FILE=/icons/google.svg
           Two providers can't share an issuer, and a POLLYANNA_OIDC_<KEY>_* setting
           whose key isn't listed stops startup.
 

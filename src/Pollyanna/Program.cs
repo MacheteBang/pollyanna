@@ -110,6 +110,7 @@ try
 
     app.MapGet("/healthz", () => Results.Text("ok")).AllowAnonymous();
     app.MapPictures();
+    app.MapProviderIcons();
     app.MapRazorPages();
 
     // Check the settings before the host starts: a failure inside a hosted service would have
