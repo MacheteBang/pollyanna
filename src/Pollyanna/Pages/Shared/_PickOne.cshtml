@@ -1,0 +1,38 @@
+@using Pollyanna.Events
+@using Pollyanna.Pages.Shared
+@model PickOneView
+@* A one-person picker (spec §4, §5.4), drawn like the add-people control and driven by the same
+   script: without it, a radio list and a visible email field; with it, a filter box that turns a
+   full address into a ticked row and hides the email field. An address only finds someone here. *@
+<div class="field" data-add-people-filter hidden>
+    <label for="@Model.Prefix-filter">Filter, or type an email</label>
+    <input id="@Model.Prefix-filter" type="text" autocomplete="off" maxlength="@EventManager.EmailMax">
+</div>
+<fieldset class="choices">
+    <legend>@Model.Legend</legend>
+    @if (Model.People.Count == 0)
+    {
+        <p class="small">Nobody to list yet. Type their email instead.</p>
+    }
+    <ul class="people" role="list">
+        @foreach (var p in Model.People)
+        {
+            <li class="person" data-search="@p.Name.ToLowerInvariant()">
+                <input type="radio" name="personId" value="@p.Id" id="@Model.Prefix-@p.Id">
+                <partial name="_Avatar" model="p" />
+                <label class="person-body person-name" for="@Model.Prefix-@p.Id">@p.Name</label>
+            </li>
+        }
+        <li class="person" data-add-people-address hidden>
+            <input type="checkbox" name="email" id="@Model.Prefix-address" checked disabled>
+            <label class="person-body" for="@Model.Prefix-address">
+                <span class="person-name break">Find <span data-add-people-typed></span></span>
+                <span class="small">If someone already uses this address, @Model.Finds. Nobody is invited.</span>
+            </label>
+        </li>
+    </ul>
+</fieldset>
+<div class="field" data-add-people-email>
+    <label for="@Model.Prefix-email">Or find them by email</label>
+    <input id="@Model.Prefix-email" name="email" type="email" maxlength="@EventManager.EmailMax" autocomplete="off" placeholder="sue@example.com">
+</div>

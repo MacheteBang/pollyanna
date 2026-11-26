@@ -523,7 +523,7 @@ input[type="checkbox"], input[type="radio"] {
    so what the script hides needs saying twice. */
 .add-people [hidden] { display: none; }
 .add-people .person label { cursor: pointer; }
-.add-people .person input[type="checkbox"] { flex-shrink: 0; }
+.add-people .person input[type="checkbox"], .add-people .person input[type="radio"] { flex-shrink: 0; }
 
 /* Checkbox-style marks on the manage page's people list: "[x]  [ ]  [x]". Courier keeps them in columns. */
 .person-marks { white-space: pre; }
