@@ -853,7 +853,9 @@ with labels, and the reveal animation turned off under "reduce motion".
   `background`, `url(` or `@import`, and every link starts with the public
   URL); the stamp shows the event's status when sent, and the button's
   label follows its link, whose URL matches the one printed under it and
-  the plain text's. One test puts markup in an event's name and a person's
+  the plain text's; the markup carries `lang="en"`, every `<table>` has
+  `role="presentation"`, and the preview text is `aria-hidden="true"`
+  (contrast isn't tested; the palette fixes it). One test puts markup in an event's name and a person's
   name and requires it shown as typed, never as elements. No snapshot
   (golden-file) tests of the whole HTML.
 - Manual end-to-end check against the production provider before first use.
@@ -1753,6 +1755,16 @@ for narrow screens.
 - Emails declare `color-scheme: light only` (and the matching meta tags),
   as the pages do (§12). Clients that darken them anyway (Gmail on iOS,
   classic Outlook, Outlook.com's recoloring) are accepted.
+- Accessibility (decided 2026-11-26, user). `lang="en" dir="ltr"` sits on
+  `<html>` and again on the outer wrapper, since webmail such as Gmail
+  strips `<html>`. `<title>` is the subject. Every table is a layout table
+  with `role="presentation"`. The hidden preview text and its spacer run
+  carry `aria-hidden="true"`, so screen readers read the kind's text once,
+  in the body. Every piece of text meets WCAG AA contrast (4.5:1) against
+  its own background (ink on slip paper 14.9, the red stamp 5.6, the small
+  URL 6.7, the footer on bright paper 7.7); the ribbon-blue band holds no
+  text and is decoration. There is no `role="article"` wrapper: the title
+  and the event-name heading are the structure.
 
 **Address.** The email from the person's last sign-in, unless the provider
 sent `email_verified: false` for it (the same leniency as invitations,
