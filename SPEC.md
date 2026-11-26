@@ -796,7 +796,25 @@ with labels, and the reveal animation turned off under "reduce motion".
 - Tests that non-organizers cannot manage an event, and that people outside
   an event cannot see it.
 - Tests that invitations turn into participants on matching sign-in only,
-  and that re-linking by verified email attaches to the right person.
+  through an open provider only with `email_verified: true` (a known login,
+  an admitted one and an added one alike), and that linking by verified
+  email adds a login to the right person.
+- Tests for several providers: settings errors name their setting in full
+  (an unlisted key, a misspelled field of a listed key, a repeated issuer),
+  the chooser and each provider's callback, and the `email_verified` hint
+  once per provider per run, worded for its admission.
+- Tests for open-provider refusals: each reason (`no invitation or person`,
+  `email not verified`, `ambiguous: N matches`) shows its page and stores no
+  session, person or login, its log line names nobody, and the refused page
+  can't be made to show an address by a crafted or altered URL.
+- Tests for managing logins on `/account`: the list and its labels, adding a
+  login (attached with no email match or admission, refused when another
+  person holds it, unchanged when it's already the person's, dropped when
+  the session changed hands), and removing any login but the last.
+- Tests for the add-people lists: a picker lists and accepts only people the
+  viewer shares an event with, never emails; a ticked ID outside the list is
+  a 404; a typed address adds the one person who uses it, invites nobody's
+  address, and stores nothing when several people use it.
 - Tests for changes after the draw: dropout and late-joiner patches keep
   every rule, change only one giver, and fall back correctly when a patch
   isn't possible; self-service leaving and account deletion follow the same
@@ -1568,10 +1586,12 @@ has no way back. Existing `POLLYANNA_OIDC_*` settings keep working unchanged.
   `/auth/icon/<key>`. Every provider button is drawn by
   `Pages/Shared/_ProviderButton.cshtml`.
 - **Ways to sign in (#23).** `/account` lists each login with its provider
-  label (or "(no longer set up)"), its last email and "Remove", then an "Add
-  <label>" button per provider when there are several. `Auth/AddLogin.cs`
-  carries the intent and the person through the challenge, and attaching
-  skips email matching and admission.
+  label (or "(no longer set up)", from `ProviderRegistry.LabelFor`), its last
+  email and "Remove", then an "Add <label>" button per provider when there
+  are several. `Auth/AddLogin.cs` carries the intent and the person through
+  the challenge, and attaching skips email matching and admission.
+  `PersonSignIn.AddLoginAsync` and `RemoveLoginAsync` hold the rules (the
+  last login stays); the page only maps their results to notices.
 - **Invitation email (#24).** With an open provider configured, the
   invitation email names every open provider and the invited address (§15).
 - **Adding people (#19, #25, #26).** `EventManager.KnownTo`
