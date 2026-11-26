@@ -901,6 +901,18 @@ with labels, and the reveal animation turned off under "reduce motion".
   starts. At startup a background check connects to the relay (and logs
   in, if a username is set) without sending anything, and logs whether it
   answered.
+- The HTML part of an email (§15) is a Razor component rendered to a
+  string with `HtmlRenderer`, which is in the shared framework (no package,
+  no image growth) and HTML-encodes every value by default, so event and
+  person names can't inject markup (decided 2026-11-26, user). Mjml.Net was
+  set aside because its values must be encoded by hand. The component holds
+  the one email-safe table layout, written by hand. Styles are inline
+  `style` attributes written in the component, with no CSS inliner;
+  a `<style>` block may carry only extras that can be lost without harm
+  (dark mode, client-specific touches), since Gmail drops it in places.
+  Each kind still composes the same plain subject, text and link; the
+  layout takes those and the audience footer, the same inputs as the plain
+  text, so no kind holds markup.
 
 - The image describes itself, for an operator who has only the image:
   - `Pollyanna help` (also `--help`, `-h`) prints a short reference to stdout
