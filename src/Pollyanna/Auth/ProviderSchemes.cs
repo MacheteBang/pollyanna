@@ -96,7 +96,15 @@ public static class ProviderSchemes
             o.Events.OnTicketReceived = async context =>
             {
                 var signIn = context.HttpContext.RequestServices.GetRequiredService<PersonSignIn>();
-                var person = await signIn.SignInAsync(provider, ProviderIdentity.FromClaims(context.Principal!), context.HttpContext.RequestAborted);
+                var outcome = await signIn.SignInAsync(provider, ProviderIdentity.FromClaims(context.Principal!), context.HttpContext.RequestAborted);
+                if (outcome.Person is not { } person)
+                {
+                    // Refused: no session is made, and the page shows the reason and address just used.
+                    var refused = context.HttpContext.RequestServices.GetRequiredService<RefusedSignIn>();
+                    context.Response.Redirect(refused.PagePath(provider, outcome.Refusal!, context.ReturnUri));
+                    context.HandleResponse();
+                    return;
+                }
                 context.Principal = new ClaimsPrincipal(new ClaimsIdentity(
                     [new Claim(SessionAuthenticationHandler.PersonIdClaim, person.Id.ToString())],
                     provider.Scheme));

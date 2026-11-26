@@ -39,22 +39,50 @@ public sealed record ProviderIdentity(
     }
 }
 
+/// <summary>Why an open provider's sign-in was refused (spec §3).</summary>
+public enum RefusalReason
+{
+    /// <summary>The provider didn't send <c>email_verified: true</c> (a missing claim counts as false).</summary>
+    EmailNotVerified,
+    /// <summary>No person and no pending invitation has the address.</summary>
+    NoInvitationOrPerson,
+    /// <summary>Two or more people have the address.</summary>
+    Ambiguous,
+}
+
+/// <summary>A refused sign-in: the reason, the address just used, and for an ambiguous one, how many people match.</summary>
+public sealed record SignInRefusal(RefusalReason Reason, string? Address, int Matches = 0)
+{
+    /// <summary>The reason as the log gives it, naming nobody.</summary>
+    public string LogText => Reason switch
+    {
+        RefusalReason.EmailNotVerified => "email not verified",
+        RefusalReason.NoInvitationOrPerson => "no invitation or person",
+        _ => $"ambiguous: {Matches} matches",
+    };
+}
+
+/// <summary>Either the person now signed in, or why the sign-in was refused.</summary>
+public sealed record SignInOutcome(Person? Person, SignInRefusal? Refusal);
+
 /// <summary>
 /// Maps a provider account to a Pollyanna person on every sign-in (spec §3): find the person
 /// holding the login (issuer + sub), else add the login to the one person whose current email
-/// matches a verified email, else create a person. Then refresh name, email and picture from
-/// the claims just received (a claim that isn't sent clears nothing), and turn any invitations
-/// to that email into participation (spec §4).
+/// matches a verified email, else create a person. An open provider creates a person only for a
+/// verified email with a pending invitation, and refuses anyone else with nothing stored. Then
+/// refresh name, email and picture from the claims just received (a claim that isn't sent clears
+/// nothing), and turn any invitations to that email into participation (spec §4).
 /// </summary>
 public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Outbox outbox, ILogger<PersonSignIn> logger)
 {
-    public async Task<Person> SignInAsync(Provider provider, ProviderIdentity identity, CancellationToken cancellationToken = default)
+    public async Task<SignInOutcome> SignInAsync(Provider provider, ProviderIdentity identity, CancellationToken cancellationToken = default)
     {
         var now = clock.GetUtcNow().UtcDateTime;
         if (identity.EmailVerified is null)
             hint.Note(logger, provider);
 
         // Deleting an account deletes its logins, so a login always belongs to a living person.
+        // A known login always signs in, whatever the provider's admission.
         var login = await db.Logins.SingleOrDefaultAsync(
             l => l.Issuer == identity.Issuer && l.Subject == identity.Subject, cancellationToken);
         Person person;
@@ -62,18 +90,25 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
             person = await db.People.SingleAsync(p => p.Id == login.PersonId, cancellationToken);
         else
         {
-            login = new Login { Issuer = identity.Issuer, Subject = identity.Subject, CreatedAt = now };
-            if (await MatchByEmailAsync(identity, cancellationToken) is { } match)
+            var matches = await VerifiedEmailMatchesAsync(identity, cancellationToken);
+            if (matches.Count == 1)
             {
-                person = match;
+                person = matches[0];
                 logger.LogInformation("Added a login to person {PersonId} by verified email.", person.Id);
+            }
+            else if (provider.Admission == Admission.Open && await AdmitAsync(identity, matches.Count, cancellationToken) is { } refusal)
+            {
+                logger.LogInformation("Refused a sign-in through provider {Provider}: {Reason}.", provider.Key, refusal.LogText);
+                return new SignInOutcome(null, refusal);
             }
             else
             {
+                if (matches.Count > 1)
+                    logger.LogInformation("A new login's verified email matches {Count} people, so it was linked to none of them.", matches.Count);
                 person = new Person { CreatedAt = now };
                 db.People.Add(person);
             }
-            login.PersonId = person.Id;
+            login = new Login { Issuer = identity.Issuer, Subject = identity.Subject, CreatedAt = now, PersonId = person.Id };
             db.Logins.Add(login);
         }
 
@@ -87,25 +122,35 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         await AcceptInvitationsAsync(person, now, cancellationToken);
 
         await RefreshPictureAsync(person, identity, cancellationToken);
-        return person;
+        return new SignInOutcome(person, null);
     }
 
     /// <summary>
-    /// The one living person whose current email matches, case-insensitively, an email the
-    /// provider explicitly marked verified. Two or more matches link nobody, and say so in one
-    /// line that names nobody.
+    /// The living people whose current email matches, case-insensitively, an email the provider
+    /// explicitly marked verified; none for any other email.
     /// </summary>
-    async Task<Person?> MatchByEmailAsync(ProviderIdentity identity, CancellationToken cancellationToken)
+    async Task<List<Person>> VerifiedEmailMatchesAsync(ProviderIdentity identity, CancellationToken cancellationToken)
     {
         if (identity.EmailVerified != true || Person.NormalizeEmail(identity.Email) is not { } email)
-            return null;
-        var matches = await db.People.Living().Where(p => p.EmailNormalized == email)
+            return [];
+        return await db.People.Living().Where(p => p.EmailNormalized == email)
             .OrderBy(p => p.Id).ToListAsync(cancellationToken);
-        if (matches.Count == 1)
-            return matches[0];
-        if (matches.Count > 1)
-            logger.LogInformation("A new login's verified email matches {Count} people, so it was linked to none of them.", matches.Count);
-        return null;
+    }
+
+    /// <summary>
+    /// The open provider's gate for a login nobody holds and no single person matches: a verified
+    /// email that no two people share, with at least one pending invitation. Null admits.
+    /// Pending invitations live only in draft and open events; a canceled one is deleted.
+    /// </summary>
+    async Task<SignInRefusal?> AdmitAsync(ProviderIdentity identity, int matches, CancellationToken cancellationToken)
+    {
+        if (identity.EmailVerified != true || Person.NormalizeEmail(identity.Email) is not { } email)
+            return new SignInRefusal(RefusalReason.EmailNotVerified, identity.Email);
+        if (matches > 1)
+            return new SignInRefusal(RefusalReason.Ambiguous, identity.Email, matches);
+        var invited = await db.Invitations.AnyAsync(i => i.EmailNormalized == email
+            && db.Events.Any(e => e.Id == i.EventId && (e.Status == EventStatus.Draft || e.Status == EventStatus.Open)), cancellationToken);
+        return invited ? null : new SignInRefusal(RefusalReason.NoInvitationOrPerson, identity.Email);
     }
 
     /// <summary>Name, email and picture take the values just received; a claim that isn't sent keeps what's stored.</summary>
