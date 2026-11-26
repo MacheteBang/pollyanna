@@ -298,14 +298,14 @@ or more logins.
 
 **Deleting an account.** A person can delete their own Pollyanna account:
 - It is blocked while they are the last organizer of any event that isn't
-  archived; they add another organizer first. Their organizer roles are
+  archived or canceled; they add another organizer first. Their organizer roles are
   removed everywhere (archived events need no management, so one may end up
   with no organizer). `created_by` and `invited_by` keep pointing at the
   tombstone, and pending invitations they sent stay.
 - It applies the leaving rules (below) to every event that is neither
   revealed nor archived. If leaving any of them is held for a redraw,
-  deletion waits until that is resolved. In revealed and archived events
-  they stay in, as a tombstone.
+  deletion waits until that is resolved. In revealed, archived and
+  canceled events they stay in, as a tombstone.
   - All or nothing: every event is checked first. If any `drawn` event
     can't patch them out, nothing else changes: those events get the
     "wants to leave — redraw needed" request, and the account page says
@@ -329,7 +329,7 @@ no-repeat rule), `no_repeat_depth` (N, default 1), `pairings_revealed`
 (set at reveal and kept through archive, so an event archived straight from
 `drawn` stays sealed), `created_by`, `created_at`.
 - An organizer can link an event only to a previous event they also
-  organize.
+  organize, and never to a canceled one.
 - When an event is created linked to a previous one, its participants are
   pre-filled from that event; the organizer unticks anyone not joining.
   The new-event form preselects the most recent event the creator organizes.
@@ -384,6 +384,8 @@ draft ──► open ──► drawn ──► revealed ──► archived
             ▲        │  │                    ▲
             └────────┘  └────────────────────┘  (reveal is optional)
    (redraw: organizer resets to open; old pairings deleted)
+
+draft, open, drawn, revealed ──► canceled   (any organizer, irreversible)
 ```
 
 - `draft`: only organizers see it; participants can be added.
@@ -408,6 +410,27 @@ draft ──► open ──► drawn ──► revealed ──► archived
   participant still sees their own slip (read-only), nobody sees the full
   list, and organizers see no pairings. One archived from `revealed` keeps
   showing the full list.
+
+- `canceled`: the event is gone for everyone (decided on November 26,
+  2026, so organizers can get rid of test and called-off exchanges).
+  - Any organizer can cancel an event that is `draft`, `open`, `drawn` or
+    `revealed`; an archived one is already out of the way. It is
+    irreversible.
+  - The manage page's Status section ends with "Cancel this event…". It
+    opens a confirmation naming the event: canceling is permanent and the
+    event disappears for everyone; how many participants and pending
+    invitations it has; nobody is emailed; for a drawn or revealed event,
+    the slips and any question-box messages go with it. A red "Cancel
+    this event" button does it; "Keep it" leaves things as they were.
+  - A canceled event is on no list (home page, past events, previous-event
+    pickers) and every page of it is "not found", organizers included.
+  - Canceling deletes the event's pending invitations, pending leave
+    requests, question-box messages and waiting emails. Everything else
+    (participants, notes, households, exclusions, sealed pairings) stays
+    in the database, unseen.
+  - It never counts for the no-repeat rule (§5.1). An event already linked
+    to it keeps the link, shown as "a canceled event".
+  - Account deletion treats it like an archived event (above).
 
 Dates never trigger anything: every status change is made by an organizer.
 There is no notes deadline. Revealing before the exchange date is allowed
@@ -529,6 +552,7 @@ Input: participants P (n ≥ 3), constraints:
    redraw) are skipped: N counts only events that have pairings, so the
    chain is followed further back until N such events are found or it
    ends. An event whose pairings are unreadable still counts as one of the N.
+   A canceled event (§4) is skipped the same way, pairings or not.
 
 Procedure: build the allowed-pairs graph, then find a random perfect matching
 by shuffling P with a CSPRNG and backtracking through candidates in random
@@ -740,7 +764,7 @@ who is asking.
 | `/events/new` | signed in | Create an event; the creator becomes its organizer |
 | `/events/{id}` | participant | Event details; own notes editor; after the draw, the reveal card: "You're getting **Carol** a gift", her notes, budget, date, question thread |
 | `/events/{id}/questions` | participant | Threads where the user is the recipient |
-| `/events/{id}/manage` | organizer | Edit details; participants and invitations; organizers; households; exclusions; open, draw, redraw, reveal, archive; once revealed, the full pairing list |
+| `/events/{id}/manage` | organizer | Edit details; participants and invitations; organizers; households; exclusions; open, draw, redraw, reveal, archive, cancel; once revealed, the full pairing list |
 | `/past` | signed in | Archived events the user took part in or organized |
 | `/account` | signed in | "Ways to sign in" (§3): one row per login with its provider's label, the email it last sent, "(no longer set up)" when its issuer isn't configured, and a "Remove" button; with more than one provider, an outline "Add <label>" button per provider in configured order; a note that a removed login whose verified email matches is added back on its next sign-in. Then the "Email me about Pollyanna events" switch (§15); sign out; delete account |
 | `/auth/login` | anyone | Starts sign-in. With one provider, goes straight to it; with several, the chooser (§3), whose buttons go to `/auth/login/<key>` |
@@ -990,7 +1014,8 @@ rejected alternatives).
   replies) `#FFFDF8`; ink `#1E1A16`; stamp red `#B3261E`, darker red for red
   text `#9E2019`; ribbon blue `#3F6E8C`. Ribbon blue means "the gift" and is
   used only for bows and ribbon (the marks, the gift box, the reveal ribbon);
-  red stays for stamps, unread dots and errors. Folds and shadows inside a
+  red stays for stamps, unread dots, errors and the one red button,
+  "Cancel this event" (§4). Folds and shadows inside a
   bow are ink at 30% over ribbon blue. No other colours, and no red-and-green
   pairing.
 - Type: Courier Prime (typewriter) for everything; Reenie Beanie (pencil
@@ -1521,6 +1546,34 @@ with the user on 2026-10-18, as a pure refactor (no behaviour change):
 - Tests: `EventLifecycleTests` has a table per rule and transition with a
   column per status, so a new status fails there until it is placed.
 
+### Done: canceling an event
+
+Decided with the user on November 26, 2026; the rules are in §4 (`canceled`),
+§5.1, §7, §12 and §15.
+
+- `EventStatus.Canceled`, stored by name like the others, so no migration.
+  `EventLifecycle.Standing` lists every status but canceled; the other sets
+  leave it out, and every transition refuses it ("This event is
+  canceled."). `EventLifecycle.Cancel` goes from `Active` to canceled.
+- Gone for everyone: `EventAccess.FindAsync` only finds standing events, so
+  every event page is "not found", and `Membership.CanView` agrees. Home
+  and `/past` already list only `Active` and `Archived`.
+- `EventManager.CancelAsync` (`EventManager.Reveal.cs`) claims the status
+  and deletes the event's threads, leave requests, invitations and outbox
+  rows in one transaction. `OutboxSender` also drops any row for an event
+  that isn't standing.
+- Previous events: `PreviousCandidatesAsync` and `CreateAsync` skip
+  canceled events; an existing link stays and the manage page's picker
+  labels it "a canceled event". `NoRepeatPairsAsync` walks through a
+  canceled event without counting it.
+- Account deletion needed no change: canceled is neither `Active` nor
+  `BeforeReveal`.
+- Manage page: `_Cancel.cshtml` at the end of the Status section, with
+  `.button-red` in `site.css`. Success goes home with the notice "<name> is
+  canceled."
+- Tests: `CancelTests`, a canceled column in `EventLifecycleTests`, and a
+  canceled-in-the-chain case in `NoRepeatTests`.
+
 ### Done: one transaction helper
 
 Every transaction in `EventManager` goes through `InTransactionAsync`. Decided
@@ -1728,7 +1781,8 @@ behaves as in v1. There is no other channel (§1).
 
 **What is never emailed:** a recipient's reply to their giver, "your
 recipient has changed" after a patch, removals (as participant or
-organizer), archiving, accepted invitations (to the organizer), and note
+organizer), archiving, canceling (which also drops every email still
+waiting for the event), accepted invitations (to the organizer), and note
 edits. Those stay in-app (badges, dots, notices) or aren't shown at all.
 
 **The rule behind it:** no email is ever addressed to a giver because of

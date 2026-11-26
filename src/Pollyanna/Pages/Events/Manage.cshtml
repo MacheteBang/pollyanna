@@ -105,6 +105,10 @@
             <p>This event is archived. Nothing about it can change any more.</p>
             break;
     }
+    @if (m.Allows(EventLifecycle.Cancel))
+    {
+        <partial name="_Cancel" model="Model" />
+    }
 </section>
 
 @if (Model.Pairings is { } pairings)
@@ -416,7 +420,7 @@
                         <option value="" selected="@(Model.PreviousEventId is null)">None</option>
                         @foreach (var c in Model.PreviousCandidates)
                         {
-                            <option value="@c.Id" selected="@(c.Id == Model.PreviousEventId)">@c.Name</option>
+                            <option value="@c.Id" selected="@(c.Id == Model.PreviousEventId)">@(c.Status == EventStatus.Canceled ? "a canceled event" : c.Name)</option>
                         }
                     </select>
                 </div>

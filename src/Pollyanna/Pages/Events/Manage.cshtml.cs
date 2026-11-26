@@ -134,6 +134,15 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     public async Task<IActionResult> OnPostArchiveAsync(Guid id, bool keepMessages) =>
         await LoadAsOrganizerAsync(id) ? Finish(await events.ArchiveAsync(Membership, keepMessages), Here("status")) : NotFound();
 
+    /// <summary>Canceling leaves nothing to come back to: the home page shows the notice.</summary>
+    public async Task<IActionResult> OnPostCancelAsync(Guid id)
+    {
+        if (!await LoadAsOrganizerAsync(id))
+            return NotFound();
+        var outcome = await events.CancelAsync(Membership);
+        return Finish(outcome, outcome.Ok ? "/" : Here("status"));
+    }
+
     /// <summary>A picked person the organizer may not pick (spec §7): refused like any other bad input.</summary>
     async Task<bool> MayPickAsync(Guid? personId) =>
         personId is not { } p || await events.KnownTo(Me).AnyAsync(x => x.Id == p);

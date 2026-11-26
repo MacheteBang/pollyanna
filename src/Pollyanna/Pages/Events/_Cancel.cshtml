@@ -1,0 +1,25 @@
+@* "Cancel this event…" at the end of the manage page's Status section, for every status but archived (spec §4). *@
+@model Pollyanna.Pages.Events.ManageModel
+@using Pollyanna.Infrastructure
+@{
+    var people = Model.Participants.Count;
+    var invitations = Model.Invitations.Count;
+}
+<details class="editor" id="cancel">
+    <summary>Cancel this event…</summary>
+    <div class="warning stack">
+        <p><strong>Cancel @Model.Event.Name?</strong> This can't be undone. The event disappears for everyone, organizers included.</p>
+        <ul>
+            <li>@Format.People(people) in it@(invitations > 0 ? (invitations == 1 ? ", and 1 invitation still waiting" : $", and {invitations} invitations still waiting") : "").</li>
+            @if (Model.Membership.NamesDrawn)
+            {
+                <li>Everyone's slips go, and any question-box messages are deleted.</li>
+            }
+            <li>Nobody is emailed.</li>
+        </ul>
+    </div>
+    <form method="post" asp-page-handler="Cancel" class="stack">
+        <button type="submit" class="button button-red">Cancel this event</button>
+        <a href="/events/@Model.Event.Id/manage">Keep it</a>
+    </form>
+</details>

@@ -12,7 +12,8 @@ public sealed class Transition(IReadOnlyList<EventStatus> from, EventStatus to, 
     public EventStatus To => to;
 
     /// <summary>Why the event can't make this change from <paramref name="status"/>; null if it can.</summary>
-    public string? Refusal(EventStatus status) => from.Contains(status) ? null : refusal(status);
+    public string? Refusal(EventStatus status) =>
+        from.Contains(status) ? null : status == EventStatus.Canceled ? "This event is canceled." : refusal(status);
 }
 
 /// <summary>
@@ -22,6 +23,10 @@ public sealed class Transition(IReadOnlyList<EventStatus> from, EventStatus to, 
 /// </summary>
 public static class EventLifecycle
 {
+    /// <summary>Every status but canceled: the event exists for its organizers and participants.</summary>
+    public static readonly IReadOnlyList<EventStatus> Standing =
+        [EventStatus.Draft, EventStatus.Open, EventStatus.Drawn, EventStatus.Revealed, EventStatus.Archived];
+
     /// <summary>Participants see the event once it is out of draft; organizers always do.</summary>
     public static readonly IReadOnlyList<EventStatus> ShownToParticipants =
         [EventStatus.Open, EventStatus.Drawn, EventStatus.Revealed, EventStatus.Archived];
@@ -66,4 +71,8 @@ public static class EventLifecycle
     /// <summary>Irreversible, from drawn or revealed (spec §4).</summary>
     public static readonly Transition Archive = new([EventStatus.Drawn, EventStatus.Revealed], EventStatus.Archived,
         s => s == EventStatus.Archived ? "This event is archived already." : "Only an event whose names are drawn can be archived.");
+
+    /// <summary>Irreversible, from any active status (spec §4): the event is gone for everyone.</summary>
+    public static readonly Transition Cancel = new(Active, EventStatus.Canceled,
+        _ => "An archived event can't be canceled.");
 }

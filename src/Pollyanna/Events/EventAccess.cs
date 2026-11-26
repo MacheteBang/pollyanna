@@ -11,9 +11,10 @@ public sealed record Membership(Event Event, bool IsOrganizer, bool IsParticipan
 {
     /// <summary>
     /// Organizers always see their event; participants see it once it is out of draft. Everyone
-    /// else gets "not found", so an event's existence isn't revealed either.
+    /// else gets "not found", so an event's existence isn't revealed either. Nobody sees a
+    /// canceled event.
     /// </summary>
-    public bool CanView => IsOrganizer || (IsParticipant && ShownToParticipants);
+    public bool CanView => EventLifecycle.Standing.Contains(Event.Status) && (IsOrganizer || (IsParticipant && ShownToParticipants));
 
     /// <summary>Out of draft, so participants see it and invitations are emailed.</summary>
     public bool ShownToParticipants => EventLifecycle.ShownToParticipants.Contains(Event.Status);
@@ -55,10 +56,11 @@ public sealed record Membership(Event Event, bool IsOrganizer, bool IsParticipan
 
 public static class EventAccess
 {
+    /// <summary>The viewer's membership of <paramref name="eventId"/>; null if there is no such event, or it is canceled.</summary>
     public static async Task<Membership?> FindAsync(PollyannaDb db, Guid eventId, Guid me, CancellationToken cancellationToken = default)
     {
         var row = await db.Events
-            .Where(e => e.Id == eventId)
+            .Where(e => e.Id == eventId && EventLifecycle.Standing.Contains(e.Status))
             .Select(e => new
             {
                 Event = e,

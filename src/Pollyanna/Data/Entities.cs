@@ -79,6 +79,8 @@ public enum EventStatus
     Drawn,
     Revealed,
     Archived,
+    /// <summary>Gone for everyone (spec §4): on no list, every page "not found". Irreversible.</summary>
+    Canceled,
 }
 
 /// <summary>An exchange (spec §4).</summary>
