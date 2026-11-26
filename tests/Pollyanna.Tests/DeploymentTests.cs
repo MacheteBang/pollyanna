@@ -1,3 +1,4 @@
+using Pollyanna.Auth;
 using Pollyanna.Configuration;
 using Pollyanna.Data;
 using Pollyanna.Events;
@@ -61,11 +62,15 @@ public sealed class DeploymentTests
         var settings = typeof(PollyannaSettings).GetFields()
             .Where(f => f.IsLiteral && f.Name.EndsWith("Key"))
             .Select(f => (string)f.GetRawConstantValue()!).ToList();
-        Assert.Equal(14, settings.Count);
+        Assert.Equal(17, settings.Count);
         Assert.All(settings, key => Assert.Contains(key, help));
+        Assert.Contains("POLLYANNA_OIDC_<KEY>_ISSUER", help);
+        Assert.Contains("POLLYANNA_OIDC_<KEY>_ADMISSION", help);
+        Assert.Contains("POLLYANNA_OIDC_GOOGLE_LABEL", help);
         Assert.Contains("healthcheck", help);
         Assert.Contains("backup", help);
         Assert.Contains("/auth/callback", help);
+        Assert.Contains("/auth/callback/<key>", help);
         Assert.Contains("1654", help);
         Assert.Contains("32 raw bytes", help);
         Assert.Contains(Help.Version, help);
@@ -105,11 +110,36 @@ public sealed class DeploymentTests
     }
 
     [Fact]
-    public async Task Ready_line_names_the_version_and_redirect_uri()
+    public void Settings_errors_list_the_redirect_uri_of_every_known_provider()
     {
-        await using var app = await TestApp.StartAsync();
-        Assert.Contains(app.Logs.Entries, e => e.Message ==
-            $"Pollyanna {Help.Version} is ready at {TestApp.PublicUrl}; OIDC redirect URI: {TestApp.PublicUrl}/auth/callback");
+        var e = new PollyannaConfigurationException(["POLLYANNA_OIDC_WORK_LABEL is not set."]);
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [PollyannaSettings.PublicUrlKey] = "https://pollyanna.example",
+            [PollyannaSettings.IssuerKey] = "https://id.example",
+            [PollyannaSettings.ProvidersKey] = "google work Bad",
+        }).Build();
+
+        var report = e.Report(config);
+
+        Assert.Contains("The OIDC redirect URIs to register, one per provider:" + Environment.NewLine
+            + "  - https://pollyanna.example/auth/callback" + Environment.NewLine
+            + "  - https://pollyanna.example/auth/callback/google" + Environment.NewLine
+            + "  - https://pollyanna.example/auth/callback/work" + Environment.NewLine, report);
+        Assert.DoesNotContain("Bad", report.Split("one per provider")[1]);
+    }
+
+    [Fact]
+    public async Task Ready_line_names_the_version_then_each_provider_and_its_redirect_uri()
+    {
+        await using var app = await TestApp.StartAsync(providers: [new("google", "Google")]);
+        var lines = app.Logs.Entries.Select(e => e.Message).SkipWhile(m => !m.StartsWith("Pollyanna ")).Take(3).ToList();
+        Assert.Equal(
+        [
+            $"Pollyanna {Help.Version} is ready at {TestApp.PublicUrl}",
+            $"sign-in provider \"issuer.test\" (default, trusted): redirect URI {TestApp.PublicUrl}/auth/callback",
+            $"sign-in provider \"Google\" (google, trusted): redirect URI {TestApp.PublicUrl}/auth/callback/google",
+        ], lines);
     }
 
     [Fact]
@@ -142,9 +172,7 @@ public sealed class DeploymentTests
         var moved = new PollyannaSettings
         {
             PublicUrl = settings.PublicUrl,
-            Issuer = settings.Issuer,
-            ClientId = settings.ClientId,
-            ClientSecret = settings.ClientSecret,
+            Providers = settings.Providers,
             DataDir = settings.DataDir,
             DrawKeyFile = Path.Combine(app.DataDir, "elsewhere", "draw.key"),
         };
@@ -176,9 +204,7 @@ public sealed class DeploymentTests
             var settings = new PollyannaSettings
             {
                 PublicUrl = "https://pollyanna.example",
-                Issuer = "https://id.example",
-                ClientId = "pollyanna",
-                ClientSecret = "s3cret",
+                Providers = new ProviderRegistry([]),
                 DataDir = Path.Combine(blocker, "data"),
                 DrawKeyFile = Path.Combine(blocker, "draw.key"),
             };

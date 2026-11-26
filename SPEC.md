@@ -63,24 +63,66 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 | Public URL | e.g. `https://pollyanna.home.example` |
 | OIDC issuer | Identity provider base URL (discovery at `/.well-known/openid-configuration`) |
 | Client ID / secret | OIDC client credentials; the secret is kept out of plain config |
+| Provider label / admission (optional) | The unnamed provider's button label (default: the issuer's host) and admission (default: `trusted`) |
+| More providers (optional) | `POLLYANNA_OIDC_PROVIDERS` lists extra provider keys; each key has its own issuer, client ID, secret (value or file), label and admission, all required |
 | Draw key location | Where the draw key lives (§5.3); generated on first start if absent |
 | Data location | Where the app's data is stored |
 | Mail relay (optional) | SMTP host, port, TLS mode, login and From address for email notifications (§15); the password is kept out of plain config. Unset: no email. |
+
+- Providers are set by environment variables only, with no settings file:
+  - The unnamed set (`POLLYANNA_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`
+    or `_CLIENT_SECRET_FILE`) is a full provider with the key `default`. It
+    gains an optional `POLLYANNA_OIDC_LABEL` (default: the issuer's host) and
+    an optional `POLLYANNA_OIDC_ADMISSION` (default: `trusted`). It may be
+    the only provider or sit next to listed ones. At least one provider must
+    exist, so with nothing listed the unnamed set is required.
+  - `POLLYANNA_OIDC_PROVIDERS` lists extra keys, separated by commas or
+    spaces. Keys match `[a-z][a-z0-9]*` and are uppercased in setting names;
+    `default` is reserved. Each key needs `POLLYANNA_OIDC_<KEY>_ISSUER`,
+    `_CLIENT_ID`, exactly one of `_CLIENT_SECRET` or `_CLIENT_SECRET_FILE`,
+    `_LABEL` and `_ADMISSION` (`trusted` or `open`, no default).
+  - Order: the unnamed provider first, then the list's order.
+  - Open admission is a settings error ("open admission is not supported
+    yet") until the open providers' admission gate exists.
+  - Settings errors, each naming its setting in full: two providers with the
+    same issuer once trailing slashes are trimmed (naming both settings); a
+    `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't listed; a repeated,
+    malformed or reserved key; any provider field missing or invalid, under
+    the same secret and https rules for every provider. When the public URL is
+    valid, the closing hint lists the redirect URI of every provider the
+    settings name.
+  - The startup line `Pollyanna <version> is ready at <url>` is followed by
+    one line per provider, e.g. `sign-in provider "Google" (google, trusted):
+    redirect URI https://pollyanna.example/auth/callback/google`. The unnamed
+    provider shows as `(default, trusted)`.
 
 ## 3. Authentication and authorization
 
 - Every page requires authentication, except `/healthz` and the sign-in
   routes themselves (`/auth/...`).
 - The only way to authenticate is OpenID Connect: authorization-code flow
-  with PKCE against one configured provider. The app must work with any
-  standards-compliant provider. Which provider is used is deployment
-  configuration (§2), not part of the app. Development and tests use a
-  local test provider.
+  with PKCE against one or more configured providers. The app must work with
+  any standards-compliant provider, and no provider is special-cased in code.
+  Which providers are used is deployment configuration (§2), not part of the
+  app. Development and tests use local test providers.
+- One module, the provider registry, owns the configured providers: key,
+  label, issuer, admission and callback path, in configured order. Each
+  provider has its own OpenID Connect authentication scheme. PKCE, the scopes,
+  the `state` and `nonce` rules, and a pushed authorization request when the
+  provider advertises one apply to every provider alike.
 - `state` and `nonce` are random values of at least 128 bits.
-- Scopes: `openid profile email`. Callback: `<public URL>/auth/callback`.
-  No post-logout redirect URI is needed. The startup log and the settings
-  error report the callback URL so the client can be registered before the
-  first sign-in (§11).
+- Scopes: `openid profile email`. Callback: `<public URL>/auth/callback` for
+  the unnamed provider, `<public URL>/auth/callback/<key>` for a listed one,
+  so each client gets its own redirect URI and an existing registration still
+  matches. No post-logout redirect URI is needed. The startup log and the
+  settings error report every provider's callback URL so the clients can be
+  registered before the first sign-in (§2, §11).
+- `/auth/login`: with one provider, it goes straight to that provider. With
+  several, it shows a chooser: "Sign in to Pollyanna", "Choose how you'd like
+  to sign in.", then one equal, full-width, text-only "Sign in with <label>"
+  button per provider in configured order, and the about line. Each button
+  links to `/auth/login/<key>` and carries the return URL. The chooser
+  remembers nothing and stores no cookie.
 - Sign-in failures go to `/auth/failed` ("Sign-in didn't work"), never the
   general error page. That includes failures before the redirect to the
   provider (discovery, metadata, a rejected pushed authorization request).
@@ -88,7 +130,9 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   adds: "The sign-in service turned Pollyanna away. Whoever runs this site
   needs to check its settings." The log names the provider's `error` code
   (e.g. `invalid_client`) and the settings to check; the page shows no
-  details, and the client secret is never logged.
+  details, and the client secret is never logged. The log names the provider
+  that failed, and the settings it names are that provider's (e.g.
+  `POLLYANNA_OIDC_GOOGLE_CLIENT_ID`).
 - A person signs in through one or more **logins** (§4). A login is one
   provider account: the provider's issuer plus `sub` claim, unique across all
   logins. It maps to Pollyanna's own person ID. Everything else in the app
@@ -106,9 +150,10 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   - If the email matches two or more people, nothing is linked and a new
     person is created. One info line gives the number of matches, naming
     nobody.
-  - The first sign-in in a process run that has no `email_verified` claim
-    logs one info line, naming nobody: invitations by email still match,
-    but re-linking by email won't work with this provider.
+  - The first sign-in through each provider in a process run that has no
+    `email_verified` claim logs one info line, naming the provider and
+    nobody else: invitations by email still match, but re-linking by email
+    won't work with this provider.
 - On every sign-in, display name, email and picture take the values just
   received, but a claim that isn't sent never clears a stored value. The
   login's last email is updated the same way.
@@ -126,8 +171,8 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     is deleted with the account.
   - Pictures appear small beside names in the people lists (event page,
     manage page, new-event form): the picture, or the initials on paper.
-- Anyone the provider authenticates may use the app. The app does no group
-  checks of its own; limiting who can sign in is the provider's job.
+- Anyone a trusted provider authenticates may use the app. The app does no
+  group checks of its own; limiting who can sign in is the provider's job.
 - There are no site-wide admins. All management is per event, by that
   event's organizers (§4).
 - Devices are assumed to be personal. "Sign out" ends only the Pollyanna
@@ -588,6 +633,7 @@ who is asking.
 | `/events/{id}/manage` | organizer | Edit details; participants and invitations; organizers; households; exclusions; open, draw, redraw, reveal, archive; once revealed, the full pairing list |
 | `/past` | signed in | Archived events the user took part in or organized |
 | `/account` | signed in | Name and email as the provider sent them; the "Email me about Pollyanna events" switch (§15); sign out; delete account |
+| `/auth/login` | anyone | Starts sign-in. With one provider, goes straight to it; with several, the chooser (§3), whose buttons go to `/auth/login/<key>` |
 | `/healthz` | anyone | Liveness, no data |
 
 - `/events/{id}` also holds, by status: "Leave this event" (its confirmation
@@ -596,8 +642,9 @@ who is asking.
   who isn't a participant is sent to `/events/{id}/manage` instead.
 - After sign-in, a user returns to the page they first asked for.
 - The about line says what Pollyanna is and nods to the name. It sits at the
-  bottom of `/` (with or without events) and of `/auth/signed-out`, the one
-  signed-out page that isn't about a failure or a deletion; `/` itself still
+  bottom of `/` (with or without events), of `/auth/signed-out` and of the
+  sign-in chooser, the signed-out pages that aren't about a failure or a
+  deletion; `/` itself still
   needs sign-in (§3). The text: "Every family has a version of this: names on
   folded slips, a hat going round the table, someone squinting at the
   handwriting. Around Philadelphia they call it a Pollyanna. This is the hat,
@@ -626,7 +673,8 @@ with labels, and the reveal animation turned off under "reduce motion".
   `Referrer-Policy: no-referrer`.
 - The draw key never appears in logs, error messages or the UI.
 - Logs stay quiet when nothing is wrong. Successful `/healthz` requests are
-  not logged. The OIDC callback is logged as `/auth/callback`. EF Core's
+  not logged. Each provider's OIDC callback is logged by its path
+  (`/auth/callback` or `/auth/callback/<key>`). EF Core's
   warning about the SQLite table rebuild (`PRAGMA foreign_keys` outside a
   transaction) is ignored by its event ID; other EF warnings still log. The
   key ring is stored unencrypted on purpose, protected by the data
@@ -735,10 +783,10 @@ with labels, and the reveal animation turned off under "reduce motion".
     print the usage error, which points at `help`. `DEPLOYMENT.md` stays the
     long-form guide.
   - `DEPLOYMENT.md` and `THIRD-PARTY-NOTICES.md` ship in `/app`.
-  - The settings error ends with the callback URL (when the public URL is
-    valid) and "Run `/app/Pollyanna help` for every setting". The ready line
-    reads `Pollyanna <version> is ready at <url>; OIDC redirect URI:
-    <url>/auth/callback`.
+  - The settings error ends with every known provider's callback URL (when
+    the public URL is valid) and "Run `/app/Pollyanna help` for every
+    setting". The ready line reads `Pollyanna <version> is ready at <url>`,
+    followed by one line per provider with its redirect URI (§2).
   - OCI labels: the csproj sets `title` and `description` (pointing at
     `help`). `licenses` is not set yet: the repository has a license now,
     and adding the label is a follow-up issue. CI sets

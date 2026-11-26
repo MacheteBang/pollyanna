@@ -5,8 +5,6 @@ using Pollyanna.Events;
 using Pollyanna.Infrastructure;
 using Pollyanna.Notifications;
 using Pollyanna.People;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
@@ -68,61 +66,10 @@ services.AddScoped<SealedHat>();
 services.AddScoped<EventManager>();
 services.AddSingleton<PostingLimit>();
 
-const string Oidc = "oidc";
 services.AddAuthentication(SessionAuthenticationHandler.SchemeName)
-    .AddScheme<PollyannaSessionOptions, SessionAuthenticationHandler>(SessionAuthenticationHandler.SchemeName, _ => { })
-    .AddOpenIdConnect(Oidc, _ => { });
-services.AddOptions<OpenIdConnectOptions>(Oidc).Configure<PollyannaSettings>((o, settings) =>
-{
-    o.Authority = settings.Issuer;
-    o.RequireHttpsMetadata = !settings.IssuerIsLoopback;
-    o.ClientId = settings.ClientId;
-    o.ClientSecret = settings.ClientSecret;
-    o.ResponseType = "code";
-    o.ResponseMode = "query";
-    o.UsePkce = true;
-    o.Scope.Clear();
-    o.Scope.Add("openid");
-    o.Scope.Add("profile");
-    o.Scope.Add("email");
-    o.CallbackPath = PollyannaSettings.CallbackPath;
-    o.SignInScheme = SessionAuthenticationHandler.SchemeName;
-    o.MapInboundClaims = false;
-    o.GetClaimsFromUserInfoEndpoint = true;
-    o.SaveTokens = false;
-    o.DisableTelemetry = true;
-    // With response_mode=query the callback is a top-level GET, so Lax is enough.
-    foreach (var cookie in new[] { o.CorrelationCookie, o.NonceCookie })
-    {
-        cookie.SameSite = SameSiteMode.Lax;
-        cookie.SecurePolicy = CookieSecurePolicy.Always;
-    }
-    o.ClaimActions.MapUniqueJsonKey("email_verified", "email_verified");
-    o.ClaimActions.MapUniqueJsonKey("picture", "picture");
-
-    o.Events.OnRedirectToIdentityProvider = context =>
-    {
-        // Behind a TLS-terminating proxy the request looks like plain HTTP; the callback must
-        // be the public URL.
-        context.ProtocolMessage.RedirectUri = settings.CallbackUrl;
-        return Task.CompletedTask;
-    };
-    o.Events.OnTicketReceived = async context =>
-    {
-        var signIn = context.HttpContext.RequestServices.GetRequiredService<PersonSignIn>();
-        var person = await signIn.SignInAsync(ProviderIdentity.FromClaims(context.Principal!), context.HttpContext.RequestAborted);
-        context.Principal = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
-            [new System.Security.Claims.Claim(SessionAuthenticationHandler.PersonIdClaim, person.Id.ToString())],
-            Oidc));
-    };
-    o.Events.OnRemoteFailure = context =>
-    {
-        var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(SignInFailure.LoggerCategory);
-        context.Response.Redirect(SignInFailure.RemoteFailed(logger, context.Failure));
-        context.HandleResponse();
-        return Task.CompletedTask;
-    };
-});
+    .AddScheme<PollyannaSessionOptions, SessionAuthenticationHandler>(SessionAuthenticationHandler.SchemeName, _ => { });
+// One OpenID Connect scheme per configured provider (spec §3), each with its own callback path.
+services.AddProviderSchemes();
 
 services.AddAuthorization(o => o.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 services.AddAntiforgery(o =>

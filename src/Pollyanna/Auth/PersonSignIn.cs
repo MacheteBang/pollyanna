@@ -48,11 +48,11 @@ public sealed record ProviderIdentity(
 /// </summary>
 public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Outbox outbox, ILogger<PersonSignIn> logger)
 {
-    public async Task<Person> SignInAsync(ProviderIdentity identity, CancellationToken cancellationToken = default)
+    public async Task<Person> SignInAsync(Provider provider, ProviderIdentity identity, CancellationToken cancellationToken = default)
     {
         var now = clock.GetUtcNow().UtcDateTime;
         if (identity.EmailVerified is null)
-            hint.Note(logger);
+            hint.Note(logger, provider);
 
         // Deleting an account deletes its logins, so a login always belongs to a living person.
         var login = await db.Logins.SingleOrDefaultAsync(
@@ -179,18 +179,18 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
 
 /// <summary>
 /// Whether the provider sends <c>email_verified</c> is its configuration, not the person's: tell
-/// the operator once per process run, naming nobody (spec §3).
+/// the operator once per provider per process run, naming the provider and nobody else (spec §3).
 /// </summary>
 public sealed class EmailVerifiedHint
 {
-    int noted;
+    readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> noted = new();
 
-    public void Note(ILogger logger)
+    public void Note(ILogger logger, Provider provider)
     {
-        if (Interlocked.Exchange(ref noted, 1) == 0)
+        if (noted.TryAdd(provider.Key, true))
             logger.LogInformation(
-                "The OIDC provider sent no email_verified claim. Invitations by email still match, but re-linking a "
+                "The OIDC provider {Provider} sent no email_verified claim. Invitations by email still match, but re-linking a "
                 + "recreated account by email won't work for people signing in this way. Turn on email_verified at the "
-                + "provider if it has the setting.");
+                + "provider if it has the setting.", provider.Key);
     }
 }

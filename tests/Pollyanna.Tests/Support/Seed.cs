@@ -13,12 +13,15 @@ public static class Seed
     public static Dictionary<string, string> Form(params (string Key, string Value)[] fields) =>
         fields.ToDictionary(f => f.Key, f => f.Value);
 
-    /// <summary>Signs in through the whole OIDC flow and returns the browser with the person's ID.</summary>
-    public static async Task<(TestBrowser Browser, Guid PersonId)> SignInAsync(this TestApp app, MockIdentity identity)
+    /// <summary>
+    /// Signs in through the whole OIDC flow and returns the browser with the person's ID. Without
+    /// <paramref name="provider"/> (a <see cref="TestProvider"/> key), through the unnamed provider.
+    /// </summary>
+    public static async Task<(TestBrowser Browser, Guid PersonId)> SignInAsync(this TestApp app, MockIdentity identity, string? provider = null)
     {
         var browser = app.NewBrowser();
-        await browser.SignInAsync(identity);
-        return (browser, await app.PersonIdAsync(TestApp.Issuer, identity.Sub));
+        await browser.SignInAsync(identity, provider: provider);
+        return (browser, await app.PersonIdAsync(TestApp.IssuerOf(provider), identity.Sub));
     }
 
     /// <summary>The person holding the login <paramref name="issuer"/> + <paramref name="sub"/>.</summary>

@@ -1,3 +1,4 @@
+using Pollyanna.Auth;
 using Pollyanna.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,9 +30,11 @@ public sealed class ConfigurationTests : IDisposable
     {
         var s = Load(Valid());
         Assert.Equal("https://pollyanna.example", s.PublicUrl);
-        Assert.Equal("https://pollyanna.example/auth/callback", s.CallbackUrl);
-        Assert.Equal("https://id.example", s.Issuer);
-        Assert.Equal("s3cret", s.ClientSecret);
+        var provider = Assert.Single(s.Providers);
+        Assert.Equal("https://pollyanna.example/auth/callback", s.RedirectUri(provider));
+        Assert.Equal("https://id.example", provider.Issuer);
+        Assert.Equal("s3cret", provider.ClientSecret);
+        Assert.Equal(("default", "id.example", Admission.Trusted), (provider.Key, provider.Label, provider.Admission));
         Assert.Equal(Path.Combine(dir, "data"), s.DataDir);
         Assert.Equal("/run/secrets/draw.key", s.DrawKeyFile);
         Assert.DoesNotContain("s3cret", s.ToString());
@@ -54,7 +57,7 @@ public sealed class ConfigurationTests : IDisposable
         var values = Valid();
         values.Remove(PollyannaSettings.ClientSecretKey);
         values[PollyannaSettings.ClientSecretFileKey] = file;
-        Assert.Equal("from-file", Load(values).ClientSecret);
+        Assert.Equal("from-file", Load(values).Providers[0].ClientSecret);
     }
 
     [Fact]
@@ -92,7 +95,7 @@ public sealed class ConfigurationTests : IDisposable
     {
         var values = Valid();
         values[PollyannaSettings.IssuerKey] = issuer;
-        Assert.True(Load(values).IssuerIsLoopback);
+        Assert.True(Load(values).Providers[0].IssuerIsLoopback);
     }
 
     [Theory]
@@ -104,6 +107,135 @@ public sealed class ConfigurationTests : IDisposable
         var values = Valid();
         values[PollyannaSettings.PublicUrlKey] = url;
         Assert.Throws<PollyannaConfigurationException>(() => Load(values));
+    }
+
+    // Several providers (spec §2, §3).
+
+    static Dictionary<string, string?> WithGoogle(params (string Key, string? Value)[] changes)
+    {
+        var values = Valid();
+        values[PollyannaSettings.ProvidersKey] = "google";
+        values["POLLYANNA_OIDC_GOOGLE_ISSUER"] = "https://accounts.google.example";
+        values["POLLYANNA_OIDC_GOOGLE_CLIENT_ID"] = "google-client";
+        values["POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET"] = "google-secret";
+        values["POLLYANNA_OIDC_GOOGLE_LABEL"] = "Google";
+        values["POLLYANNA_OIDC_GOOGLE_ADMISSION"] = "trusted";
+        foreach (var (key, value) in changes)
+            values[key] = value;
+        return values;
+    }
+
+    PollyannaConfigurationException Refused(Dictionary<string, string?> values) =>
+        Assert.Throws<PollyannaConfigurationException>(() => Load(values));
+
+    [Fact]
+    public void Listed_providers_follow_the_unnamed_one_in_list_order()
+    {
+        var s = Load(WithGoogle(
+            (PollyannaSettings.ProvidersKey, "google, work  kids"),
+            (PollyannaSettings.LabelKey, "Family account"),
+            ("POLLYANNA_OIDC_WORK_ISSUER", "https://work.example/"), ("POLLYANNA_OIDC_WORK_CLIENT_ID", "w"),
+            ("POLLYANNA_OIDC_WORK_CLIENT_SECRET", "w"), ("POLLYANNA_OIDC_WORK_LABEL", "Work"), ("POLLYANNA_OIDC_WORK_ADMISSION", "Trusted"),
+            ("POLLYANNA_OIDC_KIDS_ISSUER", "https://kids.example"), ("POLLYANNA_OIDC_KIDS_CLIENT_ID", "k"),
+            ("POLLYANNA_OIDC_KIDS_CLIENT_SECRET", "k"), ("POLLYANNA_OIDC_KIDS_LABEL", "Kids"), ("POLLYANNA_OIDC_KIDS_ADMISSION", "trusted")));
+
+        Assert.Equal(["default", "google", "work", "kids"], s.Providers.Select(p => p.Key));
+        Assert.Equal(["Family account", "Google", "Work", "Kids"], s.Providers.Select(p => p.Label));
+        Assert.Equal("https://pollyanna.example/auth/callback/google", s.RedirectUri(s.Providers.ByKey("google")!));
+        Assert.Equal("work", s.Providers.ByIssuer("https://work.example/")!.Key);
+        Assert.Equal("google-secret", s.Providers.ByKey("google")!.ClientSecret);
+        Assert.False(s.Providers.AnyOpen);
+        Assert.DoesNotContain("google-secret", s.Providers.ByKey("google")!.ToString());
+    }
+
+    [Fact]
+    public void Listed_providers_alone_need_no_unnamed_provider()
+    {
+        var values = WithGoogle();
+        foreach (var key in new[] { PollyannaSettings.IssuerKey, PollyannaSettings.ClientIdKey, PollyannaSettings.ClientSecretKey })
+            values.Remove(key);
+        Assert.Equal(["google"], Load(values).Providers.Select(p => p.Key));
+    }
+
+    [Fact]
+    public void A_half_configured_unnamed_provider_next_to_a_listed_one_is_an_error()
+    {
+        var values = WithGoogle();
+        values.Remove(PollyannaSettings.ClientIdKey);
+        Assert.Contains(Refused(values).Problems, p => p.Contains(PollyannaSettings.ClientIdKey));
+    }
+
+    [Theory]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ISSUER")]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_CLIENT_ID")]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_LABEL")]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ADMISSION")]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET")]
+    public void Every_field_of_a_listed_provider_is_required(string setting)
+    {
+        var values = WithGoogle();
+        values.Remove(setting);
+        Assert.Contains(Refused(values).Problems, p => p.Contains(setting));
+    }
+
+    [Theory]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ISSUER", "http://accounts.google.example")]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ISSUER", "not a url")]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ADMISSION", "maybe")]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET_FILE", "/run/secrets/also")]
+    [InlineData(PollyannaSettings.AdmissionKey, "everyone")]
+    public void Invalid_provider_fields_name_their_setting(string setting, string value)
+    {
+        Assert.Contains(Refused(WithGoogle((setting, value))).Problems, p => p.Contains(setting));
+    }
+
+    [Theory]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ADMISSION")]
+    [InlineData(PollyannaSettings.AdmissionKey)]
+    public void Open_admission_is_not_supported_yet(string setting)
+    {
+        var problem = Assert.Single(Refused(WithGoogle((setting, "open"))).Problems);
+        Assert.Equal($"{setting} is open, but open admission is not supported yet. Use trusted.", problem);
+    }
+
+    [Fact]
+    public void A_listed_provider_reads_its_secret_from_a_file()
+    {
+        var file = Path.Combine(dir, "google");
+        File.WriteAllText(file, "from-file\n");
+        var s = Load(WithGoogle(("POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET", null), ("POLLYANNA_OIDC_GOOGLE_CLIENT_SECRET_FILE", file)));
+        Assert.Equal("from-file", s.Providers.ByKey("google")!.ClientSecret);
+    }
+
+    [Theory]
+    [InlineData("https://id.example")]
+    [InlineData("https://id.example//")]
+    public void Two_providers_with_the_same_issuer_are_an_error_naming_both(string issuer)
+    {
+        var problem = Assert.Single(Refused(WithGoogle(("POLLYANNA_OIDC_GOOGLE_ISSUER", issuer))).Problems);
+        Assert.Contains(PollyannaSettings.IssuerKey + " and POLLYANNA_OIDC_GOOGLE_ISSUER", problem);
+    }
+
+    [Theory]
+    [InlineData("POLLYANNA_OIDC_GOGLE_ISSUER")]
+    [InlineData("POLLYANNA_OIDC_WORK_LABEL")]
+    public void A_setting_for_a_key_that_isnt_listed_is_an_error(string setting)
+    {
+        var problem = Assert.Single(Refused(WithGoogle((setting, "x"))).Problems);
+        Assert.StartsWith(setting + " is set, but " + PollyannaSettings.ProvidersKey, problem);
+    }
+
+    [Theory]
+    [InlineData("google google", "more than once")]
+    [InlineData("google,Work", "\"Work\"")]
+    [InlineData("google 2fa", "\"2fa\"")]
+    [InlineData("google default", "reserved")]
+    public void Repeated_malformed_or_reserved_keys_are_errors(string list, string expected)
+    {
+        var e = Refused(WithGoogle((PollyannaSettings.ProvidersKey, list)));
+        var problem = Assert.Single(e.Problems);
+        Assert.StartsWith(PollyannaSettings.ProvidersKey, problem);
+        Assert.Contains(expected, problem);
     }
 
     static Dictionary<string, string?> WithMail(params (string Key, string? Value)[] mail)
