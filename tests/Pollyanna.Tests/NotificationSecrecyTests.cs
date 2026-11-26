@@ -280,7 +280,7 @@ public sealed class NotificationSecrecyTests
 
         foreach (var (step, mail) in run.Mail)
         {
-            // The raw markup too, links and all (spec §9).
+            // The raw markup too, links, hidden preview text and all (spec §9, §15).
             var text = mail.Subject + "\n" + mail.Body + "\n" + mail.Html;
             Assert.DoesNotContain("Hush-", text);
             Assert.DoesNotContain("Bartholomew", text);
@@ -308,7 +308,7 @@ public sealed class NotificationSecrecyTests
 
         foreach (var (step, mail) in run.Mail)
         {
-            // The raw markup too, links and all (spec §9).
+            // The raw markup too, links, hidden preview text and all (spec §9, §15).
             var text = mail.Subject + "\n" + mail.Body + "\n" + mail.Html;
             Assert.False(text.Contains("santa", StringComparison.OrdinalIgnoreCase), $"The {step} email to {mail.To} says Santa:\n{text}");
             Assert.False(text.Contains("stocking", StringComparison.OrdinalIgnoreCase), $"The {step} email to {mail.To} says stocking:\n{text}");

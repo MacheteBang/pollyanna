@@ -94,6 +94,48 @@ public sealed class HtmlEmailTests
         }
     }
 
+    /// <summary>The invisible characters the preview's spacer run is made of: &amp;#847; &amp;zwnj; &amp;nbsp;.</summary>
+    static readonly char[] Spacers = ['͏', '‌', ' '];
+
+    /// <summary>Hidden from view in every client: no box, no height, no ink, and Outlook's own switch.</summary>
+    static void AssertHidden(IElement element, string because)
+    {
+        var style = (element.GetAttribute("style") ?? "").Replace(" ", "");
+        foreach (var rule in new[] { "display:none", "max-height:0", "overflow:hidden", "opacity:0", "mso-hide:all" })
+            Assert.True(style.Contains(rule), $"No {rule} on {element.OuterHtml} in {because}");
+    }
+
+    [Fact]
+    public async Task Every_kind_opens_with_its_text_as_hidden_preview_text_then_a_hidden_spacer_run()
+    {
+        await using var app = await TestApp.StartAsync(mail: true, providers: NotificationSecrecyTests.OpenProvider);
+        var run = await NotificationSecrecyTests.EveryKindAsync(app);
+
+        foreach (var (step, mail) in run.Mail)
+        {
+            var because = $"the {step} email to {mail.To}:\n{mail.Html}";
+            var doc = Parse(mail.Html);
+            // The kind's text: the plain text before its link (spec §15).
+            var plainLink = Assert.Single(mail.Body.Split('\n'), l => l.StartsWith(TestApp.PublicUrl + "/events/"));
+            var kindText = Normalize(mail.Body[..mail.Body.IndexOf("\n\n" + plainLink, StringComparison.Ordinal)]);
+
+            // First inside the wrapper, which webmail keeps when it strips <html> and <body>.
+            var preview = doc.Body!.FirstElementChild!.FirstElementChild!;
+            Assert.True(preview.GetAttribute("aria-hidden") == "true", because);
+            AssertHidden(preview, because);
+            Assert.True(kindText == Normalize(preview.TextContent), because);
+
+            var spacer = preview.NextElementSibling!;
+            Assert.True(spacer.GetAttribute("aria-hidden") == "true", because);
+            AssertHidden(spacer, because);
+            Assert.True(spacer.TextContent.Length >= 90, because);
+            Assert.True(spacer.TextContent.All(c => Spacers.Contains(c)), because);
+
+            // The plain text gets no preview line and no spacers.
+            Assert.True(mail.Body.IndexOfAny(['͏', '‌']) < 0, $"Spacers in the plain text of {because}");
+        }
+    }
+
     /// <summary>The event's status during each step of the every-kind run, as the app's stamps label it.</summary>
     static readonly Dictionary<string, string> StatusWhenSent = new()
     {

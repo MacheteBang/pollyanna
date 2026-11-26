@@ -5,6 +5,10 @@
     stamp, the event's name, the kind's text, an ink button to its link and the link as small
     text; the footer is a second, smaller bright-paper tag. No text sits on the kraft.
 
+    Before the tag comes hidden preview text for inbox lists: the kind's text, then a run of
+    invisible spacers so the snippet stops there. Both are aria-hidden, so screen readers read
+    the kind's text once, in the tag.
+
     Styles are inline; the <style> block holds only the stamp's reset for narrow screens, so
     clients that strip it lose nothing but that. Nothing is loaded from anywhere. Every value is
     HTML-encoded by the renderer, so names can't inject markup. Rendered by MailHtml.
@@ -25,6 +29,8 @@
 </head>
 <body style="margin:0; padding:0; background-color:@Kraft;">
 <div lang="en" dir="ltr" style="margin:0; padding:0; background-color:@Kraft; color:@Ink; color-scheme:light only; font-family:@Font; font-size:16px; line-height:1.5;">
+<div aria-hidden="true" style="@Hidden">@string.Join(' ', Lines(Content.Body))</div>
+<div aria-hidden="true" style="@Hidden">@Spacer</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background-color:@Kraft;">
 <tr>
 <td align="center" style="padding:28px 12px 36px 12px;">
@@ -89,6 +95,18 @@ else
 
     /// <summary>Courier Prime can't be loaded (nothing remote), so the stack starts at Courier New.</summary>
     const string Font = "Courier New, Courier, monospace";
+
+    /// <summary>
+    /// Hides the preview text and its spacer run from view in every client: Outlook keeps it out with
+    /// mso-hide, the rest with display:none and, where that is stripped, no height and no ink.
+    /// </summary>
+    const string Hidden = "display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;";
+
+    /// <summary>
+    /// Invisible characters after the preview text, so inbox lists don't carry on into the wordmark
+    /// and stamp (spec §15). A fixed string, so written as markup rather than encoded.
+    /// </summary>
+    static readonly MarkupString Spacer = new(string.Concat(Enumerable.Repeat("&#847;&zwnj;&nbsp;", 100)));
 
     /// <summary>What the kind says: the subject (the title), its text and its link.</summary>
     [Parameter, EditorRequired] public NotificationContent Content { get; set; } = null!;
