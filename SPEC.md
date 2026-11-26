@@ -1658,15 +1658,58 @@ has no way back. Existing `POLLYANNA_OIDC_*` settings keep working unchanged.
   `DeploymentTests`, `RelinkTests`, `PictureTests`, `ManageTests`,
   `EventCreationTests`, `AfterDrawTests` and the secrecy tests are extended.
 
+### Done: branded HTML email
+
+Spec issue #40 (map #30), built as #41 to #44 and decided with the user on
+2026-11-26. The rules are in §9, §11 and §15 (**Channel**, **Nothing
+remote**, **Layout**). Presentation only: who is emailed, when, and every
+kind's words are unchanged, and there is no new setting.
+
+- **Every email is multipart (#41).** `OutgoingMail` carries `Html` next to
+  `Body`. `OutboxSender` renders both from the same inputs (the kind's
+  `NotificationContent`, its audience, the event, the public URL):
+  `Render` for the plain text, unchanged, and `MailHtml.RenderAsync` for
+  the HTML. `SmtpMailSender.Build` is the pure step that makes the
+  `multipart/alternative` message (plain text first, HTML second, both
+  UTF-8); sending and its logging are unchanged. The footer is now
+  structured lines (`AudienceRules.FooterLines`, `FooterLine`), joined
+  into the same plain text as before.
+- **Gift tag (#42).** `Notifications/EmailLayout.razor` is the one layout
+  of §15 **Layout**, rendered by `HtmlRenderer` (no package). The stamp
+  comes from `Format.Stamp`, the text is one paragraph per line of the
+  plain text, and the button's label is chosen from the link.
+- **Preview text (#43).** The layout opens with the kind's text and a run
+  of spacer characters, both hidden and `aria-hidden`.
+- **Tests.** `HtmlEmailTests` (the MIME step; every kind: same words,
+  preview text, nothing remote, stamp, button and printed URL,
+  accessibility markup; markup in event and person names shown as typed).
+  `NotificationSecrecyTests` covers the HTML (byte-identical across
+  shuffled pairings; content checks over the raw markup). The existing
+  per-kind tests still read `Body` unchanged, which shows the plain text
+  didn't change.
+- **Docs (#44).** DEPLOYMENT.md says emails carry an HTML part and a
+  plain-text part and load nothing remote.
+- **Checked by hand (#44).** Every kind sent through Mailpit
+  (CONTRIBUTING.md): both parts present in order, the plain text as
+  before, and the HTML with the stamp, button, printed URL and footer tag;
+  inbox snippets show the kind's text. Mailpit's compatibility report
+  flags only gaps already expected: no stamp tilt or `<style>` in Gmail
+  (§15 **Layout**), and Outlook for Windows ignoring the tag's width and
+  some spacing, the plainest rendering, which #40 accepts. Then every kind
+  went through a real relay to a real inbox, where the user checked them
+  in real clients and found them good; in Gmail the inbox snippet shows
+  the kind's text and stops at the spacers. Notes are on #44.
+
 ## 15. Email notifications
 
 Built in milestone 7. Email tells people when something in an
 event needs them, without weakening the sealed draw (§5.2).
 
-**Channel.** Plain-text email over a mail relay the operator configures
-(§2, §11). With no relay configured the feature is off: nothing is queued,
-the `/account` switch is hidden, and the app behaves as in v1. There is no
-other channel (§1).
+**Channel.** Email with an HTML part and a plain-text part
+(`multipart/alternative`, plain text first) over a mail relay the
+operator configures (§2, §11). With no relay configured the feature is
+off: nothing is queued, the `/account` switch is hidden, and the app
+behaves as in v1. There is no other channel (§1).
 
 **What is emailed.**
 
