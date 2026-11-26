@@ -102,8 +102,9 @@ CI checks that the migrations match the model.
     `SealedHat.cs` is the only code that reads or writes assignments and their threads, and
     the only user of the draw key's giver tags (docs/adr/0002).
   - `Notifications/`: email notifications (spec §15): the outbox (`Outbox.cs`), the
-    background sender (`OutboxSender.cs`), the MailKit relay (`MailSender.cs`) and one file
-    per notification kind in `Kinds/`, holding all of that kind's rules.
+    background sender (`OutboxSender.cs`), the MailKit relay (`MailSender.cs`), the HTML
+    part's layout (`EmailLayout.razor`, rendered by `MailHtml.cs`) and one file per
+    notification kind in `Kinds/`, holding all of that kind's rules.
   - `Configuration/`, `Infrastructure/`: settings and the draw key; startup checks,
     middleware, and the operator commands (`help`, `healthcheck`, `backup`).
   - `Pages/`: the screens; `Pages/Events/` holds new event, event page, manage, leave and

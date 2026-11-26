@@ -839,6 +839,25 @@ with labels, and the reveal animation turned off under "reduce motion".
   notes or a recipient's name; and the outbox rules (retry, give up, drop
   on opt-out, account deletion, a cancelled or accepted invitation, or a
   lost role) hold.
+- Tests for the HTML part of emails (§15, decided 2026-11-26, user). The
+  outgoing mail carries the HTML next to the plain text, so the test mail
+  relay sees both; building the `multipart/alternative` message is a
+  separate step with its own test (plain text first, HTML second, both
+  UTF-8, the plain part exactly the text). The secrecy tests cover the HTML
+  part too: the shuffled-pairings run requires it byte-identical, and the
+  content checks (no message bodies, notes or giver's or recipient's names,
+  no Santa or stockings) read the raw markup, hidden preview text and links
+  included. Over every kind: each paragraph of the plain text appears in
+  the HTML's text, and the preview text is the kind's text word for word;
+  nothing remote (no image, script, frame, media, stylesheet link, `src`,
+  `background`, `url(` or `@import`, and every link starts with the public
+  URL); the stamp shows the event's status when sent, and the button's
+  label follows its link, whose URL matches the one printed under it and
+  the plain text's; the markup carries `lang="en"`, every `<table>` has
+  `role="presentation"`, and the preview text is `aria-hidden="true"`
+  (contrast isn't tested; the palette fixes it). One test puts markup in an event's name and a person's
+  name and requires it shown as typed, never as elements. No snapshot
+  (golden-file) tests of the whole HTML.
 - Manual end-to-end check against the production provider before first use.
 
 ## 10. Milestones
@@ -901,6 +920,18 @@ with labels, and the reveal animation turned off under "reduce motion".
   starts. At startup a background check connects to the relay (and logs
   in, if a username is set) without sending anything, and logs whether it
   answered.
+- The HTML part of an email (§15) is a Razor component rendered to a
+  string with `HtmlRenderer`, which is in the shared framework (no package,
+  no image growth) and HTML-encodes every value by default, so event and
+  person names can't inject markup (decided 2026-11-26, user). Mjml.Net was
+  set aside because its values must be encoded by hand. The component holds
+  the one email-safe table layout, written by hand. Styles are inline
+  `style` attributes written in the component, with no CSS inliner;
+  a `<style>` block may carry only extras that can be lost without harm
+  (dark mode, client-specific touches), since Gmail drops it in places.
+  Each kind still composes the same plain subject, text and link; the
+  layout takes those and the audience footer, the same inputs as the plain
+  text, so no kind holds markup.
 
 - The image describes itself, for an operator who has only the image:
   - `Pollyanna help` (also `--help`, `-h`) prints a short reference to stdout
@@ -1689,6 +1720,51 @@ off. An invitation's footer instead says to ignore the email if it wasn't
 meant for the reader. Emails don't greet the reader by name. The text is
 built when the email is sent, so it uses the event's name at that moment;
 a named person whose account is gone appears as "Former participant".
+
+**Nothing remote.** An email loads nothing from the server or anywhere
+else: no remote images, no web fonts, no tracking pixels. Fetching one
+would tell the server (and its access logs) roughly when someone opened an
+email, and from where, which is the timing record ADR-0003 avoids. The
+HTML part carries no images either, not even embedded (CID) ones: the
+masthead is typographic, the wordmark in the font stack, which starts at
+Courier New since Courier Prime can't be loaded.
+
+**Layout.** All eight kinds share one HTML layout, the "gift tag" (decided
+2026-11-26, user, from the prototype on the `prototype/email-layout`
+branch). On a kraft ground sits a slip-paper tag with a ribbon-blue band
+across its top. The tag's header row holds the POLLYANNA wordmark and,
+opposite, a red stamp with the event's status when the email is sent
+(DRAFT, OPEN, DRAWN, REVEALED, the app's own labels). Below come the
+event's name as the heading, the kind's text, a full-width ink button,
+and the link's URL in small type under the button for clients where the
+button fails. The button's label follows where the link goes, not the
+kind: "Open the event", "Open the manage page", "Read the question". The
+footer, the invitation's included, is a second, smaller bright-paper tag
+under the first, with the account page as a link. The stamp is tilted
+only where `transform` works; the `<style>` block holds just its reset
+for narrow screens.
+- The plain-text part stays exactly as it is. The HTML part has the same
+  text and footer and adds only the wordmark, the stamp, the event-name
+  heading, the button label and the URL.
+- The HTML part opens with hidden preview text, the snippet inbox lists
+  show after the subject: the kind's text, word for word, followed by a
+  run of invisible spacer characters so clients don't carry on into the
+  wordmark and stamp (decided 2026-11-26, user). Nothing new is written
+  for it. The plain-text part needs none, since it already starts with
+  the same text.
+- Emails declare `color-scheme: light only` (and the matching meta tags),
+  as the pages do (§12). Clients that darken them anyway (Gmail on iOS,
+  classic Outlook, Outlook.com's recoloring) are accepted.
+- Accessibility (decided 2026-11-26, user). `lang="en" dir="ltr"` sits on
+  `<html>` and again on the outer wrapper, since webmail such as Gmail
+  strips `<html>`. `<title>` is the subject. Every table is a layout table
+  with `role="presentation"`. The hidden preview text and its spacer run
+  carry `aria-hidden="true"`, so screen readers read the kind's text once,
+  in the body. Every piece of text meets WCAG AA contrast (4.5:1) against
+  its own background (ink on slip paper 14.9, the red stamp 5.6, the small
+  URL 6.7, the footer on bright paper 7.7); the ribbon-blue band holds no
+  text and is decoration. There is no `role="article"` wrapper: the title
+  and the event-name heading are the structure.
 
 **Address.** The email from the person's last sign-in, unless the provider
 sent `email_verified: false` for it (the same leniency as invitations,

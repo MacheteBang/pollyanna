@@ -49,18 +49,29 @@ public static class AudienceRules
     }
 
     /// <summary>
-    /// Why the email came and how to stop them (spec §15). An invitation's footer says to ignore it
-    /// instead.
+    /// Why the email came and how to stop them (spec §15), one line each, as the plain text has
+    /// it. An invitation's footer says to ignore it instead.
     /// </summary>
-    public static string Footer(this Audience audience, Event ev, string publicUrl)
+    public static string Footer(this Audience audience, Event ev, string publicUrl) =>
+        string.Join("\n", audience.FooterLines(ev, publicUrl));
+
+    /// <summary>The lines of <see cref="Footer"/>, each with the link it ends with, if any.</summary>
+    public static IReadOnlyList<FooterLine> FooterLines(this Audience audience, Event ev, string publicUrl)
     {
-        var stop = $"To stop Pollyanna emails, switch them off on your account page: {publicUrl}/account";
+        var stop = new FooterLine("To stop Pollyanna emails, switch them off on your account page:", $"{publicUrl}/account");
         return audience switch
         {
-            Audience.Invitee => $"Someone invited this address to \"{ev.Name}\" on Pollyanna. If this email wasn't meant for you, ignore it.",
-            Audience.Participants => $"You're getting this because you take part in \"{ev.Name}\" on Pollyanna.\n{stop}",
-            Audience.Organizers => $"You're getting this because you organize \"{ev.Name}\" on Pollyanna.\n{stop}",
-            _ => $"You're getting this because you're in \"{ev.Name}\" on Pollyanna.\n{stop}",
+            Audience.Invitee => [new($"Someone invited this address to \"{ev.Name}\" on Pollyanna. If this email wasn't meant for you, ignore it.")],
+            Audience.Participants => [new($"You're getting this because you take part in \"{ev.Name}\" on Pollyanna."), stop],
+            Audience.Organizers => [new($"You're getting this because you organize \"{ev.Name}\" on Pollyanna."), stop],
+            _ => [new($"You're getting this because you're in \"{ev.Name}\" on Pollyanna."), stop],
         };
     }
+}
+
+/// <summary>One line of an email's footer: its text, then the link it ends with, if any.</summary>
+public sealed record FooterLine(string Text, string? Link = null)
+{
+    /// <summary>The line as the plain text has it.</summary>
+    public override string ToString() => Link is null ? Text : $"{Text} {Link}";
 }
