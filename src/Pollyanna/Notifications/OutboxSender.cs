@@ -190,6 +190,7 @@ public sealed class OutboxSender(
             Hat = hat,
             Now = now,
             PublicUrl = settings.PublicUrl,
+            Providers = settings.Providers,
         };
         if (!await kind.IsStillWantedAsync(context, cancellationToken))
             return null;
