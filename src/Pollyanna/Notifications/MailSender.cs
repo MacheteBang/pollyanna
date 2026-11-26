@@ -7,8 +7,8 @@ using MimeKit;
 
 namespace Pollyanna.Notifications;
 
-/// <summary>One plain-text email, ready for the relay.</summary>
-public sealed record OutgoingMail(string To, string Subject, string Body);
+/// <summary>One email, ready for the relay: the plain text and the same email as HTML (spec §15).</summary>
+public sealed record OutgoingMail(string To, string Subject, string Body, string Html);
 
 /// <summary>The mail relay as the outbox sees it. Tests replace it with an in-memory fake (spec §11).</summary>
 public interface IMailSender
@@ -28,15 +28,28 @@ public sealed class SmtpMailSender(PollyannaSettings settings) : IMailSender
 
     public async Task SendAsync(OutgoingMail mail, CancellationToken cancellationToken)
     {
-        var message = new MimeMessage();
-        message.From.Add(Relay.From);
-        message.To.Add(MailboxAddress.Parse(mail.To));
-        message.Subject = mail.Subject;
-        message.Body = new TextPart("plain") { Text = mail.Body };
-
+        var message = Build(mail, Relay.From);
         using var client = await ConnectAsync(cancellationToken);
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
+    }
+
+    /// <summary>
+    /// The message for <paramref name="mail"/>: <c>multipart/alternative</c>, the plain text first
+    /// and the HTML second, both UTF-8 (spec §9).
+    /// </summary>
+    public static MimeMessage Build(OutgoingMail mail, MailboxAddress from)
+    {
+        var message = new MimeMessage();
+        message.From.Add(from);
+        message.To.Add(MailboxAddress.Parse(mail.To));
+        message.Subject = mail.Subject;
+        var plain = new TextPart("plain");
+        plain.SetText(System.Text.Encoding.UTF8, mail.Body);
+        var html = new TextPart("html");
+        html.SetText(System.Text.Encoding.UTF8, mail.Html);
+        message.Body = new MultipartAlternative { plain, html };
+        return message;
     }
 
     public async Task CheckAsync(CancellationToken cancellationToken)

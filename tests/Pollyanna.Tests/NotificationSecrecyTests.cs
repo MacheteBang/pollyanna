@@ -31,7 +31,7 @@ public sealed class NotificationSecrecyTests
         await app.SendMailAsync();
         var sent = new List<string>();
         while (app.Mail.Sent.TryDequeue(out var m))
-            sent.Add($"To: {m.To}\nSubject: {m.Subject}\n{m.Body}".Replace(ev.ToString(), "{event}"));
+            sent.Add($"To: {m.To}\nSubject: {m.Subject}\n{m.Body}\n{m.Html}".Replace(ev.ToString(), "{event}"));
         return [.. sent.Order(StringComparer.Ordinal)];
     }
 
@@ -159,9 +159,9 @@ public sealed class NotificationSecrecyTests
     static readonly string[] Everyone = ["Peregrine", "Annabel", "Bartholomew", "Cordelia", "Desmond", "Evangeline", "Fitzgerald", "Ottoline"];
 
     /// <summary>One email, and the queued rows it came from.</summary>
-    sealed record Sent(string Step, OutgoingMail Mail);
+    internal sealed record Sent(string Step, OutgoingMail Mail);
 
-    sealed record Run(List<Sent> Mail, List<(string Step, List<Notification> Rows)> Queued);
+    internal sealed record Run(List<Sent> Mail, List<(string Step, List<Notification> Rows)> Queued);
 
     /// <summary>
     /// Sets off every notification kind in one event, through the pages: an invitation and a new
@@ -170,7 +170,7 @@ public sealed class NotificationSecrecyTests
     /// needs a redraw, and the reveal. Peregrine organizes and takes part and does the organizing;
     /// Ottoline is made an organizer. Before each send, the rows waiting in the outbox are kept.
     /// </summary>
-    static async Task<Run> EveryKindAsync(TestApp app, bool emailsOff = false)
+    internal static async Task<Run> EveryKindAsync(TestApp app, bool emailsOff = false)
     {
         var people = await SignInAllAsync(app, Everyone);
         try
@@ -249,10 +249,10 @@ public sealed class NotificationSecrecyTests
         }
     }
 
-    static readonly TestProvider[] OpenProvider = [new("google", "Google", "open")];
+    internal static readonly TestProvider[] OpenProvider = [new("google", "Google", "open")];
 
     /// <summary>The kind an email is, told from its subject alone.</summary>
-    static NotificationKind KindOf(OutgoingMail mail) => mail.Subject switch
+    internal static NotificationKind KindOf(OutgoingMail mail) => mail.Subject switch
     {
         var s when s.Contains("is open") => NotificationKind.EventOpen,
         var s when s.Contains("added to") => NotificationKind.AddedToEvent,
@@ -280,7 +280,8 @@ public sealed class NotificationSecrecyTests
 
         foreach (var (step, mail) in run.Mail)
         {
-            var text = mail.Subject + "\n" + mail.Body;
+            // The raw markup too, links and all (spec §9).
+            var text = mail.Subject + "\n" + mail.Body + "\n" + mail.Html;
             Assert.DoesNotContain("Hush-", text);
             Assert.DoesNotContain("Bartholomew", text);
             // Only who acted, where it isn't secret, or the organizers' leaver (spec §15 "Content").
@@ -307,7 +308,8 @@ public sealed class NotificationSecrecyTests
 
         foreach (var (step, mail) in run.Mail)
         {
-            var text = mail.Subject + "\n" + mail.Body;
+            // The raw markup too, links and all (spec §9).
+            var text = mail.Subject + "\n" + mail.Body + "\n" + mail.Html;
             Assert.False(text.Contains("santa", StringComparison.OrdinalIgnoreCase), $"The {step} email to {mail.To} says Santa:\n{text}");
             Assert.False(text.Contains("stocking", StringComparison.OrdinalIgnoreCase), $"The {step} email to {mail.To} says stocking:\n{text}");
         }

@@ -1,0 +1,68 @@
+@*
+    The HTML part of every email (spec §11, §15): the kind's text, its link and the audience
+    footer, the same inputs as the plain text, in one hand-written email-safe table layout. Styles
+    are inline; nothing is loaded from anywhere. Every value is HTML-encoded by the renderer, so
+    names can't inject markup. Rendered by MailHtml.
+*@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>@Content.Subject</title>
+</head>
+<body style="margin:0; padding:0; background-color:#FFFDF8;">
+<div lang="en" dir="ltr" style="margin:0; padding:0; background-color:#FFFDF8; color:#1E1A16; color-scheme:light only; font-family:'Courier New', Courier, monospace; font-size:16px; line-height:1.5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+<tr>
+<td align="center" style="padding:24px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; max-width:560px;">
+<tr>
+<td style="padding:0;">
+@foreach (var line in Lines(Content.Body))
+{
+<p style="margin:0 0 16px 0;">@line</p>
+}
+<p style="margin:0 0 24px 0;"><a href="@Content.Link" style="color:#1E1A16; text-decoration:underline;">@Content.Link</a></p>
+</td>
+</tr>
+<tr>
+<td style="padding:16px 0 0 0; border-top:1px solid #C9A77C; font-size:13px; color:#1E1A16;">
+@foreach (var line in Audience.FooterLines(Event, PublicUrl))
+{
+@if (line.Link is { } link)
+{
+<p style="margin:0 0 8px 0;">@line.Text <a href="@link" style="color:#1E1A16; text-decoration:underline;">@link</a></p>
+}
+else
+{
+<p style="margin:0 0 8px 0;">@line.Text</p>
+}
+}
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</div>
+</body>
+</html>
+
+@code {
+    /// <summary>What the kind says: the subject (the title), its text and its link.</summary>
+    [Parameter, EditorRequired] public NotificationContent Content { get; set; } = null!;
+
+    /// <summary>Who it is for, which decides the footer.</summary>
+    [Parameter, EditorRequired] public Audience Audience { get; set; }
+
+    [Parameter, EditorRequired] public Pollyanna.Data.Event Event { get; set; } = null!;
+
+    /// <summary>The public URL, without a trailing slash.</summary>
+    [Parameter, EditorRequired] public string PublicUrl { get; set; } = null!;
+
+    /// <summary>One paragraph per line of the plain text.</summary>
+    static IEnumerable<string> Lines(string text) => text.Split('\n').Where(l => l.Length > 0);
+}
