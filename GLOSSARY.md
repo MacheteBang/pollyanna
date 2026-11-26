@@ -7,8 +7,20 @@ see who drew whom.
 ## People and roles
 
 **Person**:
-Someone who has signed in to Pollyanna at least once through the identity provider.
+Someone who has signed in to Pollyanna at least once, through any configured provider.
 _Avoid_: User, account, member
+
+**Login**:
+One provider account linked to a person; a person has one or more, added by a verified email match or by the person themselves.
+_Avoid_: Account, identity, credential
+
+**Trusted provider**:
+A configured sign-in provider that lets in anyone it authenticates.
+_Avoid_: Internal provider, family provider
+
+**Open provider**:
+A configured sign-in provider that lets in only someone with a verified email matching a person or a pending invitation.
+_Avoid_: Public provider, external provider, social login
 
 **Operator**:
 Whoever runs a Pollyanna deployment: its server, database, draw key and mail relay. Not a role inside the app.
