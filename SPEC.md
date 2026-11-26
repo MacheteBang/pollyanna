@@ -1320,7 +1320,9 @@ below. The first release from GitHub is 0.0.3.
 - 0.x follows the usual convention: the patch number (0.0.x) for fixes,
   the minor number (0.x.0) for features and anything that breaks
   operators (renamed settings, a migration with no way back).
-- 1.0.0 is the user's call, when they declare the app finished.
+- 1.0.0 is the user's call, when they declare the app finished. The
+  user called it on 2026-11-26: 1.0.0 is tagged from `main` after the
+  branded HTML email (#30).
 
 ### Done: operator-experience fixes
 
