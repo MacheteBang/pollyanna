@@ -226,6 +226,15 @@ public sealed class ConfigurationTests : IDisposable
     }
 
     [Theory]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_LABLE")]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ICON")]
+    public void A_misspelled_field_of_a_listed_key_is_an_unknown_setting(string setting)
+    {
+        var problem = Assert.Single(Refused(WithGoogle((setting, "x"))).Problems);
+        Assert.Equal(setting + " isn't a setting Pollyanna knows. Check its spelling, or unset it.", problem);
+    }
+
+    [Theory]
     [InlineData("google google", "more than once")]
     [InlineData("google,Work", "\"Work\"")]
     [InlineData("google 2fa", "\"2fa\"")]

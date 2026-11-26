@@ -66,7 +66,7 @@ public sealed class Provider
 /// </summary>
 public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) : IReadOnlyList<Provider>
 {
-    internal const string Prefix = "POLLYANNA_OIDC_";
+    public const string Prefix = "POLLYANNA_OIDC_";
     public const string ProvidersKey = Prefix + "PROVIDERS";
     public const string IssuerField = "ISSUER";
     public const string ClientIdField = "CLIENT_ID";
@@ -88,6 +88,13 @@ public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) 
     public Provider? ByKey(string? key) => providers.FirstOrDefault(p => p.Key == key);
     /// <summary>The provider a login's issuer belongs to; null for a provider that was removed.</summary>
     public Provider? ByIssuer(string? issuer) => issuer is null ? null : providers.FirstOrDefault(p => p.Issuer == issuer.TrimEnd('/'));
+    /// <summary>
+    /// The label to show for a login with <paramref name="issuer"/>: its provider's label, or for a
+    /// provider that is no longer set up, the issuer's host name (spec §7).
+    /// </summary>
+    public (string Label, bool NoLongerSetUp) LabelFor(string issuer) => ByIssuer(issuer) is { } provider
+        ? (provider.Label, false)
+        : (Uri.TryCreate(issuer, UriKind.Absolute, out var u) ? u.Host : issuer, true);
     public Provider? ByScheme(string? scheme) => providers.FirstOrDefault(p => p.Scheme == scheme);
     public bool AnyOpen => providers.Any(p => p.Admission == Admission.Open);
     /// <summary>The open providers' labels, in configured order (for the invitation email).</summary>
@@ -111,8 +118,15 @@ public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) 
                 result.Add(provider);
 
         foreach (var setting in config.AsEnumerable().Where(kv => !string.IsNullOrWhiteSpace(kv.Value)).Select(kv => kv.Key))
-            if (IsUnlistedSetting(setting, allTokens))
-                problems.Add($"{setting} is set, but {ProvidersKey} doesn't list its key. Add the key there, or unset {setting}.");
+            switch (Classify(setting, allTokens))
+            {
+                case SettingKind.UnlistedKey:
+                    problems.Add($"{setting} is set, but {ProvidersKey} doesn't list its key. Add the key there, or unset {setting}.");
+                    break;
+                case SettingKind.UnknownField:
+                    problems.Add($"{setting} isn't a setting Pollyanna knows. Check its spelling, or unset it.");
+                    break;
+            }
 
         foreach (var group in result.GroupBy(p => p.Issuer).Where(g => g.Count() > 1))
         {
@@ -169,17 +183,26 @@ public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) 
     static bool UnnamedIsConfigured(IConfiguration config, int listedTokens) =>
         listedTokens == 0 || Fields.Any(f => !string.IsNullOrWhiteSpace(config[Provider.SettingName(null, f)]));
 
-    static bool IsUnlistedSetting(string setting, HashSet<string> listedTokens)
+    enum SettingKind { NotOurs, Known, UnlistedKey, UnknownField }
+
+    /// <summary>
+    /// Sorts a <c>POLLYANNA_OIDC_*</c> setting: a known one, an unknown field of a listed key
+    /// (likely misspelled), or a setting whose key <c>POLLYANNA_OIDC_PROVIDERS</c> doesn't list.
+    /// </summary>
+    static SettingKind Classify(string setting, HashSet<string> listedTokens)
     {
         if (setting.Contains(':') || !setting.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
-            return false;
+            return SettingKind.NotOurs;
         var rest = setting[Prefix.Length..].ToUpperInvariant();
         if (rest == "PROVIDERS" || Fields.Contains(rest))
-            return false;
+            return SettingKind.Known;
         foreach (var field in Fields)
             if (rest.EndsWith("_" + field) && listedTokens.Contains(rest[..^(field.Length + 1)].ToLowerInvariant()))
-                return false;
-        return true;
+                return SettingKind.Known;
+        foreach (var token in listedTokens)
+            if (rest.StartsWith(token.ToUpperInvariant() + "_"))
+                return SettingKind.UnknownField;
+        return SettingKind.UnlistedKey;
     }
 
     static Provider? LoadOne(IConfiguration config, string? key, string contentRoot, List<string> problems)

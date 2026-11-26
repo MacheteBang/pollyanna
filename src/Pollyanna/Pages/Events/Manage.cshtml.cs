@@ -158,7 +158,7 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
         if (!await LoadAsOrganizerAsync(id))
             return NotFound();
         var ticked = personIds.Distinct().ToList();
-        if (await events.KnownTo(Me).CountAsync(p => ticked.Contains(p.Id)) != ticked.Count)
+        if (!await events.AllKnownToAsync(Me, ticked))
             return NotFound();
         return Finish(await events.AddPeopleAsync(Membership, Me, ticked, email), Here("people"));
     }

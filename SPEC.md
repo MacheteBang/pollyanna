@@ -99,7 +99,9 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     only logins no person holds yet.
   - Settings errors, each naming its setting in full: two providers with the
     same issuer once trailing slashes are trimmed (naming both settings); a
-    `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't listed; a repeated,
+    `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't listed; an unknown
+    field of a listed key, such as a misspelled `..._LABLE` ("isn't a setting
+    Pollyanna knows"); a repeated,
     malformed or reserved key; any provider field missing or invalid, under
     the same secret and https rules for every provider; an icon file that is
     missing or isn't a usable image. When the public URL is
@@ -177,8 +179,10 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     nobody.
   - The first sign-in through each provider in a process run that has no
     `email_verified` claim logs one info line, naming the provider and
-    nobody else: invitations by email still match, but re-linking by email
-    won't work with this provider.
+    nobody else. For a trusted provider: invitations by email still match,
+    but adding a login by verified email won't happen with this provider.
+    For an open provider: new sign-ins through it are refused and it accepts
+    no invitations, because a missing claim counts as unverified.
 - On every sign-in, display name, email and picture take the values just
   received, but a claim that isn't sent never clears a stored value. The
   login's last email is updated the same way.
@@ -190,8 +194,10 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     person; if not, nothing changes and the person lands on `/auth/failed`.
     A fresh round trip proves control, so the login is attached with no
     email match, no `email_verified` check and no open-provider admission
-    check. It counts as a sign-in for name, email and picture (and accepts
-    invitations to the new email). Two logins from the same provider are
+    check. It counts as a sign-in for name, email and picture, and accepts
+    invitations to the new email under the same rule as any sign-in (§4):
+    through an open provider, only with `email_verified: true`. Two logins
+    from the same provider are
     allowed. No new session is made; the current one carries on. Notice:
     "Added."
   - A login another (living) person already holds is refused with "That
@@ -201,10 +207,11 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   - **Removing.** A plain POST per login, no confirmation page, notice
     "Removed." Any login can be removed, including the one the session was
     made through (the session belongs to the person and carries on) and
-    logins from removed providers. Removing the last login is refused, with
-    a link to `/account/delete`. Removed logins aren't remembered or blocked:
-    a matching verified email adds one back on its next sign-in, and the page
-    says so.
+    logins from removed providers. Removing the last login is refused with
+    an error notice that points to deleting the account instead, and the
+    list's own text links to `/account/delete`. Removed logins aren't
+    remembered or blocked: a matching verified email adds one back on its
+    next sign-in, and the page says so.
   - One info log line each for a login added, removed, or refused as another
     person's, giving the provider key and the person ID, never the email. No
     email is sent about any of these.
@@ -472,9 +479,11 @@ automatically on sign-in, so declining an invitation means leaving.)
   when it says so.
   - Through a trusted provider this leniency holds: an email with
     `email_verified: true` or no such claim matches, and `false` doesn't.
-  - Through an open provider, only `email_verified: true` counts, and a
-    pending invitation is what lets an unknown login in at all (§3). Pending
-    invitations exist only in `draft` and `open` events.
+  - Through an open provider, only `email_verified: true` counts (a missing
+    claim counts as `false`), on every sign-in: a known login, one the gate
+    just admitted, and a login added from `/account`. A pending invitation is
+    what lets an unknown login in at all (§3). Pending invitations exist only
+    in `draft` and `open` events.
 - Organizers see pending invitations and can cancel them.
 - The draw cannot run while invitations are pending: every participant needs
   an account (§5.2). The organizer waits or cancels the invitation.
@@ -787,7 +796,25 @@ with labels, and the reveal animation turned off under "reduce motion".
 - Tests that non-organizers cannot manage an event, and that people outside
   an event cannot see it.
 - Tests that invitations turn into participants on matching sign-in only,
-  and that re-linking by verified email attaches to the right person.
+  through an open provider only with `email_verified: true` (a known login,
+  an admitted one and an added one alike), and that linking by verified
+  email adds a login to the right person.
+- Tests for several providers: settings errors name their setting in full
+  (an unlisted key, a misspelled field of a listed key, a repeated issuer),
+  the chooser and each provider's callback, and the `email_verified` hint
+  once per provider per run, worded for its admission.
+- Tests for open-provider refusals: each reason (`no invitation or person`,
+  `email not verified`, `ambiguous: N matches`) shows its page and stores no
+  session, person or login, its log line names nobody, and the refused page
+  can't be made to show an address by a crafted or altered URL.
+- Tests for managing logins on `/account`: the list and its labels, adding a
+  login (attached with no email match or admission, refused when another
+  person holds it, unchanged when it's already the person's, dropped when
+  the session changed hands), and removing any login but the last.
+- Tests for the add-people lists: a picker lists and accepts only people the
+  viewer shares an event with, never emails; a ticked ID outside the list is
+  a 404; a typed address adds the one person who uses it, invites nobody's
+  address, and stores nothing when several people use it.
 - Tests for changes after the draw: dropout and late-joiner patches keep
   every rule, change only one giver, and fall back correctly when a patch
   isn't possible; self-service leaving and account deletion follow the same
@@ -1559,10 +1586,12 @@ has no way back. Existing `POLLYANNA_OIDC_*` settings keep working unchanged.
   `/auth/icon/<key>`. Every provider button is drawn by
   `Pages/Shared/_ProviderButton.cshtml`.
 - **Ways to sign in (#23).** `/account` lists each login with its provider
-  label (or "(no longer set up)"), its last email and "Remove", then an "Add
-  <label>" button per provider when there are several. `Auth/AddLogin.cs`
-  carries the intent and the person through the challenge, and attaching
-  skips email matching and admission.
+  label (or "(no longer set up)", from `ProviderRegistry.LabelFor`), its last
+  email and "Remove", then an "Add <label>" button per provider when there
+  are several. `Auth/AddLogin.cs` carries the intent and the person through
+  the challenge, and attaching skips email matching and admission.
+  `PersonSignIn.AddLoginAsync` and `RemoveLoginAsync` hold the rules (the
+  last login stays); the page only maps their results to notices.
 - **Invitation email (#24).** With an open provider configured, the
   invitation email names every open provider and the invited address (§15).
 - **Adding people (#19, #25, #26).** `EventManager.KnownTo`

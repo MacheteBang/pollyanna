@@ -9,7 +9,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Pollyanna.Auth;
 
 /// <summary>How adding a login from <c>/account</c> ended.</summary>
-public enum AddLoginResult { Added, AlreadyYours, AnotherPersons }
+public enum AddLoginResult { Added, AlreadyYours, BelongsToSomeoneElse }
+
+/// <summary>How removing a login from <c>/account</c> ended.</summary>
+public enum RemoveLoginResult { Removed, NotYours, LastLogin }
 
 /// <summary>What the provider told us about the person signing in.</summary>
 public sealed record ProviderIdentity(
@@ -20,6 +23,9 @@ public sealed record ProviderIdentity(
     bool? EmailVerified,
     string? PictureUrl)
 {
+    /// <summary>The normalized email, only when the provider explicitly marked it verified; null otherwise.</summary>
+    public string? VerifiedEmail => EmailVerified == true ? Person.NormalizeEmail(Email) : null;
+
     public static ProviderIdentity FromClaims(ClaimsPrincipal principal)
     {
         var sub = principal.FindFirst("sub") ?? throw new InvalidOperationException("The provider sent no sub claim.");
@@ -76,7 +82,8 @@ public sealed record SignInOutcome(Person? Person, SignInRefusal? Refusal);
 /// refresh name, email and picture from the claims just received (a claim that isn't sent clears
 /// nothing), and turn any invitations to that email into participation (spec §4).
 /// </summary>
-public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Outbox outbox, ILogger<PersonSignIn> logger)
+public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Outbox outbox,
+    ProviderRegistry providers, ILogger<PersonSignIn> logger)
 {
     public async Task<SignInOutcome> SignInAsync(Provider provider, ProviderIdentity identity, CancellationToken cancellationToken = default)
     {
@@ -115,7 +122,7 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
             db.Logins.Add(login);
         }
 
-        await CountAsSignInAsync(person, login, identity, now, cancellationToken);
+        await CountAsSignInAsync(provider, person, login, identity, now, cancellationToken);
         return new SignInOutcome(person, null);
     }
 
@@ -124,7 +131,8 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
     /// who asked for it from <c>/account</c> (spec §3 "Adding a login while signed in"). The fresh
     /// round trip proves control, so there is no email match, no <c>email_verified</c> check and no
     /// admission check. A login another person holds is refused and nothing is merged; one the
-    /// person already holds changes nothing. An added login counts as a sign-in for the profile.
+    /// person already holds changes nothing. An added login counts as a sign-in for the profile
+    /// and for invitations, under the same open-provider rule as any sign-in (spec §4).
     /// </summary>
     public async Task<AddLoginResult> AddLoginAsync(Provider provider, Guid personId, ProviderIdentity identity, CancellationToken cancellationToken = default)
     {
@@ -136,20 +144,49 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         {
             logger.LogInformation("Person {PersonId} tried to add a login through provider {Provider} that belongs to another person.",
                 personId, provider.Key);
-            return AddLoginResult.AnotherPersons;
+            return AddLoginResult.BelongsToSomeoneElse;
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
         var person = await db.People.Living().SingleAsync(p => p.Id == personId, cancellationToken);
         var login = new Login { PersonId = personId, Issuer = identity.Issuer, Subject = identity.Subject, CreatedAt = now };
         db.Logins.Add(login);
-        await CountAsSignInAsync(person, login, identity, now, cancellationToken);
+        await CountAsSignInAsync(provider, person, login, identity, now, cancellationToken);
         logger.LogInformation("Person {PersonId} added a login through provider {Provider}.", personId, provider.Key);
         return AddLoginResult.Added;
     }
 
-    /// <summary>What every sign-in does once the login and person are known: refresh both, accept invitations, fetch the picture.</summary>
-    async Task CountAsSignInAsync(Person person, Login login, ProviderIdentity identity, DateTime now, CancellationToken cancellationToken)
+    /// <summary>
+    /// Removes one of <paramref name="personId"/>'s logins, any but the last (spec §3 "Removing").
+    /// A login that isn't theirs is <see cref="RemoveLoginResult.NotYours"/>. The session carries
+    /// on, even when it was made through the login removed.
+    /// </summary>
+    public async Task<RemoveLoginResult> RemoveLoginAsync(Guid personId, Guid loginId, CancellationToken cancellationToken = default)
+    {
+        var issuer = await db.Logins.Where(l => l.Id == loginId && l.PersonId == personId)
+            .Select(l => l.Issuer).SingleOrDefaultAsync(cancellationToken);
+        if (issuer is null)
+            return RemoveLoginResult.NotYours;
+        // One statement, so two removals at once can't leave the person with none.
+        var removed = await db.Logins
+            .Where(l => l.Id == loginId && db.Logins.Any(o => o.PersonId == personId && o.Id != loginId))
+            .ExecuteDeleteAsync(cancellationToken);
+        if (removed == 0)
+            return RemoveLoginResult.LastLogin;
+
+        if (providers.ByIssuer(issuer) is { } provider)
+            logger.LogInformation("Person {PersonId} removed a login through provider {Provider}.", personId, provider.Key);
+        else
+            logger.LogInformation("Person {PersonId} removed a login through a provider that is no longer set up.", personId);
+        return RemoveLoginResult.Removed;
+    }
+
+    /// <summary>
+    /// What every sign-in does once the login and person are known: refresh both, accept
+    /// invitations, fetch the picture. Through an open provider only <c>email_verified: true</c>
+    /// accepts invitations; a missing claim counts as false (spec §4).
+    /// </summary>
+    async Task CountAsSignInAsync(Provider provider, Person person, Login login, ProviderIdentity identity, DateTime now, CancellationToken cancellationToken)
     {
         login.LastUsedAt = now;
         if (identity.Email is not null)
@@ -158,7 +195,8 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         person.LastLoginAt = now;
         await db.SaveChangesAsync(cancellationToken);
 
-        await AcceptInvitationsAsync(person, now, cancellationToken);
+        if (provider.Admission == Admission.Trusted || identity.EmailVerified == true)
+            await AcceptInvitationsAsync(person, now, cancellationToken);
 
         await RefreshPictureAsync(person, identity, cancellationToken);
     }
@@ -169,7 +207,7 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
     /// </summary>
     async Task<List<Person>> VerifiedEmailMatchesAsync(ProviderIdentity identity, CancellationToken cancellationToken)
     {
-        if (identity.EmailVerified != true || Person.NormalizeEmail(identity.Email) is not { } email)
+        if (identity.VerifiedEmail is not { } email)
             return [];
         return await db.People.Living().Where(p => p.EmailNormalized == email)
             .OrderBy(p => p.Id).ToListAsync(cancellationToken);
@@ -182,7 +220,7 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
     /// </summary>
     async Task<SignInRefusal?> AdmitAsync(ProviderIdentity identity, int matches, CancellationToken cancellationToken)
     {
-        if (identity.EmailVerified != true || Person.NormalizeEmail(identity.Email) is not { } email)
+        if (identity.VerifiedEmail is not { } email)
             return new SignInRefusal(RefusalReason.EmailNotVerified, identity.Email);
         if (matches > 1)
             return new SignInRefusal(RefusalReason.Ambiguous, identity.Email, matches);
@@ -210,8 +248,9 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
     /// <summary>
     /// Each invitation to the person's email becomes a participant row and is deleted. Matching
     /// is case-insensitive; an email the provider marks unverified is ignored, but one with no
-    /// <c>email_verified</c> claim counts (unlike re-linking). The person is emailed "Added to an
-    /// event" for each event that isn't a draft (spec §15).
+    /// <c>email_verified</c> claim counts (unlike linking by email). The caller skips this
+    /// entirely for an open provider that didn't send <c>email_verified: true</c> (spec §4). The
+    /// person is emailed "Added to an event" for each event that isn't a draft (spec §15).
     /// </summary>
     async Task AcceptInvitationsAsync(Person person, DateTime now, CancellationToken cancellationToken)
     {
@@ -262,7 +301,8 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
 
 /// <summary>
 /// Whether the provider sends <c>email_verified</c> is its configuration, not the person's: tell
-/// the operator once per provider per process run, naming the provider and nobody else (spec §3).
+/// the operator once per provider per process run, naming the provider and nobody else, with
+/// what a missing claim means for its admission (spec §3).
 /// </summary>
 public sealed class EmailVerifiedHint
 {
@@ -270,10 +310,17 @@ public sealed class EmailVerifiedHint
 
     public void Note(ILogger logger, Provider provider)
     {
-        if (noted.TryAdd(provider.Key, true))
+        if (!noted.TryAdd(provider.Key, true))
+            return;
+        if (provider.Admission == Admission.Open)
             logger.LogInformation(
-                "The OIDC provider {Provider} sent no email_verified claim. Invitations by email still match, but re-linking a "
-                + "recreated account by email won't work for people signing in this way. Turn on email_verified at the "
-                + "provider if it has the setting.", provider.Key);
+                "The OIDC provider {Provider} sent no email_verified claim. It is an open provider, so new sign-ins through it "
+                + "are refused and it accepts no invitations: a missing claim counts as unverified. Turn on email_verified at "
+                + "the provider if it has the setting.", provider.Key);
+        else
+            logger.LogInformation(
+                "The OIDC provider {Provider} sent no email_verified claim. Invitations by email still match, but adding a "
+                + "login to someone by verified email won't happen for people signing in this way. Turn on email_verified at "
+                + "the provider if it has the setting.", provider.Key);
     }
 }

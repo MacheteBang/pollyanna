@@ -478,7 +478,8 @@ family uses it, do this once with the production provider, with at least three r
   non-`https` issuer, a public URL with a path, both or neither client-secret variable, an
   unreadable secret file, a draw key that isn't 32 raw bytes, or a data or draw-key directory the
   app can't write to (`sudo chown 1654:1654 data draw-key`). With several providers it can also
-  be a key `POLLYANNA_OIDC_PROVIDERS` doesn't list, two providers with the same issuer, or an
+  be a key `POLLYANNA_OIDC_PROVIDERS` doesn't list, a misspelled setting of a listed provider,
+  two providers with the same issuer, or an
   icon file that's missing or isn't a usable image.
 - **"Sign-in didn't work" straight away, before the provider's page.** Pollyanna couldn't start
   the sign-in. The log has `Sign-in through provider <key> could not start:` and says why: the

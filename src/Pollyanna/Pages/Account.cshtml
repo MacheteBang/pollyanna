@@ -9,10 +9,6 @@
 
 <section class="slip slip-plain stack" id="logins" aria-labelledby="logins-heading">
     <h2 id="logins-heading">Ways to sign in</h2>
-    @if (TempData["LastLogin"] is true)
-    {
-        <p class="notice notice-error" role="alert">That's your only way to sign in, so it can't be removed. To leave Pollyanna, <a href="/account/delete">delete your account</a> instead.</p>
-    }
     <ul class="people" role="list">
         @foreach (var login in Model.Logins)
         {
@@ -41,7 +37,7 @@
             }
         </div>
     }
-    <p class="small">Your name, email and picture come from your latest sign-in. A removed way to sign in whose verified email matches yours is added back the next time you use it.</p>
+    <p class="small">Your name, email and picture come from your latest sign-in. A removed way to sign in whose verified email matches yours is added back the next time you use it. Your only way to sign in can't be removed: to leave Pollyanna, <a href="/account/delete">delete your account</a> instead.</p>
 </section>
 
 @if (Model.EmailsAvailable)

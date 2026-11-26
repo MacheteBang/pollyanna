@@ -19,10 +19,14 @@ public sealed partial class EventManager
     {
         var mine = db.Participants.Where(p => p.PersonId == viewer).Select(p => p.EventId)
             .Union(db.Organizers.Where(o => o.PersonId == viewer).Select(o => o.EventId));
-        return SignedInPeople.Where(person => person.Id != viewer
+        return db.People.Living().Where(person => person.Id != viewer
             && (db.Participants.Any(p => p.PersonId == person.Id && mine.Contains(p.EventId))
                 || db.Organizers.Any(o => o.PersonId == person.Id && mine.Contains(o.EventId))));
     }
+
+    /// <summary>Whether every one of <paramref name="personIds"/> is in <see cref="KnownTo"/>: a picker post's ticked people.</summary>
+    public async Task<bool> AllKnownToAsync(Guid viewer, IReadOnlyCollection<Guid> personIds) =>
+        await KnownTo(viewer).CountAsync(p => personIds.Contains(p.Id)) == personIds.Count;
 
     /// <summary>
     /// <see cref="KnownTo"/> as a picker lists it: names and pictures only, never emails, sorted by

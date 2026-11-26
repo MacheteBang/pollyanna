@@ -54,7 +54,7 @@ public static class AddLogin
         var result = await signIn.AddLoginAsync(provider, started.Value, ProviderIdentity.FromClaims(context.Principal!), http.RequestAborted);
 
         var tempData = http.RequestServices.GetRequiredService<ITempDataDictionaryFactory>().GetTempData(http);
-        tempData[result == AddLoginResult.AnotherPersons ? "Error" : "Notice"] = result switch
+        tempData[result == AddLoginResult.BelongsToSomeoneElse ? "Error" : "Notice"] = result switch
         {
             AddLoginResult.Added => "Added.",
             AddLoginResult.AlreadyYours => "That's already one of your ways to sign in.",

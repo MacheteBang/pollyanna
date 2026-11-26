@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace Pollyanna.Auth;
@@ -19,6 +21,25 @@ public static partial class SignInFailure
 
     static string CheckClient(Provider provider) =>
         $"Check {provider.Setting(ProviderRegistry.ClientIdField)}, the client secret and the client registration.";
+
+    /// <summary>
+    /// Sends the person to <paramref name="provider"/>. The challenge talks to the provider before
+    /// redirecting (discovery, pushed authorization requests), so a misconfigured client fails
+    /// here rather than at the callback, and the person goes to the failure page instead.
+    /// </summary>
+    public static async Task<IActionResult> ChallengeAsync(HttpContext http, Provider provider, AuthenticationProperties properties)
+    {
+        try
+        {
+            await http.ChallengeAsync(provider.Scheme, properties);
+            return new EmptyResult();
+        }
+        catch (Exception e) when (!http.RequestAborted.IsCancellationRequested && !http.Response.HasStarted)
+        {
+            var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(LoggerCategory);
+            return new LocalRedirectResult(StartFailed(logger, provider, e));
+        }
+    }
 
     /// <summary>
     /// Building the redirect to the provider failed (discovery, metadata, a rejected pushed

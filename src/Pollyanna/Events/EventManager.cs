@@ -44,9 +44,6 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
 
     DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    /// <summary>People who have signed in and whose account still exists, so they can be picked.</summary>
-    public IQueryable<Person> SignedInPeople => db.People.Living();
-
     // ---------- Creating and editing ----------
 
     /// <summary>
@@ -137,11 +134,11 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (previous is not null)
         {
             var previousPeople = previous.Participants.Select(p => p.PersonId).ToList();
-            var alive = await SignedInPeople.Where(p => previousPeople.Contains(p.Id)).Select(p => p.Id).ToListAsync();
+            var alive = await db.People.Living().Where(p => previousPeople.Contains(p.Id)).Select(p => p.Id).ToListAsync();
             people.UnionWith(input.CopyPeople.Where(id => id != me && alive.Contains(id)));
         }
         if (input.AddPeople is { Count: > 0 } ticked)
-            people.UnionWith(await SignedInPeople.Where(p => ticked.Contains(p.Id)).Select(p => p.Id).ToListAsync());
+            people.UnionWith(await db.People.Living().Where(p => ticked.Contains(p.Id)).Select(p => p.Id).ToListAsync());
         if (address?.Person is { } byAddress)
             people.Add(byAddress.Id);
         foreach (var id in people)
@@ -165,14 +162,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         db.Events.Add(ev);
         // The invitation's email waits until the draft opens (spec §4, §15).
         if (address?.Invite is { } normalizedEmail)
-            db.Invitations.Add(new Invitation
-            {
-                EventId = ev.Id,
-                Email = email,
-                EmailNormalized = normalizedEmail,
-                InvitedBy = me,
-                CreatedAt = Now,
-            });
+            AddInvitation(ev.Id, email, normalizedEmail, me);
         await db.SaveChangesAsync();
         return (ev, null);
     }
@@ -231,7 +221,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     {
         if (!m.PeopleChangeable)
             return Outcome.Fail("People can't be added any more.");
-        var person = await SignedInPeople.SingleOrDefaultAsync(p => p.Id == personId);
+        var person = await db.People.Living().SingleOrDefaultAsync(p => p.Id == personId);
         if (person is null)
             return Outcome.Fail("Pick someone from the list.");
         if (m.IsLive)
@@ -267,7 +257,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (personIds.Count == 0 && email == "")
             return Outcome.Fail("Tick someone, or type their email.");
 
-        var people = await SignedInPeople.Where(p => personIds.Contains(p.Id)).ToListAsync();
+        var people = await db.People.Living().Where(p => personIds.Contains(p.Id)).ToListAsync();
         var address = email == "" ? null : await ResolveAddressAsync(email);
         if (address?.Error is { } error)
             return Outcome.Fail(error);
@@ -310,14 +300,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
             }
             else
             {
-                db.Invitations.Add(new Invitation
-                {
-                    EventId = m.Event.Id,
-                    Email = email,
-                    EmailNormalized = normalized,
-                    InvitedBy = me,
-                    CreatedAt = Now,
-                });
+                AddInvitation(m.Event.Id, email, normalized, me);
                 // A draft's invitations are emailed when it opens (spec §4, §15).
                 if (m.ShownToParticipants)
                     await outbox.QueueAsync(new Notifications.Kinds.Invitation.Cause(m.Event.Id, email, me, me));
@@ -327,6 +310,10 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         await db.SaveChangesAsync();
         return new Outcome(ok, string.Join(" ", messages));
     }
+
+    /// <summary>Stores a pending invitation of <paramref name="email"/> to an event, made by <paramref name="me"/>.</summary>
+    void AddInvitation(Guid eventId, string email, string normalized, Guid me) =>
+        db.Invitations.Add(new Invitation { EventId = eventId, Email = email, EmailNormalized = normalized, InvitedBy = me, CreatedAt = Now });
 
     /// <summary>
     /// What a typed address in the add-people control means (spec §4 Invitation): the one person
@@ -450,7 +437,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     {
         if (!m.Editable)
             return Outcome.Fail("This event is archived.");
-        var person = await SignedInPeople.SingleOrDefaultAsync(p => p.Id == personId);
+        var person = await db.People.Living().SingleOrDefaultAsync(p => p.Id == personId);
         if (person is null)
             return Outcome.Fail("Pick someone from the list.");
         if (await db.Organizers.AnyAsync(o => o.EventId == m.Event.Id && o.PersonId == personId))
