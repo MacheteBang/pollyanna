@@ -1710,6 +1710,27 @@ HTML part carries no images either, not even embedded (CID) ones: the
 masthead is typographic, the wordmark in the font stack, which starts at
 Courier New since Courier Prime can't be loaded.
 
+**Layout.** All eight kinds share one HTML layout, the "gift tag" (decided
+2026-11-26, user, from the prototype on the `prototype/email-layout`
+branch). On a kraft ground sits a slip-paper tag with a ribbon-blue band
+across its top. The tag's header row holds the POLLYANNA wordmark and,
+opposite, a red stamp with the event's status when the email is sent
+(DRAFT, OPEN, DRAWN, REVEALED, the app's own labels). Below come the
+event's name as the heading, the kind's text, a full-width ink button,
+and the link's URL in small type under the button for clients where the
+button fails. The button's label follows where the link goes, not the
+kind: "Open the event", "Open the manage page", "Read the question". The
+footer, the invitation's included, is a second, smaller bright-paper tag
+under the first, with the account page as a link. The stamp is tilted
+only where `transform` works; the `<style>` block holds just its reset
+for narrow screens.
+- The plain-text part stays exactly as it is. The HTML part has the same
+  text and footer and adds only the wordmark, the stamp, the event-name
+  heading, the button label and the URL.
+- Emails declare `color-scheme: light only` (and the matching meta tags),
+  as the pages do (§12). Clients that darken them anyway (Gmail on iOS,
+  classic Outlook, Outlook.com's recoloring) are accepted.
+
 **Address.** The email from the person's last sign-in, unless the provider
 sent `email_verified: false` for it (the same leniency as invitations,
 §4). Someone with no email claim gets nothing. Invitation emails go to the
