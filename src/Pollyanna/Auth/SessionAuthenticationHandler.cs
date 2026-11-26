@@ -42,9 +42,10 @@ public sealed class SessionAuthenticationHandler(
         var id = HashToken(token);
         var found = await db.Sessions
             .Where(s => s.Id == id && s.ExpiresAt > now)
-            .Join(db.People, s => s.PersonId, p => p.Id, (s, p) => new { Session = s, p.DisplayName, p.OidcSub })
+            // A tombstone's sessions are gone already; the join makes sure of it.
+            .Join(db.People.Living(), s => s.PersonId, p => p.Id, (s, p) => new { Session = s, p.DisplayName })
             .FirstOrDefaultAsync(Context.RequestAborted);
-        if (found is null || found.OidcSub is null)
+        if (found is null)
             return AuthenticateResult.Fail("No valid session.");
 
         var session = found.Session;

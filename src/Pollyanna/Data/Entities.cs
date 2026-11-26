@@ -1,14 +1,14 @@
 namespace Pollyanna.Data;
 
 /// <summary>
-/// A person (spec §4). Identified by the provider's issuer + <c>sub</c>, mapped to a Pollyanna ID
-/// that everything else uses. A deleted account leaves a tombstone: the row with only its ID.
+/// A person (spec §4), with a Pollyanna ID that everything else uses. They sign in through one or
+/// more <see cref="Login"/>s. A deleted account leaves a tombstone: the row with only its ID and
+/// no logins (<see cref="PersonQueries.Living"/>).
 /// </summary>
 public sealed class Person
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string? OidcIssuer { get; set; }
-    public string? OidcSub { get; set; }
+    public List<Login> Logins { get; set; } = [];
     public string? DisplayName { get; set; }
     public string? Email { get; set; }
     /// <summary><see cref="Email"/> lower-cased for case-insensitive matching.</summary>
@@ -23,6 +23,32 @@ public sealed class Person
 
     public static string? NormalizeEmail(string? email) =>
         string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant();
+}
+
+/// <summary>
+/// One provider account linked to a person (spec §4): the provider's issuer + <c>sub</c>, unique
+/// across all logins. A living person has at least one; a tombstone has none.
+/// </summary>
+public sealed class Login
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid PersonId { get; set; }
+    public required string Issuer { get; set; }
+    public required string Subject { get; set; }
+    /// <summary>The email this login sent at its last sign-in; kept when a sign-in sends none.</summary>
+    public string? LastEmail { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastUsedAt { get; set; }
+}
+
+/// <summary>The one place that tells a living person from a tombstone (docs/adr/0005).</summary>
+public static class PersonQueries
+{
+    /// <summary>
+    /// People whose account still exists: they hold at least one login. A tombstone has none,
+    /// so it can't sign in, be picked, match an email or be emailed.
+    /// </summary>
+    public static IQueryable<Person> Living(this IQueryable<Person> people) => people.Where(p => p.Logins.Any());
 }
 
 /// <summary>A profile picture downloaded from the provider's <c>picture</c> URL (spec §3).</summary>

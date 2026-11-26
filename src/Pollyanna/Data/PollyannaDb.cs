@@ -10,6 +10,7 @@ namespace Pollyanna.Data;
 public sealed class PollyannaDb(DbContextOptions<PollyannaDb> options) : DbContext(options)
 {
     public DbSet<Person> People => Set<Person>();
+    public DbSet<Login> Logins => Set<Login>();
     public DbSet<PersonPicture> PersonPictures => Set<PersonPicture>();
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<Event> Events => Set<Event>();
@@ -32,12 +33,20 @@ public sealed class PollyannaDb(DbContextOptions<PollyannaDb> options) : DbConte
     {
         model.Entity<Person>(e =>
         {
-            e.HasIndex(p => new { p.OidcIssuer, p.OidcSub }).IsUnique();
             e.HasIndex(p => p.EmailNormalized);
             e.Property(p => p.DisplayName).HasMaxLength(200);
             e.Property(p => p.Email).HasMaxLength(320);
             e.Property(p => p.EmailNormalized).HasMaxLength(320);
             e.Property(p => p.PictureUrl).HasMaxLength(2048);
+        });
+
+        model.Entity<Login>(e =>
+        {
+            e.HasIndex(l => new { l.Issuer, l.Subject }).IsUnique();
+            e.HasOne<Person>().WithMany(p => p.Logins).HasForeignKey(l => l.PersonId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(l => l.Issuer).HasMaxLength(2048);
+            e.Property(l => l.Subject).HasMaxLength(255);
+            e.Property(l => l.LastEmail).HasMaxLength(320);
         });
 
         model.Entity<PersonPicture>(e =>
