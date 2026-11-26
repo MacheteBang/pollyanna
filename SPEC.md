@@ -88,9 +88,12 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     downloadable button artwork; the repo ships no third-party logos. It is
     read and checked at startup: it must be readable, at most 1 MB, and a
     PNG, JPEG, GIF or WebP (by its first bytes) or an SVG (well-formed XML
-    with an `svg` root in the SVG namespace and no DTD).  - Order: the unnamed provider first, then the list's order.
-  - Open admission is a settings error ("open admission is not supported
-    yet") until the open providers' admission gate exists.
+    with an `svg` root in the SVG namespace and no DTD).
+  - Order: the unnamed provider first, then the list's order.
+  - Admission is `trusted` (anyone it authenticates gets in) or `open` (only
+    a verified email that matches a person or a pending invitation gets in,
+    §3). A switch between them takes effect at the next start and affects
+    only logins no person holds yet.
   - Settings errors, each naming its setting in full: two providers with the
     same issuer once trailing slashes are trimmed (naming both settings); a
     `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't listed; a repeated,
@@ -216,8 +219,44 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     is deleted with the account.
   - Pictures appear small beside names in the people lists (event page,
     manage page, new-event form): the picture, or the initials on paper.
-- Anyone a trusted provider authenticates may use the app. The app does no
-  group checks of its own; limiting who can sign in is the provider's job.
+- Admission: anyone a **trusted provider** authenticates may use the app.
+  The app does no group checks of its own; limiting who can sign in is the
+  provider's job. An **open provider** lets in only someone whose verified
+  email matches a person or a pending invitation. The gate runs only for a
+  login no person holds: a known login always signs in, whatever the
+  provider's admission, even after every invitation and event that let it in
+  is gone. For an unknown login through an open provider:
+  - `email_verified` must be `true`; a missing claim counts as `false`.
+  - An email that matches exactly one person's current email (tombstones
+    never count) adds the login to that person, as in linking by email
+    above.
+  - Two or more matching people refuse the sign-in, even when an invitation
+    for the address is also pending.
+  - Otherwise at least one pending invitation for the address must exist
+    (pending invitations exist only in `draft` and `open` events, and a
+    canceled one is deleted, so it never counts). A new person is created
+    and the invitations turn into participants (§4).
+  - Someone admitted this way is a full person, and nothing records which
+    provider admitted them.
+- Refusals (open providers only): no session, person or login is stored. One
+  info log line names the provider key and the reason (`no invitation or
+  person`, `email not verified`, `ambiguous: N matches`), never the email or
+  `sub`. The person lands on `/auth/failed` with a heading and text per
+  reason, then every provider's "Sign in with <label>" button again,
+  outlined, in configured order and carrying the return URL:
+  - No invitation or person: "Pollyanna doesn't know you yet" / "Pollyanna
+    doesn't know **<address>** yet. Ask whoever organizes your family's
+    exchange to invite that address, or sign in another way."
+  - Email not verified: "<Provider> hasn't confirmed this address" /
+    "<Provider> says it hasn't verified **<address>**, so Pollyanna can't use
+    it to let you in. Confirm it with <Provider>, or sign in another way."
+  - Ambiguous: "Pollyanna can't tell who you are" / "More than one person in
+    Pollyanna uses **<address>**. Ask whoever organizes your family's
+    exchange to sort it out, or sign in another way."
+  - The provider, reason, address and return URL reach the page as
+    protected data that expires after 10 minutes, never as plain query
+    values, so a crafted URL can't make the page show an address. A missing,
+    altered or expired one shows the general "Sign-in didn't work" page.
 - There are no site-wide admins. All management is per event, by that
   event's organizers (§4).
 - Devices are assumed to be personal. "Sign out" ends only the Pollyanna
@@ -428,6 +467,11 @@ automatically on sign-in, so declining an invitation means leaving.)
   invitation turns into a Participant row and is deleted. Matching is
   case-insensitive, and uses only an email the provider marks as verified
   when it says so.
+  - Through a trusted provider this leniency holds: an email with
+    `email_verified: true` or no such claim matches, and `false` doesn't.
+  - Through an open provider, only `email_verified: true` counts, and a
+    pending invitation is what lets an unknown login in at all (§3). Pending
+    invitations exist only in `draft` and `open` events.
 - Organizers see pending invitations and can cancel them.
 - The draw cannot run while invitations are pending: every participant needs
   an account (§5.2). The organizer waits or cancels the invitation.

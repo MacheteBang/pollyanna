@@ -190,12 +190,12 @@ public sealed class ConfigurationTests : IDisposable
     }
 
     [Theory]
-    [InlineData("POLLYANNA_OIDC_GOOGLE_ADMISSION")]
-    [InlineData(PollyannaSettings.AdmissionKey)]
-    public void Open_admission_is_not_supported_yet(string setting)
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ADMISSION", "google")]
+    [InlineData(PollyannaSettings.AdmissionKey, "default")]
+    public void Open_admission_is_accepted(string setting, string key)
     {
-        var problem = Assert.Single(Refused(WithGoogle((setting, "open"))).Problems);
-        Assert.Equal($"{setting} is open, but open admission is not supported yet. Use trusted.", problem);
+        var s = Load(WithGoogle((setting, "Open")));
+        Assert.Equal(Admission.Open, s.Providers.ByKey(key)!.Admission);
     }
 
     [Fact]

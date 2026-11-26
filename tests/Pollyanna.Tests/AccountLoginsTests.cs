@@ -131,6 +131,23 @@ public sealed class AccountLoginsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Adding_a_login_through_an_open_provider_skips_the_admission_gate()
+    {
+        await using var open = await TestApp.StartAsync(providers: [new("google", "Google", "open")]);
+        var (browser, alice) = await open.SignInAsync(Alice);
+        var stranger = new MockIdentity("alice-g", "Alice G", "nobody-invited@gmail.example", false, null);
+
+        var notice = await NoticeAfterAsync(browser, await AddLoginAsync(browser, "google", stranger));
+
+        Assert.Equal("Added.", notice);
+        Assert.Contains((TestApp.IssuerOf("google"), "alice-g"),
+            await open.WithDbAsync(async db => (await db.Logins.Where(l => l.PersonId == alice)
+                .Select(l => new { l.Issuer, l.Subject }).ToListAsync()).Select(l => (l.Issuer, l.Subject)).ToList()));
+        Assert.Equal(1, await open.WithDbAsync(db => db.People.CountAsync()));
+        Assert.DoesNotContain(open.Logs.Entries, e => e.Message.StartsWith("Refused a sign-in"));
+    }
+
+    [Fact]
     public async Task Adding_a_login_that_is_already_yours_changes_nothing()
     {
         var (browser, alice) = await app.SignInAsync(Alice);

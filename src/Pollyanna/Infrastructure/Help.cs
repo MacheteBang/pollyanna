@@ -35,7 +35,8 @@ public static class Help
           POLLYANNA_OIDC_LABEL      Optional: the name on its sign-in button (default: the
                                   issuer's host name).
           POLLYANNA_OIDC_ADMISSION  Optional: trusted (the default): anyone the provider
-                                  authenticates gets in.
+                                  authenticates gets in; or open: only a verified email
+                                  that matches a person or a pending invitation gets in.
           POLLYANNA_OIDC_ICON_FILE  Optional: the path of a logo for its sign-in button
                                   (PNG, JPEG, GIF, WebP or SVG, at most 1 MB). Without
                                   it, the button is text only.
@@ -59,7 +60,7 @@ public static class Help
           POLLYANNA_OIDC_<KEY>_CLIENT_SECRET or POLLYANNA_OIDC_<KEY>_CLIENT_SECRET_FILE
                                   Set exactly one.
           POLLYANNA_OIDC_<KEY>_LABEL      The name on its button, e.g. Google.
-          POLLYANNA_OIDC_<KEY>_ADMISSION  trusted (open is not supported yet).
+          POLLYANNA_OIDC_<KEY>_ADMISSION  trusted or open, as above.
           And this one is optional:
           POLLYANNA_OIDC_<KEY>_ICON_FILE  A logo for its button, e.g. the provider's own
                                   downloadable button artwork (as for

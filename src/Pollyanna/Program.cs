@@ -62,6 +62,7 @@ services.AddHttpClient<PictureFetcher>()
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { MaxAutomaticRedirections = 3, UseCookies = false });
 services.AddScoped<PersonSignIn>();
 services.AddSingleton<EmailVerifiedHint>();
+services.AddSingleton<RefusedSignIn>();
 services.AddScoped<SealedHat>();
 services.AddScoped<EventManager>();
 services.AddSingleton<PostingLimit>();
