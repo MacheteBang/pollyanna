@@ -47,7 +47,8 @@ gift exchange is called around Philadelphia.
 - **Reveal day.** Everyone sees who drew whom. Events are then archived, so the history
   stays across years.
 - **Your own sign-in.** People sign in through your OpenID Connect provider, and organizers
-  invite them by email address.
+  invite them by email address. Optionally, add more providers such as Google next to it,
+  each one either trusted or open to invited addresses only.
 - **Optional email notifications,** which never include who drew whom.
 - **Small and private.** Any occasion. Works on phones. No trackers, CDNs or outside assets:
   one small container with SQLite.
@@ -78,14 +79,17 @@ around, [try it locally](CONTRIBUTING.md#try-it-locally) with the mock provider.
 
 ## What you need
 
-Pollyanna has no accounts of its own: everyone signs in through an identity provider you
-run. Before you start, have:
+Pollyanna has no accounts of its own: everyone signs in through an identity provider.
+External providers such as Google are optional, and Pollyanna relies only on the services
+you choose to configure. Before you start, have:
 
 - **Docker** with the Compose plugin, on a Linux x86-64 host.
 - **A reverse proxy that terminates TLS** (Caddy, nginx, Traefik, …).
 - **An OpenID Connect provider** where you can register a client, such as Pocket ID,
-  Authelia, Authentik or Keycloak. Everyone who takes part needs an account there. If you
-  don't run one yet, [Pocket ID](https://pocket-id.org) is the easiest place to start.
+  Authelia, Authentik or Keycloak. Everyone who takes part needs an account there, or at
+  another provider you add next to it
+  ([several providers](DEPLOYMENT.md#more-than-one-provider)). If you don't run one yet,
+  [Pocket ID](https://pocket-id.org) is the easiest place to start.
 
 ## Quick start
 

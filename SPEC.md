@@ -19,17 +19,20 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 - The draw stays sealed from the operator: no screen, API or log shows pairings,
   and the database alone is not enough to reconstruct them.
 - One event per exchange ("Family gifts 2026"), with history across years.
-- Fully self-hosted: the app relies on no service the family doesn't run
-  itself. Its only network dependencies are the identity provider, which is
-  also self-hosted, and, if email notifications are turned on (§15), a mail
-  relay the operator chooses.
+- Fully self-hosted: the app relies only on services the operator chooses to
+  configure. Its only network dependencies are the identity providers the
+  operator configures (§2, §3), the hosts that serve people's profile
+  pictures and, if email notifications are turned on (§15), a mail relay the
+  operator chooses. External providers such as Google are optional: the
+  family's own provider can be the only one.
 
 **Non-goals (v1)**
 - Wishlists with item links, claiming, or price tracking.
 - Notifications other than email (§15): no web push, no app push, no
   in-app notification list.
 - Participants without an identity-provider account (proxies). Everyone who
-  takes part, children included, gets their own account at the provider.
+  takes part, children included, signs in with their own account at one of
+  the configured providers (ADR-0006).
 - Mobile apps. The web UI must work well on phones.
 - Languages other than English. Text lives in the code; dates use one fixed
   English format (in the viewer's time zone, §4).
@@ -835,7 +838,7 @@ with labels, and the reveal animation turned off under "reduce motion".
   and would be regenerated on a switch.
 - Settings come from environment variables (documented in the deployment
   notes); the client secret can be read from a file. All are required except
-  the SMTP settings; the app refuses to start and lists every problem if any
+  the optional provider settings and the SMTP settings; the app refuses to start and lists every problem if any
   is missing or invalid.
 
 | Variable | Setting (§2) |
@@ -844,6 +847,9 @@ with labels, and the reveal animation turned off under "reduce motion".
 | `POLLYANNA_OIDC_ISSUER` | OIDC issuer; must be `https` unless the host is loopback (development). |
 | `POLLYANNA_OIDC_CLIENT_ID` | Client ID. |
 | `POLLYANNA_OIDC_CLIENT_SECRET` or `POLLYANNA_OIDC_CLIENT_SECRET_FILE` | Client secret, or a file holding it (exactly one of the two). |
+| `POLLYANNA_OIDC_LABEL`, `POLLYANNA_OIDC_ADMISSION`, `POLLYANNA_OIDC_ICON_FILE` | Optional: the unnamed provider's button label (default: the issuer's host), admission (`trusted` by default, or `open`) and icon file. |
+| `POLLYANNA_OIDC_PROVIDERS` | Optional: extra provider keys, separated by commas or spaces. With at least one, the unnamed set becomes optional. |
+| `POLLYANNA_OIDC_<KEY>_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET` or `_CLIENT_SECRET_FILE`, `_LABEL`, `_ADMISSION`, `_ICON_FILE` | Per listed key, all required except `_ICON_FILE`, under the same rules as the unnamed set; `_ADMISSION` has no default (§2). |
 | `POLLYANNA_DRAW_KEY_FILE` | Draw key file: 32 raw bytes, created with mode 0600 if absent. |
 | `POLLYANNA_DATA_DIR` | Data location: holds `pollyanna.db` and the key ring for sign-in state and form tokens. |
 | `POLLYANNA_SMTP_HOST` | Mail relay host (§15). Unset: email notifications are off and the other SMTP settings must be unset too. |
@@ -1508,6 +1514,80 @@ Decided with the user on 2026-11-25, released as 0.0.4:
   refuses it as prunable), but the test project still resolves 10.0.0.
 - No database migration: the EF Core 11 model matches the last migration.
 - Released right away rather than after the holidays, at the user's call.
+
+### Done: several providers
+
+Spec issue #17, built as #18 to #27 and decided with the user on 2026-11-25.
+The rules are in §1, §2, §3, §4, §7 and §15; the terms **Login**, **Trusted
+provider** and **Open provider** are in GLOSSARY.md. It's a feature, so it
+gets a minor bump, and the release notes must say that the logins migration
+has no way back. Existing `POLLYANNA_OIDC_*` settings keep working unchanged.
+
+- **Logins (#18).** `Login` (person, issuer, `sub`, last email, created and
+  last-used times; issuer plus `sub` unique) replaces `Person`'s issuer and
+  `sub` columns. The `Logins` migration turns each living person's pair into
+  one login; tombstones get none. "Has no logins" is now the tombstone
+  marker, asked in one place (`PersonQueries.Living` in `Data/Entities.cs`),
+  so a tombstone still keeps only its `id` (ADR-0005, with a dated note).
+  Account deletion deletes every login. Sessions still record only the
+  person.
+- **Sign-in resolution.** `Auth/PersonSignIn.cs` takes the provider and the
+  claims and returns one outcome: a known login signs in whatever the
+  admission; a verified email matching exactly one living person adds a
+  login (never replacing one); otherwise a trusted provider creates a person
+  and an open provider admits only a verified email with a pending
+  invitation, or refuses. A claim that isn't sent never clears a stored
+  name, email or picture. `EmailVerifiedHint` logs once per provider per run.
+- **Providers (#20).** `Auth/ProviderRegistry.cs` reads the settings and owns
+  the providers (key, label, issuer, admission, callback path, icon) in
+  configured order. `Auth/ProviderSchemes.cs` adds one OpenID Connect scheme
+  per provider on first use: `oidc` with `/auth/callback` for the unnamed
+  one, `oidc-<key>` with `/auth/callback/<key>` for a listed one. The ready
+  line is followed by one line per provider, and the settings error lists
+  every known redirect URI. `/auth/login` goes straight to a lone provider
+  and otherwise renders the chooser, whose buttons go to
+  `/auth/login/<key>`. Sign-in failure logs name the provider and its
+  settings.
+- **Open providers (#21).** The admission gate is in `PersonSignIn`;
+  `Auth/RefusedSignIn.cs` carries the refusal (provider, reason, address,
+  return URL) to `/auth/failed` as protected data that expires after 10
+  minutes. Nothing is stored for a refused sign-in, and its log line names
+  only the provider key and the reason.
+- **Icons (#22).** `Auth/ProviderIcon.cs` checks an icon file at startup
+  (readable, at most 1 MB, PNG, JPEG, GIF or WebP by its first bytes, or an
+  SVG with no DTD), and `Auth/ProviderIconEndpoint.cs` serves it at
+  `/auth/icon/<key>`. Every provider button is drawn by
+  `Pages/Shared/_ProviderButton.cshtml`.
+- **Ways to sign in (#23).** `/account` lists each login with its provider
+  label (or "(no longer set up)"), its last email and "Remove", then an "Add
+  <label>" button per provider when there are several. `Auth/AddLogin.cs`
+  carries the intent and the person through the challenge, and attaching
+  skips email matching and admission.
+- **Invitation email (#24).** With an open provider configured, the
+  invitation email names every open provider and the invited address (§15).
+- **Adding people (#19, #25, #26).** `EventManager.KnownTo`
+  (`Events/EventManager.KnownPeople.cs`) is the one query for whom a picker
+  lists and accepts: people the viewer shares any event with, names and
+  pictures only. The add-people control (`Pages/Events/_AddPeople.cshtml`,
+  fields in `AddPeopleControl`) is on the manage page and the new-event
+  form; a ticked ID outside the list is a 404, and a typed address that
+  matches several people stores nothing. The organizer and late-joiner
+  pickers (`Pages/Shared/_PickOne.cshtml`, `Events/EventManager.Pickers.cs`)
+  use the same list, and their address field only finds a person. The
+  script in `wwwroot/js/site.js` only filters and adds the address row.
+- **Operator docs (#27).** DEPLOYMENT.md has the provider settings, a Google
+  walkthrough (public HTTPS host names only), the open-provider warning, the
+  honest-`email_verified` rule, icon files and the cost of removing a
+  provider. README.md says extra providers are optional, and `help` and
+  `deploy/.env.example` show a listed provider.
+- **Tests.** `TestApp.StartAsync(providers: …)` takes extra mock providers
+  (`TestProvider`: key, label, admission, icon), each its own mock issuer;
+  `SignInAsync(identity, provider: "<key>")` picks one, and
+  `Seed.PersonAsync` takes logins. New classes: `SeveralProvidersTests`,
+  `OpenProviderTests`, `ProviderIconTests`, `AccountLoginsTests`,
+  `LoginMigrationTests` and `AddPeopleTests`; `ConfigurationTests`,
+  `DeploymentTests`, `RelinkTests`, `PictureTests`, `ManageTests`,
+  `EventCreationTests`, `AfterDrawTests` and the secrecy tests are extended.
 
 ## 15. Email notifications
 
