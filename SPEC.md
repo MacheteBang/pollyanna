@@ -99,7 +99,9 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     only logins no person holds yet.
   - Settings errors, each naming its setting in full: two providers with the
     same issuer once trailing slashes are trimmed (naming both settings); a
-    `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't listed; a repeated,
+    `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't listed; an unknown
+    field of a listed key, such as a misspelled `..._LABLE` ("isn't a setting
+    Pollyanna knows"); a repeated,
     malformed or reserved key; any provider field missing or invalid, under
     the same secret and https rules for every provider; an icon file that is
     missing or isn't a usable image. When the public URL is
