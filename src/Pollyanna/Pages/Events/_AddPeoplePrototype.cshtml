@@ -1,0 +1,109 @@
+@* PROTOTYPE (wayfinder #11, "Adding people: one search box that finds a person or invites the
+   address"). Throwaway: lives on branch prototype/add-people, never merged. Three variants on the
+   manage page, switched with ?variant=A|B|C, shown only in Development. They differ in layout and,
+   above all, in what they reveal about who has signed in. *@
+@model Pollyanna.Pages.Events.ManageModel
+@using Pollyanna.Events
+@{
+    var v = Model.ProtoVariant!;
+}
+
+<link rel="stylesheet" href="~/css/prototype-add-people.css" asp-append-version="true">
+
+<div class="proto-note">
+    <p class="kicker">PROTOTYPE @v · WHAT THIS REVEALS</p>
+    @switch (v)
+    {
+        case "A":
+            <p>Everyone who has ever signed in, name and email, to any organizer of any event (@Model.ProtoEveryone.Count people here). Today's reach, merged into one box.</p>
+            break;
+        case "B":
+            <p>Only people you've shared an event with, by name only (@Model.ProtoKnown.Count here, of @Model.ProtoEveryone.Count signed in). Anyone else only by typing their exact address.</p>
+            break;
+        case "C":
+            <p>Nobody is listed. You type an address; Pollyanna adds the person if it knows them, otherwise invites the address.</p>
+            break;
+    }
+</div>
+
+<form method="post" asp-page-handler="ProtoAdd" class="stack proto-form" data-proto="@v">
+    <input type="hidden" name="variant" value="@v">
+
+    @if (v == "A")
+    {
+        @* A: one combobox. Type a name or an email; matches drop down under it, and an address that
+           matches nobody becomes the last row, "Invite …". *@
+        <label for="proto-a-q">Add someone</label>
+        <div class="proto-combo">
+            <div class="input-row">
+                <input id="proto-a-q" type="text" role="combobox" aria-expanded="false" aria-controls="proto-a-list"
+                       aria-autocomplete="list" autocomplete="off" placeholder="A name or an email">
+                <button type="submit" class="button button-small" disabled>Add</button>
+            </div>
+            <ul id="proto-a-list" class="proto-list" role="listbox" hidden>
+                @foreach (var p in Model.ProtoEveryone)
+                {
+                    <li role="option" class="person proto-option" data-id="@p.Id" data-search="@($"{p.Name} {p.Email}".ToLowerInvariant())">
+                        <partial name="_Avatar" model="new PersonRow(p.Id, p.Name, p.HasPicture)" />
+                        <span class="person-body"><span class="person-name">@p.Name</span><span class="small">@p.Email</span></span>
+                    </li>
+                }
+                <li role="option" class="person proto-option proto-invite" data-invite hidden>
+                    <span class="person-body"><span class="person-name">Invite <span data-invite-address></span></span>
+                    <span class="small">Nobody here uses that address yet. They join when they first sign in with it.</span></span>
+                </li>
+            </ul>
+            <input type="hidden" name="personIds" disabled>
+            <input type="hidden" name="email" disabled>
+        </div>
+        <p class="hint" data-picked>Pick someone from the list, or type a full email address to invite it.</p>
+    }
+    else if (v == "B")
+    {
+        @* B: a ticklist of people you know, filtered by the box above it. Several at once. An
+           address in the box adds a last row that is ticked for you. *@
+        <label for="proto-b-q">Add people</label>
+        <input id="proto-b-q" type="text" autocomplete="off" placeholder="Filter, or type an email">
+        <fieldset class="proto-ticks">
+            <legend class="small">From your exchanges</legend>
+            @if (Model.ProtoKnown.Count == 0)
+            {
+                <p class="small" data-none>Nobody yet. Type someone's email above.</p>
+            }
+            <ul class="people" role="list">
+                @foreach (var p in Model.ProtoKnown)
+                {
+                    <li class="person" data-search="@p.Name.ToLowerInvariant()">
+                        <input type="checkbox" name="personIds" value="@p.Id" id="proto-b-@p.Id">
+                        <partial name="_Avatar" model="new PersonRow(p.Id, p.Name, p.HasPicture)" />
+                        <label class="person-body person-name" for="proto-b-@p.Id">@p.Name</label>
+                    </li>
+                }
+                <li class="person" data-invite hidden>
+                    <input type="checkbox" name="email" id="proto-b-email" checked>
+                    <label class="person-body" for="proto-b-email"><span class="person-name">Add or invite <span data-invite-address></span></span>
+                    <span class="small">If someone already uses this address, they're added. If not, it's invited.</span></label>
+                </li>
+            </ul>
+        </fieldset>
+        <button type="submit" class="button button-small">Add ticked</button>
+        <p class="hint">Only people you've been in an exchange with are listed. For anyone else, type their email.</p>
+    }
+    else
+    {
+        @* C: an address and nothing else. *@
+        <label for="proto-c-email">Their email address</label>
+        <div class="input-row">
+            <input id="proto-c-email" name="email" type="email" required autocomplete="off" placeholder="sue@example.com">
+            <button type="submit" class="button button-small">Add</button>
+        </div>
+        <p class="hint">If they already use Pollyanna, they're added now. If not, the address is invited and they join when they first sign in with it. Linking this event to last year's brings last year's people back.</p>
+    }
+</form>
+
+<nav class="proto-switcher" aria-label="Prototype variants">
+    <a href="?variant=@(v == "A" ? "C" : v == "B" ? "A" : "B")#people" data-proto-prev aria-label="Previous variant">←</a>
+    <span>@v · @(v == "A" ? "Search everyone" : v == "B" ? "Your people, then an address" : "Address only")</span>
+    <a href="?variant=@(v == "A" ? "B" : v == "B" ? "C" : "A")#people" data-proto-next aria-label="Next variant">→</a>
+</nav>
+<script src="~/js/prototype-add-people.js" asp-append-version="true" defer></script>

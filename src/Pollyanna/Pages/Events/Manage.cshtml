@@ -172,7 +172,11 @@
         </ul>
     }
 
-    @if (editable)
+    @if (editable && Model.ProtoVariant is not null)
+    {
+        <partial name="_AddPeoplePrototype" model="Model" />
+    }
+    else if (editable)
     {
         <form method="post" asp-page-handler="AddPerson" class="stack">
             <label for="add-person">Add someone who has signed in</label>

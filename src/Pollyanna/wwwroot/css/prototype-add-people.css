@@ -1,0 +1,21 @@
+/* PROTOTYPE (wayfinder #11). Throwaway: branch prototype/add-people, never merged. */
+.proto-note { border: 2px dashed var(--ribbon); padding: 8px 12px; background: var(--bright); }
+.proto-note p { margin: 0; font-size: 0.875rem; }
+.proto-combo { position: relative; }
+.proto-list {
+    list-style: none; margin: 4px 0 0; padding: 0 10px; background: var(--bright);
+    border: 1px solid var(--ink); max-height: 260px; overflow-y: auto;
+}
+.proto-option { cursor: pointer; }
+.proto-option[aria-selected="true"], .proto-option:hover { background: var(--paper); }
+.proto-invite .person-name { text-decoration: underline; }
+.proto-ticks { border: 0; padding: 0; margin: 0; }
+.proto-ticks input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; }
+.proto-ticks label { cursor: pointer; }
+.proto-switcher {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 100;
+    display: flex; gap: 16px; align-items: center; padding: 8px 16px;
+    background: #111; color: #fff; font-family: system-ui, sans-serif; font-size: 14px;
+    border-radius: 999px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+}
+.proto-switcher a { color: #fff; text-decoration: none; font-size: 18px; padding: 4px 8px; }

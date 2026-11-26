@@ -12,8 +12,60 @@ namespace Pollyanna.Pages.Events;
 /// Organizers see who has viewed their assignment and who is done shopping, never who drew whom
 /// until the pairings are revealed.
 /// </summary>
-public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPageModel(db)
+public sealed class ManageModel(PollyannaDb db, EventManager events, IWebHostEnvironment env) : EventPageModel(db)
 {
+    // ---------- PROTOTYPE (wayfinder #11): one control for adding people. Throwaway. ----------
+    public sealed record ProtoPerson(Guid Id, string Name, string? Email, bool HasPicture);
+    /// <summary>A, B or C when the prototype is on (Development only, ?variant=); null otherwise.</summary>
+    public string? ProtoVariant { get; private set; }
+    /// <summary>Everyone who has ever signed in and isn't in this event (today's reach).</summary>
+    public IReadOnlyList<ProtoPerson> ProtoEveryone { get; private set; } = [];
+    /// <summary>Only people who share (or shared) an event with the organizer, and aren't in this one.</summary>
+    public IReadOnlyList<ProtoPerson> ProtoKnown { get; private set; } = [];
+
+    async Task LoadPrototypeAsync()
+    {
+        var v = Request.Query["variant"].ToString().ToUpperInvariant();
+        ProtoVariant = env.IsDevelopment() ? (v is "A" or "B" or "C" ? v : "A") : null;
+        if (ProtoVariant is null) return;
+        var inEvent = Participants.Select(p => p.Id).ToHashSet();
+        var mine = Db.Participants.Where(p => p.PersonId == Me).Select(p => p.EventId)
+            .Union(Db.Organizers.Where(o => o.PersonId == Me).Select(o => o.EventId));
+        var knownIds = await Db.Participants.Where(p => mine.Contains(p.EventId)).Select(p => p.PersonId)
+            .Union(Db.Organizers.Where(o => mine.Contains(o.EventId)).Select(o => o.PersonId))
+            .ToListAsync();
+        var all = (await events.SignedInPeople.AsNoTracking()
+                .Select(p => new ProtoPerson(p.Id, p.DisplayName ?? "", p.Email, Db.PersonPictures.Any(x => x.PersonId == p.Id)))
+                .ToListAsync())
+            .Where(p => !inEvent.Contains(p.Id))
+            .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+        ProtoEveryone = all;
+        ProtoKnown = all.Where(p => knownIds.Contains(p.Id) && p.Id != Me).ToList();
+    }
+
+    /// <summary>One submit for every variant: tick or pick people, and/or type an address.</summary>
+    public async Task<IActionResult> OnPostProtoAddAsync(Guid id, List<Guid> personIds, string? email, string? variant)
+    {
+        if (!await LoadAsOrganizerAsync(id) || !env.IsDevelopment())
+            return NotFound();
+        var messages = new List<string>();
+        var ok = true;
+        foreach (var personId in personIds)
+        {
+            var o = await events.AddParticipantAsync(Membership, Me, personId, null, null);
+            ok &= o.Ok; messages.Add(o.Message);
+            await LoadAsOrganizerAsync(id);
+        }
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var o = await events.InviteAsync(Membership, Me, email);
+            ok &= o.Ok; messages.Add(o.Message);
+        }
+        if (messages.Count == 0) { ok = false; messages.Add("Nothing to add."); }
+        return Finish(new Outcome(ok, string.Join(" ", messages)), $"/events/{id}/manage?variant={variant}#people");
+    }
+    // ---------- end PROTOTYPE ----------
+
     public sealed record ParticipantRow(Guid Id, string Name, bool HasPicture, string? Email, bool HasNotes, Guid? HouseholdId,
         bool DoneShopping, bool WantsToLeave) : PersonRow(Id, Name, HasPicture);
     public sealed record HouseholdRow(Guid Id, string Name, IReadOnlyList<ParticipantRow> Members);
@@ -60,6 +112,7 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
         PreviousEventId = Event.PreviousEventId;
         NoRepeatDepth = Event.NoRepeatDepth;
         await LoadPageAsync();
+        await LoadPrototypeAsync(); // PROTOTYPE
         return Page();
     }
 
