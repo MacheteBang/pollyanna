@@ -1695,9 +1695,10 @@ kind's words are unchanged, and there is no new setting.
   inbox snippets show the kind's text. Mailpit's compatibility report
   flags only gaps already expected: no stamp tilt or `<style>` in Gmail
   (§15 **Layout**), and Outlook for Windows ignoring the tag's width and
-  some spacing, the plainest rendering, which #40 accepts. Real clients
-  (Apple Mail, Gmail web, a forced-dark client, a phone) are still to be
-  checked by hand; notes go on #44.
+  some spacing, the plainest rendering, which #40 accepts. Then every kind
+  went through a real relay to a real inbox, where the user checked them
+  in real clients and found them good; in Gmail the inbox snippet shows
+  the kind's text and stops at the spacers. Notes are on #44.
 
 ## 15. Email notifications
 
