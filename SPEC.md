@@ -1690,6 +1690,14 @@ meant for the reader. Emails don't greet the reader by name. The text is
 built when the email is sent, so it uses the event's name at that moment;
 a named person whose account is gone appears as "Former participant".
 
+**Nothing remote.** An email loads nothing from the server or anywhere
+else: no remote images, no web fonts, no tracking pixels. Fetching one
+would tell the server (and its access logs) roughly when someone opened an
+email, and from where, which is the timing record ADR-0003 avoids. The
+HTML part carries no images either, not even embedded (CID) ones: the
+masthead is typographic, the wordmark in the font stack, which starts at
+Courier New since Courier Prime can't be loaded.
+
 **Address.** The email from the person's last sign-in, unless the provider
 sent `email_verified: false` for it (the same leniency as invitations,
 §4). Someone with no email claim gets nothing. Invitation emails go to the
