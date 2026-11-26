@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using Pollyanna.Data;
@@ -90,6 +91,59 @@ public sealed class HtmlEmailTests
             var links = doc.QuerySelectorAll("a").Select(a => a.GetAttribute("href")).ToList();
             Assert.NotEmpty(links);
             Assert.All(links, href => Assert.StartsWith(TestApp.PublicUrl + "/", href));
+        }
+    }
+
+    /// <summary>The event's status during each step of the every-kind run, as the app's stamps label it.</summary>
+    static readonly Dictionary<string, string> StatusWhenSent = new()
+    {
+        ["draft"] = "DRAFT", ["open"] = "OPEN", ["added"] = "OPEN", ["notes"] = "OPEN",
+        ["drawn"] = "DRAWN", ["redraw"] = "OPEN", ["drawn again"] = "DRAWN", ["questions"] = "DRAWN",
+        ["late joiner"] = "DRAWN", ["request to leave"] = "DRAWN", ["revealed"] = "REVEALED",
+    };
+
+    [Fact]
+    public async Task Every_kind_wears_a_stamp_with_the_events_status_when_it_was_sent()
+    {
+        await using var app = await TestApp.StartAsync(mail: true, providers: NotificationSecrecyTests.OpenProvider);
+        var run = await NotificationSecrecyTests.EveryKindAsync(app);
+
+        // Every status the run passes through shows up on some email.
+        Assert.Equal(["DRAFT", "DRAWN", "OPEN", "REVEALED"],
+            run.Mail.Select(s => StatusWhenSent[s.Step]).Distinct().Order());
+        foreach (var (step, mail) in run.Mail)
+        {
+            var stamp = Parse(mail.Html).QuerySelectorAll(".stamp");
+            Assert.True(stamp.Length == 1, $"One stamp in the {step} email to {mail.To}:\n{mail.Html}");
+            Assert.Equal(StatusWhenSent[step], Normalize(stamp[0].TextContent));
+        }
+    }
+
+    /// <summary>The button's label, by where the kind links to (spec §15).</summary>
+    static string ButtonLabel(NotificationKind kind) => kind switch
+    {
+        NotificationKind.MadeOrganizer or NotificationKind.RedrawNeeded => "Open the manage page",
+        NotificationKind.Question => "Read the question",
+        _ => "Open the event",
+    };
+
+    [Fact]
+    public async Task Every_kinds_button_is_labeled_by_where_it_goes_and_links_to_the_url_printed_under_it()
+    {
+        await using var app = await TestApp.StartAsync(mail: true, providers: NotificationSecrecyTests.OpenProvider);
+        var run = await NotificationSecrecyTests.EveryKindAsync(app);
+
+        foreach (var (step, mail) in run.Mail)
+        {
+            var because = $"the {step} email to {mail.To}:\n{mail.Html}";
+            var doc = Parse(mail.Html);
+            // The plain text's link: the line between its text and its footer.
+            var plainLink = Assert.Single(mail.Body.Split('\n'), l => l.StartsWith(TestApp.PublicUrl + "/events/"));
+
+            var button = Assert.Single(doc.QuerySelectorAll("a"), a => a.GetAttribute("href") == plainLink);
+            Assert.True(ButtonLabel(NotificationSecrecyTests.KindOf(mail)) == Normalize(button.TextContent), because);
+            // The URL in small type under the button, as text for clients where the button fails.
+            Assert.True(doc.Body!.Descendants<IText>().Any(t => t.Text.Trim() == plainLink), because);
         }
     }
 

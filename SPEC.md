@@ -1761,8 +1761,9 @@ for narrow screens.
   with `role="presentation"`. The hidden preview text and its spacer run
   carry `aria-hidden="true"`, so screen readers read the kind's text once,
   in the body. Every piece of text meets WCAG AA contrast (4.5:1) against
-  its own background (ink on slip paper 14.9, the red stamp 5.6, the small
-  URL 6.7, the footer on bright paper 7.7); the ribbon-blue band holds no
+  its own background (ink on slip paper 14.9, and slip paper on the ink
+  button the same, the red stamp 5.6, the small URL 6.7, the footer on
+  bright paper 7.7 and its ink link 17.0); the ribbon-blue band holds no
   text and is decoration. There is no `role="article"` wrapper: the title
   and the event-name heading are the structure.
 
