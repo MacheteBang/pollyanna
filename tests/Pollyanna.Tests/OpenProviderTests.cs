@@ -227,6 +227,33 @@ public sealed class OpenProviderTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_known_login_without_email_verified_accepts_no_invitation_through_an_open_provider()
+    {
+        var sue = await app.PersonAsync("Sue", "sue@example.com", logins: [(TestApp.IssuerOf("google"), Sue.Sub)]);
+        var ev = await InviteAsync("sue@example.com");
+
+        var (browser, location) = await SignInThroughGoogleAsync(Sue with { EmailVerified = null });
+        using var _ = browser;
+
+        Assert.Equal("/account", location);
+        Assert.DoesNotContain(sue, await app.ParticipantsAsync(ev));
+        Assert.Equal(1, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+    }
+
+    [Fact]
+    public async Task A_known_login_without_email_verified_still_accepts_invitations_through_a_trusted_provider()
+    {
+        var sue = await app.PersonAsync("Sue", "sue@example.com", logins: [(TestApp.IssuerOf("work"), "sue-work")]);
+        var ev = await InviteAsync("sue@example.com");
+
+        var (browser, _) = await app.SignInAsync(Sue with { Sub = "sue-work", EmailVerified = null }, provider: "work");
+        using var _b = browser;
+
+        Assert.Contains(sue, await app.ParticipantsAsync(ev));
+        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+    }
+
+    [Fact]
     public async Task A_trusted_provider_still_creates_a_new_person_for_an_unknown_login()
     {
         var (browser, _) = await app.SignInAsync(Sue with { Sub = "sue-work" }, provider: "work");

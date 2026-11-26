@@ -115,7 +115,7 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
             db.Logins.Add(login);
         }
 
-        await CountAsSignInAsync(person, login, identity, now, cancellationToken);
+        await CountAsSignInAsync(provider, person, login, identity, now, cancellationToken);
         return new SignInOutcome(person, null);
     }
 
@@ -124,7 +124,8 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
     /// who asked for it from <c>/account</c> (spec §3 "Adding a login while signed in"). The fresh
     /// round trip proves control, so there is no email match, no <c>email_verified</c> check and no
     /// admission check. A login another person holds is refused and nothing is merged; one the
-    /// person already holds changes nothing. An added login counts as a sign-in for the profile.
+    /// person already holds changes nothing. An added login counts as a sign-in for the profile
+    /// and for invitations, under the same open-provider rule as any sign-in (spec §4).
     /// </summary>
     public async Task<AddLoginResult> AddLoginAsync(Provider provider, Guid personId, ProviderIdentity identity, CancellationToken cancellationToken = default)
     {
@@ -143,13 +144,17 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         var person = await db.People.Living().SingleAsync(p => p.Id == personId, cancellationToken);
         var login = new Login { PersonId = personId, Issuer = identity.Issuer, Subject = identity.Subject, CreatedAt = now };
         db.Logins.Add(login);
-        await CountAsSignInAsync(person, login, identity, now, cancellationToken);
+        await CountAsSignInAsync(provider, person, login, identity, now, cancellationToken);
         logger.LogInformation("Person {PersonId} added a login through provider {Provider}.", personId, provider.Key);
         return AddLoginResult.Added;
     }
 
-    /// <summary>What every sign-in does once the login and person are known: refresh both, accept invitations, fetch the picture.</summary>
-    async Task CountAsSignInAsync(Person person, Login login, ProviderIdentity identity, DateTime now, CancellationToken cancellationToken)
+    /// <summary>
+    /// What every sign-in does once the login and person are known: refresh both, accept
+    /// invitations, fetch the picture. Through an open provider only <c>email_verified: true</c>
+    /// accepts invitations; a missing claim counts as false (spec §4).
+    /// </summary>
+    async Task CountAsSignInAsync(Provider provider, Person person, Login login, ProviderIdentity identity, DateTime now, CancellationToken cancellationToken)
     {
         login.LastUsedAt = now;
         if (identity.Email is not null)
@@ -158,7 +163,8 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         person.LastLoginAt = now;
         await db.SaveChangesAsync(cancellationToken);
 
-        await AcceptInvitationsAsync(person, now, cancellationToken);
+        if (provider.Admission == Admission.Trusted || identity.EmailVerified == true)
+            await AcceptInvitationsAsync(person, now, cancellationToken);
 
         await RefreshPictureAsync(person, identity, cancellationToken);
     }
@@ -210,8 +216,9 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
     /// <summary>
     /// Each invitation to the person's email becomes a participant row and is deleted. Matching
     /// is case-insensitive; an email the provider marks unverified is ignored, but one with no
-    /// <c>email_verified</c> claim counts (unlike re-linking). The person is emailed "Added to an
-    /// event" for each event that isn't a draft (spec §15).
+    /// <c>email_verified</c> claim counts (unlike linking by email). The caller skips this
+    /// entirely for an open provider that didn't send <c>email_verified: true</c> (spec §4). The
+    /// person is emailed "Added to an event" for each event that isn't a draft (spec §15).
     /// </summary>
     async Task AcceptInvitationsAsync(Person person, DateTime now, CancellationToken cancellationToken)
     {

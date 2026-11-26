@@ -190,8 +190,10 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     person; if not, nothing changes and the person lands on `/auth/failed`.
     A fresh round trip proves control, so the login is attached with no
     email match, no `email_verified` check and no open-provider admission
-    check. It counts as a sign-in for name, email and picture (and accepts
-    invitations to the new email). Two logins from the same provider are
+    check. It counts as a sign-in for name, email and picture, and accepts
+    invitations to the new email under the same rule as any sign-in (§4):
+    through an open provider, only with `email_verified: true`. Two logins
+    from the same provider are
     allowed. No new session is made; the current one carries on. Notice:
     "Added."
   - A login another (living) person already holds is refused with "That
@@ -472,9 +474,11 @@ automatically on sign-in, so declining an invitation means leaving.)
   when it says so.
   - Through a trusted provider this leniency holds: an email with
     `email_verified: true` or no such claim matches, and `false` doesn't.
-  - Through an open provider, only `email_verified: true` counts, and a
-    pending invitation is what lets an unknown login in at all (§3). Pending
-    invitations exist only in `draft` and `open` events.
+  - Through an open provider, only `email_verified: true` counts (a missing
+    claim counts as `false`), on every sign-in: a known login, one the gate
+    just admitted, and a login added from `/account`. A pending invitation is
+    what lets an unknown login in at all (§3). Pending invitations exist only
+    in `draft` and `open` events.
 - Organizers see pending invitations and can cancel them.
 - The draw cannot run while invitations are pending: every participant needs
   an account (§5.2). The organizer waits or cancels the invitation.

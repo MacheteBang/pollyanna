@@ -147,6 +147,27 @@ public sealed class AccountLoginsTests : IAsyncLifetime
         Assert.DoesNotContain(open.Logs.Entries, e => e.Message.StartsWith("Refused a sign-in"));
     }
 
+    [Theory]
+    [InlineData("open", false)]
+    [InlineData("trusted", true)]
+    public async Task An_added_login_without_email_verified_accepts_invitations_only_through_a_trusted_provider(string admission, bool accepted)
+    {
+        await using var other = await TestApp.StartAsync(providers: [new("google", "Google", admission)]);
+        var (browser, alice) = await other.SignInAsync(Alice);
+        var org = await other.PersonAsync("Org", "org@example.com");
+        var ev = await other.EventAsync("Stockings", EventStatus.Open, [org], [org]);
+        await other.WithDbAsync(async db =>
+        {
+            db.Invitations.Add(new Invitation { EventId = ev, Email = "alice.g@gmail.example", EmailNormalized = "alice.g@gmail.example", InvitedBy = org, CreatedAt = DateTime.UtcNow });
+            await db.SaveChangesAsync();
+        });
+
+        await AddLoginAsync(browser, "google", new MockIdentity("alice-g", "Alice G", "alice.g@gmail.example", null, null));
+
+        Assert.Equal(accepted, (await other.ParticipantsAsync(ev)).Contains(alice));
+        Assert.Equal(accepted ? 0 : 1, await other.WithDbAsync(db => db.Invitations.CountAsync()));
+    }
+
     [Fact]
     public async Task Adding_a_login_that_is_already_yours_changes_nothing()
     {
