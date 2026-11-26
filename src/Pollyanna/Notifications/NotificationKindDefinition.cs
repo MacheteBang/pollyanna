@@ -1,4 +1,5 @@
 using System.Reflection;
+using Pollyanna.Auth;
 using Pollyanna.Data;
 using Pollyanna.Events;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,8 @@ public sealed class NotificationContext
     public required DateTime Now { get; init; }
     /// <summary>The public URL, without a trailing slash.</summary>
     public required string PublicUrl { get; init; }
+    /// <summary>The configured sign-in providers, in configured order.</summary>
+    public required ProviderRegistry Providers { get; init; }
 
     public string EventUrl => $"{PublicUrl}/events/{Event.Id}";
     /// <summary>How the email names <see cref="NamedPerson"/>, as the pages do.</summary>

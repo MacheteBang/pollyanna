@@ -249,6 +249,8 @@ public sealed class NotificationSecrecyTests
         }
     }
 
+    static readonly TestProvider[] OpenProvider = [new("google", "Google", "open")];
+
     /// <summary>The kind an email is, told from its subject alone.</summary>
     static NotificationKind KindOf(OutgoingMail mail) => mail.Subject switch
     {
@@ -266,13 +268,15 @@ public sealed class NotificationSecrecyTests
     [Fact]
     public async Task No_email_of_any_kind_holds_a_message_notes_or_a_givers_or_recipients_name()
     {
-        await using var app = await TestApp.StartAsync(mail: true);
+        // An open provider adds its line to the invitation, which must hold to the same rules.
+        await using var app = await TestApp.StartAsync(mail: true, providers: OpenProvider);
         var run = await EveryKindAsync(app);
 
         Assert.Equal(Enum.GetValues<NotificationKind>().Order(), run.Mail.Select(s => KindOf(s.Mail)).Distinct().Order());
         Assert.Contains(run.Mail, s => s.Mail.Body.Contains("drawn again"));
         Assert.Contains(run.Mail, s => s.Step == "added" && KindOf(s.Mail) == NotificationKind.AddedToEvent);
         Assert.Contains(run.Mail, s => s.Step == "late joiner" && KindOf(s.Mail) == NotificationKind.AddedToEvent);
+        Assert.Contains(run.Mail, s => s.Mail.Body.Contains("Sign in with Google using this address (sue@example.com)."));
 
         foreach (var (step, mail) in run.Mail)
         {
@@ -297,7 +301,8 @@ public sealed class NotificationSecrecyTests
     [Fact]
     public async Task No_email_of_any_kind_mentions_Santa_or_stockings()
     {
-        await using var app = await TestApp.StartAsync(mail: true);
+        // An open provider adds its line to the invitation, which must hold to the same rules.
+        await using var app = await TestApp.StartAsync(mail: true, providers: OpenProvider);
         var run = await EveryKindAsync(app);
 
         foreach (var (step, mail) in run.Mail)
