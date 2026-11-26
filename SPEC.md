@@ -1727,6 +1727,12 @@ for narrow screens.
 - The plain-text part stays exactly as it is. The HTML part has the same
   text and footer and adds only the wordmark, the stamp, the event-name
   heading, the button label and the URL.
+- The HTML part opens with hidden preview text, the snippet inbox lists
+  show after the subject: the kind's text, word for word, followed by a
+  run of invisible spacer characters so clients don't carry on into the
+  wordmark and stamp (decided 2026-11-26, user). Nothing new is written
+  for it. The plain-text part needs none, since it already starts with
+  the same text.
 - Emails declare `color-scheme: light only` (and the matching meta tags),
   as the pages do (§12). Clients that darken them anyway (Gmail on iOS,
   classic Outlook, Outlook.com's recoloring) are accepted.
