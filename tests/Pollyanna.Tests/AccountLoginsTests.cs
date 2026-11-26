@@ -251,9 +251,9 @@ public sealed class AccountLoginsTests : IAsyncLifetime
 
         Assert.Equal("/account", response.Headers.Location!.OriginalString);
         var page = await browser.GetPageAsync("/account");
-        var error = page.QuerySelector("#logins .notice-error")!;
-        Assert.Contains("only way to sign in", error.TextContent);
-        Assert.NotNull(error.QuerySelector("a[href='/account/delete']"));
+        Assert.Equal("That's your only way to sign in, so it can't be removed. To leave Pollyanna, delete your account instead.",
+            page.QuerySelector(".notice-error")!.TextContent);
+        Assert.NotNull(page.QuerySelector("#logins a[href='/account/delete']"));
         Assert.Equal([(TestApp.Issuer, Alice.Sub)], await LoginsAsync(alice));
     }
 

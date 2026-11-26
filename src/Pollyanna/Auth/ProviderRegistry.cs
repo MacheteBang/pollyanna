@@ -88,6 +88,13 @@ public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) 
     public Provider? ByKey(string? key) => providers.FirstOrDefault(p => p.Key == key);
     /// <summary>The provider a login's issuer belongs to; null for a provider that was removed.</summary>
     public Provider? ByIssuer(string? issuer) => issuer is null ? null : providers.FirstOrDefault(p => p.Issuer == issuer.TrimEnd('/'));
+    /// <summary>
+    /// The label to show for a login with <paramref name="issuer"/>: its provider's label, or for a
+    /// provider that is no longer set up, the issuer's host name (spec §7).
+    /// </summary>
+    public (string Label, bool NoLongerSetUp) LabelFor(string issuer) => ByIssuer(issuer) is { } provider
+        ? (provider.Label, false)
+        : (Uri.TryCreate(issuer, UriKind.Absolute, out var u) ? u.Host : issuer, true);
     public Provider? ByScheme(string? scheme) => providers.FirstOrDefault(p => p.Scheme == scheme);
     public bool AnyOpen => providers.Any(p => p.Admission == Admission.Open);
     /// <summary>The open providers' labels, in configured order (for the invitation email).</summary>

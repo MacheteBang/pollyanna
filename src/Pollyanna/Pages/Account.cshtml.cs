@@ -13,7 +13,7 @@ namespace Pollyanna.Pages;
 /// when a mail relay is configured, sign out, and a link to delete the account.
 /// </summary>
 public sealed class AccountModel(PollyannaDb db, Outbox outbox, EmailSwitch emailSwitch, ProviderRegistry providers,
-    ILoggerFactory loggers, ILogger<AccountModel> logger) : PageModel
+    PersonSignIn signIn, ILoggerFactory loggers) : PageModel
 {
     /// <summary>One login on the list: its provider's label (null when the provider is no longer set up) and the email it last sent.</summary>
     public sealed record LoginRow(Guid Id, string Label, bool NoLongerSetUp, string? LastEmail);
@@ -31,9 +31,11 @@ public sealed class AccountModel(PollyannaDb db, Outbox outbox, EmailSwitch emai
         EmailsOn = await db.People.Where(p => p.Id == me).Select(p => p.EmailsOn).SingleAsync();
         var logins = await db.Logins.AsNoTracking().Where(l => l.PersonId == me)
             .OrderBy(l => l.CreatedAt).ThenBy(l => l.Issuer).ThenBy(l => l.Subject).ToListAsync();
-        Logins = [.. logins.Select(l => providers.ByIssuer(l.Issuer) is { } p
-            ? new LoginRow(l.Id, p.Label, false, l.LastEmail)
-            : new LoginRow(l.Id, Uri.TryCreate(l.Issuer, UriKind.Absolute, out var u) ? u.Host : l.Issuer, true, l.LastEmail))];
+        Logins = [.. logins.Select(l =>
+        {
+            var (label, noLongerSetUp) = providers.LabelFor(l.Issuer);
+            return new LoginRow(l.Id, label, noLongerSetUp, l.LastEmail);
+        })];
     }
 
     public async Task<IActionResult> OnPostEmailsAsync(bool on)
@@ -64,31 +66,20 @@ public sealed class AccountModel(PollyannaDb db, Outbox outbox, EmailSwitch emai
         }
     }
 
-    /// <summary>
-    /// Removes one of this person's logins, any but the last (spec §7). The session carries on,
-    /// even when it was made through the login removed.
-    /// </summary>
+    /// <summary>Removes one of this person's logins, any but the last (<see cref="PersonSignIn.RemoveLoginAsync"/>).</summary>
     public async Task<IActionResult> OnPostRemoveLoginAsync(Guid loginId)
     {
-        var me = User.PersonId();
-        var login = await db.Logins.AsNoTracking().SingleOrDefaultAsync(l => l.Id == loginId && l.PersonId == me);
-        if (login is null)
-            return NotFound();
-        // One statement, so two removals at once can't leave the person with none.
-        var removed = await db.Logins
-            .Where(l => l.Id == loginId && db.Logins.Any(o => o.PersonId == me && o.Id != loginId))
-            .ExecuteDeleteAsync();
-        if (removed == 0)
+        switch (await signIn.RemoveLoginAsync(User.PersonId(), loginId))
         {
-            TempData["LastLogin"] = true;
-            return LocalRedirect("/account");
+            case RemoveLoginResult.NotYours:
+                return NotFound();
+            case RemoveLoginResult.LastLogin:
+                TempData["Error"] = "That's your only way to sign in, so it can't be removed. To leave Pollyanna, delete your account instead.";
+                break;
+            default:
+                TempData["Notice"] = "Removed.";
+                break;
         }
-
-        if (providers.ByIssuer(login.Issuer) is { } provider)
-            logger.LogInformation("Person {PersonId} removed a login through provider {Provider}.", me, provider.Key);
-        else
-            logger.LogInformation("Person {PersonId} removed a login through a provider that is no longer set up.", me);
-        TempData["Notice"] = "Removed.";
         return LocalRedirect("/account");
     }
 }

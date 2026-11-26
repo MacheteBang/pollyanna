@@ -9,7 +9,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Pollyanna.Auth;
 
 /// <summary>How adding a login from <c>/account</c> ended.</summary>
-public enum AddLoginResult { Added, AlreadyYours, AnotherPersons }
+public enum AddLoginResult { Added, AlreadyYours, BelongsToSomeoneElse }
+
+/// <summary>How removing a login from <c>/account</c> ended.</summary>
+public enum RemoveLoginResult { Removed, NotYours, LastLogin }
 
 /// <summary>What the provider told us about the person signing in.</summary>
 public sealed record ProviderIdentity(
@@ -76,7 +79,8 @@ public sealed record SignInOutcome(Person? Person, SignInRefusal? Refusal);
 /// refresh name, email and picture from the claims just received (a claim that isn't sent clears
 /// nothing), and turn any invitations to that email into participation (spec §4).
 /// </summary>
-public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Outbox outbox, ILogger<PersonSignIn> logger)
+public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Outbox outbox,
+    ProviderRegistry providers, ILogger<PersonSignIn> logger)
 {
     public async Task<SignInOutcome> SignInAsync(Provider provider, ProviderIdentity identity, CancellationToken cancellationToken = default)
     {
@@ -137,7 +141,7 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         {
             logger.LogInformation("Person {PersonId} tried to add a login through provider {Provider} that belongs to another person.",
                 personId, provider.Key);
-            return AddLoginResult.AnotherPersons;
+            return AddLoginResult.BelongsToSomeoneElse;
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
@@ -147,6 +151,31 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         await CountAsSignInAsync(provider, person, login, identity, now, cancellationToken);
         logger.LogInformation("Person {PersonId} added a login through provider {Provider}.", personId, provider.Key);
         return AddLoginResult.Added;
+    }
+
+    /// <summary>
+    /// Removes one of <paramref name="personId"/>'s logins, any but the last (spec §3 "Removing").
+    /// A login that isn't theirs is <see cref="RemoveLoginResult.NotYours"/>. The session carries
+    /// on, even when it was made through the login removed.
+    /// </summary>
+    public async Task<RemoveLoginResult> RemoveLoginAsync(Guid personId, Guid loginId, CancellationToken cancellationToken = default)
+    {
+        var issuer = await db.Logins.Where(l => l.Id == loginId && l.PersonId == personId)
+            .Select(l => l.Issuer).SingleOrDefaultAsync(cancellationToken);
+        if (issuer is null)
+            return RemoveLoginResult.NotYours;
+        // One statement, so two removals at once can't leave the person with none.
+        var removed = await db.Logins
+            .Where(l => l.Id == loginId && db.Logins.Any(o => o.PersonId == personId && o.Id != loginId))
+            .ExecuteDeleteAsync(cancellationToken);
+        if (removed == 0)
+            return RemoveLoginResult.LastLogin;
+
+        if (providers.ByIssuer(issuer) is { } provider)
+            logger.LogInformation("Person {PersonId} removed a login through provider {Provider}.", personId, provider.Key);
+        else
+            logger.LogInformation("Person {PersonId} removed a login through a provider that is no longer set up.", personId);
+        return RemoveLoginResult.Removed;
     }
 
     /// <summary>

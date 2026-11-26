@@ -207,10 +207,11 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   - **Removing.** A plain POST per login, no confirmation page, notice
     "Removed." Any login can be removed, including the one the session was
     made through (the session belongs to the person and carries on) and
-    logins from removed providers. Removing the last login is refused, with
-    a link to `/account/delete`. Removed logins aren't remembered or blocked:
-    a matching verified email adds one back on its next sign-in, and the page
-    says so.
+    logins from removed providers. Removing the last login is refused with
+    an error notice that points to deleting the account instead, and the
+    list's own text links to `/account/delete`. Removed logins aren't
+    remembered or blocked: a matching verified email adds one back on its
+    next sign-in, and the page says so.
   - One info log line each for a login added, removed, or refused as another
     person's, giving the provider key and the person ID, never the email. No
     email is sent about any of these.
