@@ -189,6 +189,86 @@ public sealed class EventCreationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_form_lists_the_people_Pat_shares_an_event_with_as_plain_controls_without_emails()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        var ann = await app.PersonAsync("Ann", "ann@example.com");
+        var bob = await app.PersonAsync("Bob", "bob@example.com");
+        var eve = await app.PersonAsync("Eve", "eve@example.com");
+        var stranger = await app.PersonAsync("Stranger", "stranger@example.com");
+        var gone = new Person { CreatedAt = DateTime.UtcNow };
+        await app.WithDbAsync(async db => { db.People.Add(gone); await db.SaveChangesAsync(); });
+        await app.EventAsync("Old", EventStatus.Archived, [me], [me, ann, gone.Id]);
+        await app.EventAsync("Bob's", EventStatus.Draft, [bob], [me]);
+        await app.EventAsync("Elsewhere", EventStatus.Open, [stranger], [stranger, eve]);
+        await app.EventAsync("Pat's", EventStatus.Revealed, [eve], [me]);
+
+        var form = (await browser.GetPageAsync("/events/new")).QuerySelector("form[action='/events/new']")!;
+
+        // Plain form controls inside the "Create draft" form, so it works without the script.
+        var ticks = form.QuerySelectorAll("input[type=checkbox][name=personIds]");
+        Assert.Equal(new[] { ann, bob, eve }.Select(g => g.ToString()), ticks.Select(i => i.GetAttribute("value")));
+        Assert.Equal(["Ann", "Bob", "Eve"], ticks.Select(i => form.QuerySelector($"label[for='{i.Id}']")!.TextContent.Trim()));
+        Assert.NotNull(form.QuerySelector("input[type=email][name=email]:not([disabled])"));
+        foreach (var name in new[] { "ann", "bob", "eve", "stranger", "pat" })
+            Assert.DoesNotContain($"{name}@example.com", form.OuterHtml);
+    }
+
+    [Fact]
+    public async Task An_address_several_people_use_refuses_the_form_and_creates_nothing()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        var ann = await app.PersonAsync("Ann");
+        var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann]);
+        await app.PersonAsync("Carol", "family@example.com");
+        await app.PersonAsync("Carl", "Family@example.com");
+
+        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(previous: last.ToString(),
+            more: [($"copy-{last}", ann.ToString()), ("personIds", ann.ToString()), ("email", "family@example.com")]));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await TestBrowser.ParseAsync(response);
+        var notice = page.QuerySelector(".notice-error")!.TextContent;
+        Assert.Contains("More than one person uses that address", notice);
+        Assert.DoesNotContain("Carol", notice);
+        Assert.DoesNotContain("Carl", notice);
+        // What was ticked and typed comes back.
+        Assert.NotNull(page.QuerySelector($"input[name=personIds][value='{ann}'][checked]"));
+        Assert.Equal("family@example.com", page.QuerySelector("input[type=email][name=email]")!.GetAttribute("value"));
+        Assert.Equal(1, await app.WithDbAsync(db => db.Events.CountAsync()));
+        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+    }
+
+    [Fact]
+    public async Task An_address_one_person_uses_adds_them_even_if_Pat_doesnt_know_them()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        var carol = await app.PersonAsync("Carol", "carol@example.com");
+
+        await browser.SubmitOnAsync("/events/new", "/events/new", Fields(more: [("email", "CAROL@example.com")]));
+
+        var ev = await OnlyNewEventAsync(me);
+        Assert.Equal(new[] { me, carol }.Order(), ev.Participants.Select(p => p.PersonId).Order());
+        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+    }
+
+    [Fact]
+    public async Task Ticking_someone_outside_the_list_is_refused_and_creates_nothing()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        var stranger = await app.PersonAsync("Stranger");
+
+        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(more: [("personIds", stranger.ToString())]));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(0, await app.WithDbAsync(db => db.Events.CountAsync()));
+    }
+
+    [Fact]
     public async Task The_new_draft_shows_on_the_home_page_with_a_countdown_slot()
     {
         var (browser, me) = await app.SignInAsync(Pat);
