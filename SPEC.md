@@ -1763,8 +1763,9 @@ for narrow screens.
   in the body. Every piece of text meets WCAG AA contrast (4.5:1) against
   its own background (ink on slip paper 14.9, and slip paper on the ink
   button the same, the red stamp 5.6, the small URL 6.7, the footer on
-  bright paper 7.7 and its ink link 17.0); the ribbon-blue band holds no
-  text and is decoration. There is no `role="article"` wrapper: the title
+  bright paper 7.7 and its ink link 17.0). The small URL and the footer
+  are in a softened ink, `#5A5048`, used only in email; the ribbon-blue
+  band holds no text and is decoration. There is no `role="article"` wrapper: the title
   and the event-name heading are the structure.
 
 **Address.** The email from the person's last sign-in, unless the provider
