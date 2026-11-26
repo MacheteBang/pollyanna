@@ -36,7 +36,7 @@
             {
                 <form method="post" action="/account/addlogin" asp-antiforgery="true">
                     <input type="hidden" name="key" value="@provider.Key">
-                    <button type="submit" class="button button-outline">Add @provider.Label</button>
+                    <partial name="_ProviderButton" model='new Pollyanna.Pages.Shared.ProviderButtonView(provider, "Add " + provider.Label, null, Outline: true)' />
                 </form>
             }
         </div>
