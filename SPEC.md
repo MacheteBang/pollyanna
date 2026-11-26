@@ -213,6 +213,15 @@ no-repeat rule), `no_repeat_depth` (N, default 1), `pairings_revealed`
 details, add and remove participants, households, exclusions, and run the
 status changes below.
 - Any organizer can make another signed-in person an organizer, or remove one.
+  The manage page's "Add an organizer" picker lists the same people as the
+  add-people control (§4 Participant), names and pictures only, minus people
+  who already organize the event, and they pick one. A typed address only
+  finds an existing person and never creates an invitation, since an
+  organizer must already have an account. An address that matches nobody, or
+  more than one person, gives a notice naming nobody, and nothing changes. A
+  picked person who isn't on the list is refused (not found). Like the
+  add-people control, it works as a plain form, and the script adds the
+  filter box.
 - An event always has at least one organizer; the last one cannot be removed.
 - There is no recovery path if every organizer is gone; the event stays as
   it is, and a new one can be created. The manage page suggests adding a
@@ -287,7 +296,8 @@ Without the script, the page falls back to the date alone.
     email field. The script adds a filter box that narrows the list by name;
     a full address typed into it shows a ticked "Add or invite <address>" row
     in place of the email field.
-  - After the draw, late joiners are added one at a time (§5.4).
+  - After the draw, late joiners are added one at a time (§5.4), through a
+    picker that lists the same people.
 
 **Visibility within an event** (for its participants):
 - The participant list is visible to all participants.
@@ -484,6 +494,14 @@ organizer redraws first (back to `open`) and removes the person there.
 **Late joiners.** When someone joins a `drawn` event, the organizer adds them
 and chooses one of two options. The newcomer must already have signed in;
 an email invitation can't be added after the draw while it is pending.
+
+- The "Someone joining late?" picker lists the same people as the add-people
+  control (§4 Participant), names and pictures only, minus people already in
+  the event, and the organizer picks one. A typed address only finds an
+  existing person and never creates an invitation. An address that matches
+  nobody, or more than one person, gives a notice naming nobody, and nothing
+  changes. A picked person who isn't on the list is refused (not found). It
+  works as a plain form, and the script adds the filter box.
 
 - The organizer can put the newcomer in one of the event's existing
   households as they add them; both options respect it.

@@ -339,10 +339,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (!IsEmail(email))
             return new("That doesn't look like an email address.", null, null);
         var normalized = Person.NormalizeEmail(email)!;
-        // Same matching as on sign-in: case-insensitive, and never an email marked unverified.
-        var matches = await SignedInPeople
-            .Where(p => p.EmailNormalized == normalized && p.EmailVerified != false)
-            .OrderBy(p => p.Id).Take(2).ToListAsync();
+        var matches = await UsingAddress(normalized).OrderBy(p => p.Id).Take(2).ToListAsync();
         return matches.Count switch
         {
             > 1 => new(AmbiguousAddress, null, null),

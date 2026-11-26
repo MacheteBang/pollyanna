@@ -140,6 +140,7 @@ public sealed class DrawNotificationTests : IAsyncLifetime
     {
         var (ev, olga) = await DrawnAsync();
         var dee = await app.PersonAsync("Dee", "dee@example.com");
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, dee]);
 
         await Post(ev, "removeperson", Form(("personId", cy.ToString()), ("change", "patch")));
         Assert.DoesNotContain(cy, await app.ParticipantsAsync(ev));

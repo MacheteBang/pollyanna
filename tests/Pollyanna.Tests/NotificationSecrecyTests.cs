@@ -68,6 +68,8 @@ public sealed class NotificationSecrecyTests
     {
         var (pat, ann, bob, carol, dave, eve) = (people["Pat"], people["Ann"], people["Bob"], people["Carol"], people["Dave"], people["Eve"]);
         Guid[] inTheHat = [pat.Id, ann.Id, bob.Id, carol.Id, dave.Id];
+        // Last year's exchange puts Eve on Pat's late-joiner list.
+        await app.EventAsync("Gifts 2025", EventStatus.Archived, [pat.Id], [pat.Id, eve.Id]);
         var ev = await app.EventAsync("Gifts 2026", EventStatus.Open, [pat.Id], inTheHat);
         await app.SealAsync(ev, pairs);
         var page = $"/events/{ev}";
@@ -179,8 +181,9 @@ public sealed class NotificationSecrecyTests
                 foreach (var (browser, _) in people.Values)
                     await browser.SubmitOnAsync("/account", "/account/emails");
 
-            // Last year's exchange puts Evangeline on Peregrine's add-people list.
-            await app.EventAsync("Gifts 2025", EventStatus.Archived, [Id("Peregrine")], [Id("Peregrine"), Id("Evangeline")]);
+            // Last year's exchange puts Evangeline, Fitzgerald and Ottoline on Peregrine's lists.
+            await app.EventAsync("Gifts 2025", EventStatus.Archived, [Id("Peregrine")],
+                [Id("Peregrine"), Id("Evangeline"), Id("Fitzgerald"), Id("Ottoline")]);
             var ev = await app.EventAsync("Gifts 2026", EventStatus.Draft, [Id("Peregrine")],
                 [Id("Peregrine"), Id("Annabel"), Id("Bartholomew"), Id("Cordelia"), Id("Desmond")]);
             var page = $"/events/{ev}";

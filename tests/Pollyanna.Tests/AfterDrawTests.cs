@@ -27,6 +27,8 @@ public sealed class AfterDrawTests : IAsyncLifetime
         carol = await app.PersonAsync("Carol");
         dave = await app.PersonAsync("Dave");
         erin = await app.PersonAsync("Erin");
+        // Pat has been in an exchange with all of them, so the late-joiner picker lists them.
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, ann, bob, carol, dave, erin]);
     }
 
     public async Task DisposeAsync()
@@ -179,6 +181,82 @@ public sealed class AfterDrawTests : IAsyncLifetime
     }
 
     // ---------- Late joiners ----------
+
+    string AddPerson(Guid ev) => $"{Manage(ev)}/addperson";
+
+    async Task<AngleSharp.Dom.IElement> LatePickerAsync(Guid ev) =>
+        (await browser.GetPageAsync(Manage(ev))).QuerySelector($"form[action='{AddPerson(ev)}']")
+        ?? throw new InvalidOperationException("No late-joiner picker.");
+
+    [Fact]
+    public async Task The_late_joiner_picker_lists_the_add_people_controls_people_minus_participants_without_emails()
+    {
+        var fay = await app.PersonAsync("Fay", "fay@example.com");
+        await app.PersonAsync("Stranger", "stranger@example.com");
+        var gone = new Person { CreatedAt = DateTime.UtcNow };
+        await app.WithDbAsync(async db => { db.People.Add(gone); await db.SaveChangesAsync(); });
+        // Fay only organizes an event Pat is in; she counts too.
+        await app.EventAsync("Fay's", EventStatus.Draft, [fay], [me, gone.Id]);
+        var ev = await DrawnAsync([ann, bob, carol], Loop(ann, bob, carol));
+
+        var picker = await LatePickerAsync(ev);
+
+        var picks = picker.QuerySelectorAll("input[name=personId]").ToList();
+        Assert.Equal(["Dave", "Erin", "Fay"], picks.Select(i => picker.QuerySelector($"label[for='{i.Id}']")!.TextContent.Trim()));
+        Assert.Equal(new[] { dave, erin, fay }.Select(g => g.ToString()), picks.Select(i => i.GetAttribute("value")));
+        foreach (var name in new[] { "fay", "stranger", "pat" })
+            Assert.DoesNotContain($"{name}@example.com", picker.OuterHtml);
+        // Without the script: a visible email field and the two buttons.
+        Assert.NotNull(picker.QuerySelector("input[type=email][name=email]:not([disabled])"));
+        Assert.Equal(2, picker.QuerySelectorAll("button[type=submit]").Length);
+    }
+
+    [Fact]
+    public async Task A_typed_address_adds_an_existing_person_late_even_one_Pat_doesnt_know()
+    {
+        var gus = await app.PersonAsync("Gus", "gus@example.com");
+        var ev = await DrawnAsync([ann, bob, carol], Loop(ann, bob, carol));
+
+        await browser.SubmitOnAsync(Manage(ev), AddPerson(ev), Form(("email", "GUS@example.com"), ("change", "Redraw")));
+
+        Assert.Contains(gus, await app.ParticipantsAsync(ev));
+        Assert.Equal(EventStatus.Open, await app.StatusAsync(ev));
+    }
+
+    [Fact]
+    public async Task An_unknown_or_ambiguous_address_in_the_late_joiner_picker_changes_nothing_and_invites_nobody()
+    {
+        await app.PersonAsync("Carol B", "family@example.com");
+        await app.PersonAsync("Carl", "Family@example.com");
+        var ev = await DrawnAsync([ann, bob, carol], Loop(ann, bob, carol));
+        var before = await RowsAsync(ev);
+
+        await browser.SubmitOnAsync(Manage(ev), AddPerson(ev), Form(("email", "sue@example.com"), ("change", "Patch")));
+        Assert.Contains("Nobody uses that address", await NoticeAsync(Manage(ev)));
+
+        await browser.SubmitOnAsync(Manage(ev), AddPerson(ev), Form(("email", "family@example.com"), ("change", "Redraw")));
+        var notice = await NoticeAsync(Manage(ev));
+        Assert.Contains("More than one person uses that address", notice);
+        Assert.DoesNotContain("Carl", notice);
+
+        Assert.Equal(new[] { ann, bob, carol }.Order(), (await app.ParticipantsAsync(ev)).Order());
+        Assert.Equal(EventStatus.Drawn, await app.StatusAsync(ev));
+        Assert.Empty(Changed(before, await RowsAsync(ev)));
+        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+    }
+
+    [Fact]
+    public async Task Adding_a_late_joiner_outside_the_list_is_refused()
+    {
+        var stranger = await app.PersonAsync("Stranger");
+        var ev = await DrawnAsync([ann, bob, carol], Loop(ann, bob, carol));
+
+        foreach (var outsider in new[] { stranger, Guid.NewGuid() })
+            Assert.Equal(HttpStatusCode.NotFound, (await browser.PostWithTokenAsync(Manage(ev), AddPerson(ev),
+                Form(("personId", outsider.ToString()), ("change", "Redraw")))).StatusCode);
+        Assert.Equal(new[] { ann, bob, carol }.Order(), (await app.ParticipantsAsync(ev)).Order());
+        Assert.Equal(EventStatus.Drawn, await app.StatusAsync(ev));
+    }
 
     [Fact]
     public async Task Late_joiner_patch_slots_them_into_one_pairing_and_changes_only_that_giver()
