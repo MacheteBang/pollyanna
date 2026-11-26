@@ -35,7 +35,8 @@ public static class Help
           POLLYANNA_OIDC_LABEL      Optional: the name on its sign-in button (default: the
                                   issuer's host name).
           POLLYANNA_OIDC_ADMISSION  Optional: trusted (the default): anyone the provider
-                                  authenticates gets in.
+                                  authenticates gets in; or open: only a verified email
+                                  that matches a person or a pending invitation gets in.
           POLLYANNA_DATA_DIR       Directory for pollyanna.db and keys/ (sign-in key ring).
                                   Must be writable. Suggested: /data
           POLLYANNA_DRAW_KEY_FILE   Path of the draw key, e.g. /draw-key/draw.key. Created
@@ -56,7 +57,7 @@ public static class Help
           POLLYANNA_OIDC_<KEY>_CLIENT_SECRET or POLLYANNA_OIDC_<KEY>_CLIENT_SECRET_FILE
                                   Set exactly one.
           POLLYANNA_OIDC_<KEY>_LABEL      The name on its button, e.g. Google.
-          POLLYANNA_OIDC_<KEY>_ADMISSION  trusted (open is not supported yet).
+          POLLYANNA_OIDC_<KEY>_ADMISSION  trusted or open, as above.
           For example, with POLLYANNA_OIDC_PROVIDERS=google:
             POLLYANNA_OIDC_GOOGLE_ISSUER=https://accounts.google.com
             POLLYANNA_OIDC_GOOGLE_CLIENT_ID=...

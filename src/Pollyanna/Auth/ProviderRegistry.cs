@@ -215,8 +215,7 @@ public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) 
                 case "trusted":
                     break;
                 case "open":
-                    // Lifted by the open providers' admission gate; until then main never runs an open provider without it.
-                    problems.Add($"{Name(AdmissionField)} is open, but open admission is not supported yet. Use trusted.");
+                    admission = Admission.Open;
                     break;
                 default:
                     problems.Add($"{Name(AdmissionField)} must be trusted or open.");

@@ -132,13 +132,13 @@ public sealed class DeploymentTests
     [Fact]
     public async Task Ready_line_names_the_version_then_each_provider_and_its_redirect_uri()
     {
-        await using var app = await TestApp.StartAsync(providers: [new("google", "Google")]);
+        await using var app = await TestApp.StartAsync(providers: [new("google", "Google", "open")]);
         var lines = app.Logs.Entries.Select(e => e.Message).SkipWhile(m => !m.StartsWith("Pollyanna ")).Take(3).ToList();
         Assert.Equal(
         [
             $"Pollyanna {Help.Version} is ready at {TestApp.PublicUrl}",
             $"sign-in provider \"issuer.test\" (default, trusted): redirect URI {TestApp.PublicUrl}/auth/callback",
-            $"sign-in provider \"Google\" (google, trusted): redirect URI {TestApp.PublicUrl}/auth/callback/google",
+            $"sign-in provider \"Google\" (google, open): redirect URI {TestApp.PublicUrl}/auth/callback/google",
         ], lines);
     }
 
