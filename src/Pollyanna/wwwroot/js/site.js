@@ -17,6 +17,7 @@ function countdowns() {
 
 // New event: show only the people of the earlier event that is picked, and the no-repeat
 // choice only when one is picked. Without the script, every group shows with its own heading.
+// The add-people list leaves out the people already ticked under the picked event (spec §4).
 function previousEventPicker() {
     const select = document.querySelector("[data-previous-select]");
     if (!select) return;
@@ -25,6 +26,14 @@ function previousEventPicker() {
             group.hidden = group.dataset.previousGroup !== select.value;
         for (const el of document.querySelectorAll("[data-needs-previous]"))
             el.hidden = select.value === "";
+        for (const row of document.querySelectorAll("[data-add-people] li[data-search]")) {
+            const prefilled = select.value !== "" && (row.dataset.previousGroups ?? "").split(" ").includes(select.value);
+            row.toggleAttribute("data-prefilled", prefilled);
+            row.hidden = prefilled;
+            row.querySelector("input").disabled = prefilled;
+        }
+        // Let the filter box apply itself to the rows that came back.
+        document.querySelector("[data-add-people-filter] input")?.dispatchEvent(new Event("input"));
     };
     select.addEventListener("change", update);
     update();
@@ -51,7 +60,7 @@ function addPeople() {
             const email = looksLikeEmail(typed);
             const term = typed.toLowerCase();
             for (const r of rows)
-                r.hidden = term !== "" && !email && !r.dataset.search.includes(term);
+                r.hidden = r.hasAttribute("data-prefilled") || (term !== "" && !email && !r.dataset.search.includes(term));
             row.hidden = !email;
             address.disabled = !email;
             address.value = typed;

@@ -96,11 +96,12 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     /// ticked people and address (spec §4, §7) come in with it: the address adds the one person
     /// who uses it, or is invited, and one that several people use refuses the whole form. The
     /// caller checks that the ticked people are ones the creator may pick (<see cref="KnownTo"/>).
+    /// <c>Invited</c> is the address as typed when it became an invitation.
     /// </summary>
-    public async Task<(Event? Event, string? Error)> CreateAsync(Guid me, NewEvent input)
+    public async Task<(Event? Event, string? Invited, string? Error)> CreateAsync(Guid me, NewEvent input)
     {
         if (CheckDetails(input.Name, input.BudgetText, input.ExchangeDate, input.NoRepeatDepth) is { } error)
-            return (null, error);
+            return (null, null, error);
 
         Event? previous = null;
         if (input.PreviousEventId is { } previousId)
@@ -108,13 +109,13 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
             previous = await db.Events.Include(e => e.Participants).Include(e => e.Households)
                 .SingleOrDefaultAsync(e => e.Id == previousId && e.Organizers.Any(o => o.PersonId == me));
             if (previous is null)
-                return (null, "You can only link to an earlier event you organize.");
+                return (null, null, "You can only link to an earlier event you organize.");
         }
 
         var email = input.Email?.Trim() ?? "";
         var address = email == "" ? null : await ResolveAddressAsync(email);
         if (address?.Error is { } addressError)
-            return (null, addressError);
+            return (null, null, addressError);
 
         var ev = new Event
         {
@@ -161,10 +162,14 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
 
         db.Events.Add(ev);
         // The invitation's email waits until the draft opens (spec §4, §15).
+        string? invited = null;
         if (address?.Invite is { } normalizedEmail)
+        {
             AddInvitation(ev.Id, email, normalizedEmail, me);
+            invited = email;
+        }
         await db.SaveChangesAsync();
-        return (ev, null);
+        return (ev, invited, null);
     }
 
     public async Task<Outcome> UpdateDetailsAsync(Membership m, Guid me, string? name, string? budget, DateOnly? date, Guid? previousId, int depth)

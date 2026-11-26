@@ -216,6 +216,34 @@ public sealed class EventCreationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task People_prefilled_from_the_linked_event_are_hidden_from_the_ticklist()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        var ann = await app.PersonAsync("Ann");
+        var bob = await app.PersonAsync("Bob");
+        var dee = await app.PersonAsync("Dee");
+        await app.EventAsync("Book club", EventStatus.Archived, [me], [me, dee], date: new DateOnly(2024, 12, 24));
+        var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann], date: new DateOnly(2025, 12, 24));
+        await app.EventAsync("Cousins", EventStatus.Revealed, [bob], [me, bob]);
+
+        var form = (await browser.GetPageAsync("/events/new")).QuerySelector("form[action='/events/new']")!;
+
+        // Ann is already ticked under the linked event, so the ticklist hides her and sends nothing for her.
+        Assert.NotNull(form.QuerySelector($"input[name='copy-{last}'][value='{ann}'][checked]"));
+        var annRow = form.QuerySelector($"input[name=personIds][value='{ann}']")!;
+        Assert.True(annRow.HasAttribute("disabled"));
+        Assert.True(annRow.ParentElement!.HasAttribute("hidden"));
+        // Bob isn't in an event Pat organizes, and Dee is only in an earlier event that isn't linked.
+        foreach (var shown in new[] { bob, dee })
+        {
+            var row = form.QuerySelector($"input[name=personIds][value='{shown}']")!;
+            Assert.False(row.HasAttribute("disabled"));
+            Assert.False(row.ParentElement!.HasAttribute("hidden"));
+        }
+    }
+
+    [Fact]
     public async Task An_address_several_people_use_refuses_the_form_and_creates_nothing()
     {
         var (browser, me) = await app.SignInAsync(Pat);
@@ -253,6 +281,33 @@ public sealed class EventCreationTests : IAsyncLifetime
         var ev = await OnlyNewEventAsync(me);
         Assert.Equal(new[] { me, carol }.Order(), ev.Participants.Select(p => p.PersonId).Order());
         Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+    }
+
+    [Theory]
+    [InlineData("carol@example.com", "Draft created. Add people below, then open it when you're ready. carol@example.com is invited; they'll get an email when the event opens.")]
+    [InlineData("", "Draft created. Add people below, then open it when you're ready.")]
+    public async Task The_notice_says_when_the_typed_address_was_invited(string email, string notice)
+    {
+        var (browser, _) = await app.SignInAsync(Pat);
+        using var _b = browser;
+
+        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(more: [("email", email)]));
+
+        var manage = await browser.GetPageAsync(response.Headers.Location!.OriginalString);
+        Assert.Equal(notice, manage.QuerySelector(".notice")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task An_address_one_person_uses_gets_the_plain_notice()
+    {
+        var (browser, _) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        await app.PersonAsync("Carol", "carol@example.com");
+
+        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(more: [("email", "carol@example.com")]));
+
+        var manage = await browser.GetPageAsync(response.Headers.Location!.OriginalString);
+        Assert.Equal("Draft created. Add people below, then open it when you're ready.", manage.QuerySelector(".notice")!.TextContent.Trim());
     }
 
     [Fact]
