@@ -156,7 +156,8 @@ public sealed class OutboxSender(
         if (NotificationKindDefinition.For(row.Kind) is not { } kind)
             return null;
         var ev = await db.Events.AsNoTracking().SingleOrDefaultAsync(e => e.Id == row.EventId, cancellationToken);
-        if (ev is null)
+        // Canceling deletes the event's rows; one queued alongside it is dropped here (spec §15).
+        if (ev is null || !EventLifecycle.Standing.Contains(ev.Status))
             return null;
 
         Person? person = null;

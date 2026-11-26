@@ -136,6 +136,16 @@ public sealed class NoRepeatTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_canceled_event_in_the_chain_is_skipped_even_with_pairings()
+    {
+        var twoYearsAgo = await EarlierAsync("Two years ago", Loop(me, bob, ann));
+        var last = await EarlierAsync("Practice run", Loop(me, ann, bob), twoYearsAgo, status: EventStatus.Canceled);
+        var ev = await CurrentAsync(last, depth: 1);
+
+        Assert.All(await DrawManyAsync(ev, times: 4), pairs => Assert.Equal(Loop(me, ann, bob), pairs));
+    }
+
+    [Fact]
     public async Task Unreadable_pairings_warn_and_the_draw_goes_ahead()
     {
         var twoYearsAgo = await EarlierAsync("Two years ago", Loop(me, ann, bob));

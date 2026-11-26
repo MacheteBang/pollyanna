@@ -48,12 +48,12 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
 
     /// <summary>
     /// Events <paramref name="me"/> organizes that <paramref name="forEvent"/> may be linked to:
-    /// never the event itself, nor one whose own chain of previous events leads back to it.
+    /// never the event itself, a canceled one, nor one whose own chain of previous events leads back to it.
     /// </summary>
     public async Task<List<Event>> PreviousCandidatesAsync(Guid me, Guid? forEvent = null)
     {
         var organized = await db.Events.AsNoTracking()
-            .Where(e => e.Organizers.Any(o => o.PersonId == me) && e.Id != forEvent)
+            .Where(e => e.Organizers.Any(o => o.PersonId == me) && e.Id != forEvent && EventLifecycle.Standing.Contains(e.Status))
             .OrderByDescending(e => e.ExchangeDate).ThenBy(e => e.Name)
             .ToListAsync();
         if (forEvent is not { } id)
@@ -107,7 +107,8 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (input.PreviousEventId is { } previousId)
         {
             previous = await db.Events.Include(e => e.Participants).Include(e => e.Households)
-                .SingleOrDefaultAsync(e => e.Id == previousId && e.Organizers.Any(o => o.PersonId == me));
+                .SingleOrDefaultAsync(e => e.Id == previousId && e.Organizers.Any(o => o.PersonId == me)
+                    && EventLifecycle.Standing.Contains(e.Status));
             if (previous is null)
                 return (null, null, "You can only link to an earlier event you organize.");
         }

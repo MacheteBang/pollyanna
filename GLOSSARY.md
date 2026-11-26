@@ -58,7 +58,7 @@ The day the gifts are given. Purely informational: dates never change an event's
 _Avoid_: Deadline, due date
 
 **Status**:
-Where an event is in its lifecycle: draft, open, drawn, revealed or archived.
+Where an event is in its lifecycle: draft, open, drawn, revealed or archived, or canceled (gone for everyone).
 _Avoid_: State, phase, stage
 
 **Previous event**:

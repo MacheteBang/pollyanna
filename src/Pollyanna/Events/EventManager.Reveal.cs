@@ -8,8 +8,8 @@ namespace Pollyanna.Events;
 public sealed record Pairing(PersonRow? Giver, PersonRow Recipient);
 
 /// <summary>
-/// Reveal and archive (spec §4, §6): the two status changes after the draw, and the full pairing
-/// list, the only place pairings are shown.
+/// Reveal, archive and cancel (spec §4, §6): the status changes that end an event, and the full
+/// pairing list, the only place pairings are shown.
 /// </summary>
 public sealed partial class EventManager
 {
@@ -69,6 +69,31 @@ public sealed partial class EventManager
             return Outcome.Done(keepMessages
                 ? "Archived. The question threads were kept, and only their own two people can read them."
                 : "Archived. The question threads were deleted.");
+        });
+    }
+
+    /// <summary>
+    /// Cancels an event that isn't archived (spec §4): it is gone for everyone, and nobody is
+    /// emailed. Its pending invitations, leave requests, question threads and waiting emails are
+    /// deleted; everything else stays, unseen. Irreversible.
+    /// </summary>
+    public async Task<Outcome> CancelAsync(Membership m)
+    {
+        if (EventLifecycle.Cancel.Refusal(m.Event.Status) is { } refusal)
+            return Outcome.Fail(refusal);
+
+        var id = m.Event.Id;
+        return await InTransactionAsync(async () =>
+        {
+            var claimed = await db.Events.Where(e => e.Id == id && EventLifecycle.Cancel.From.Contains(e.Status))
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.Status, EventLifecycle.Cancel.To));
+            if (claimed == 0)
+                return Outcome.Fail("The status changed in the meantime. Have a look and try again.");
+            await hat.ClearThreadsAsync(id);
+            await ClearLeaveRequestsAsync(id);
+            await db.Invitations.Where(i => i.EventId == id).ExecuteDeleteAsync();
+            await db.Notifications.Where(n => n.EventId == id).ExecuteDeleteAsync();
+            return Outcome.Done($"{m.Event.Name} is canceled.");
         });
     }
 

@@ -71,7 +71,8 @@ public sealed partial class EventManager
     /// <summary>
     /// Giver → recipient pairs the no-repeat rule forbids (spec §5.1, constraint 4): every pairing
     /// between <paramref name="people"/> in the last N earlier events with pairings, following the
-    /// previous-event chain back. Events without pairings (never drawn, or redrawing) are skipped;
+    /// previous-event chain back. Events without pairings (never drawn, or redrawing) and canceled
+    /// events are skipped;
     /// one whose pairings can't be read under the current key still counts, and makes the result
     /// incomplete. The earlier tags are recomputed in memory and nothing found leaves this method.
     /// </summary>
@@ -85,8 +86,9 @@ public sealed partial class EventManager
         var counted = 0;
         for (var at = ev.PreviousEventId; at is { } earlier && counted < ev.NoRepeatDepth && seen.Add(earlier);)
         {
+            var standing = await db.Events.AnyAsync(e => e.Id == earlier && EventLifecycle.Standing.Contains(e.Status));
             var earlierPeople = await db.Participants.Where(p => p.EventId == earlier).Select(p => p.PersonId).ToListAsync();
-            var rows = await hat.UnsealAsync(earlier, earlierPeople);
+            var rows = standing ? await hat.UnsealAsync(earlier, earlierPeople) : [];
             if (rows.Count > 0)
             {
                 counted++;
