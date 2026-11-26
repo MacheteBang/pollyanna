@@ -32,6 +32,8 @@ public sealed class Provider
     public required string ClientId { get; init; }
     public required string ClientSecret { get; init; }
     public required Admission Admission { get; init; }
+    /// <summary>The logo beside the label on this provider's buttons; null for a text-only button.</summary>
+    public ProviderIcon? Icon { get; init; }
 
     public bool IsDefault => Key == DefaultKey;
     /// <summary>The OpenID Connect authentication scheme that signs in through this provider.</summary>
@@ -40,6 +42,11 @@ public sealed class Provider
     public string CallbackPath => IsDefault ? DefaultCallbackPath : DefaultCallbackPath + "/" + Key;
     /// <summary>Starts sign-in through this provider (the chooser's buttons).</summary>
     public string LoginPath => "/auth/login/" + Key;
+    /// <summary>
+    /// Where the icon is served (<see cref="ProviderIconEndpoint"/>), with a version so a changed
+    /// file reaches browsers that cached the old one; null without an icon.
+    /// </summary>
+    public string? IconPath => Icon is null ? null : ProviderIconEndpoint.PathPrefix + Key + "?v=" + Icon.Version;
     /// <summary>The full name of one of this provider's settings, e.g. <c>POLLYANNA_OIDC_GOOGLE_ISSUER</c>.</summary>
     public string Setting(string field) => SettingName(IsDefault ? null : Key, field);
     /// <summary>True when the issuer may be reached over plain HTTP (loopback only, for development).</summary>
@@ -67,8 +74,9 @@ public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) 
     public const string ClientSecretFileField = "CLIENT_SECRET_FILE";
     public const string LabelField = "LABEL";
     public const string AdmissionField = "ADMISSION";
+    public const string IconFileField = "ICON_FILE";
 
-    static readonly string[] Fields = [IssuerField, ClientIdField, ClientSecretField, ClientSecretFileField, LabelField, AdmissionField];
+    static readonly string[] Fields = [IssuerField, ClientIdField, ClientSecretField, ClientSecretFileField, LabelField, AdmissionField, IconFileField];
 
     public Provider this[int index] => providers[index];
     public int Count => providers.Count;
@@ -225,6 +233,10 @@ public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) 
         else if (key is not null)
             problems.Add($"{Name(AdmissionField)} is not set: use trusted or open.");
 
+        ProviderIcon? icon = null;
+        if (Value(IconFileField) is { } iconFile)
+            icon = ProviderIcon.Load(Name(IconFileField), iconFile, contentRoot, problems);
+
         if (problems.Count > before)
             return null;
         return new Provider
@@ -235,6 +247,7 @@ public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) 
             ClientId = clientId!,
             ClientSecret = secret!.Trim(),
             Admission = admission,
+            Icon = icon,
         };
     }
 

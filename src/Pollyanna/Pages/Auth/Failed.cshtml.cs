@@ -1,4 +1,5 @@
 using Pollyanna.Auth;
+using Pollyanna.Pages.Shared;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Pollyanna.Pages.Auth;
@@ -14,7 +15,7 @@ public sealed class FailedModel(RefusedSignIn refusals, ProviderRegistry provide
     /// <summary>The provider that refused; its label names it in the "not verified" wording.</summary>
     public string ProviderLabel { get; private set; } = "";
     /// <summary>Every provider's button, in configured order, carrying the return URL.</summary>
-    public IReadOnlyList<(string Label, string Href)> Choices { get; private set; } = [];
+    public IReadOnlyList<ProviderButtonView> Choices { get; private set; } = [];
     public bool ProviderProblem { get; private set; }
 
     public void OnGet(string? reason)
@@ -27,6 +28,6 @@ public sealed class FailedModel(RefusedSignIn refusals, ProviderRegistry provide
         ProviderLabel = providers.ByKey(Refusal.Provider)?.Label ?? Refusal.Provider;
         var target = Refusal.ReturnUrl is { } r && Url.IsLocalUrl(r) && r != "/" ? r : null;
         var query = target is null ? "" : "?returnUrl=" + Uri.EscapeDataString(target);
-        Choices = [.. providers.Select(p => (p.Label, p.LoginPath + query))];
+        Choices = [.. providers.Select(p => new ProviderButtonView(p, "Sign in with " + p.Label, p.LoginPath + query, Outline: true))];
     }
 }

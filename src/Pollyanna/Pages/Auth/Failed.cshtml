@@ -33,7 +33,7 @@
     <div class="actions">
         @foreach (var choice in Model.Choices)
         {
-            <a class="button button-outline" href="@choice.Href">Sign in with @choice.Label</a>
+            <partial name="_ProviderButton" model="choice" />
         }
     </div>
 }

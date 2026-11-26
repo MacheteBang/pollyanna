@@ -238,6 +238,64 @@ public sealed class ConfigurationTests : IDisposable
         Assert.Contains(expected, problem);
     }
 
+    // Provider icons (spec §2, §3).
+
+    string IconFile(string name, byte[] content)
+    {
+        var file = Path.Combine(dir, name);
+        File.WriteAllBytes(file, content);
+        return file;
+    }
+
+    [Fact]
+    public void A_provider_icon_is_read_and_its_content_type_checked()
+    {
+        var s = Load(WithGoogle(
+            ("POLLYANNA_OIDC_GOOGLE_ICON_FILE", IconFile("google.png", Support.TestImages.Png)),
+            (PollyannaSettings.IconFileKey, IconFile("family.svg", Support.TestImages.Svg))));
+
+        var google = s.Providers.ByKey("google")!.Icon!;
+        Assert.Equal("image/png", google.ContentType);
+        Assert.Equal(Support.TestImages.Png, google.Data);
+        Assert.Equal("image/svg+xml", s.Providers.ByKey("default")!.Icon!.ContentType);
+    }
+
+    [Fact]
+    public void Without_an_icon_file_a_provider_has_no_icon()
+    {
+        Assert.All(Load(WithGoogle()).Providers, p => Assert.Null(p.Icon));
+    }
+
+    [Theory]
+    [InlineData("POLLYANNA_OIDC_GOOGLE_ICON_FILE")]
+    [InlineData(PollyannaSettings.IconFileKey)]
+    public void A_missing_icon_file_is_an_error_naming_its_setting(string setting)
+    {
+        var problem = Assert.Single(Refused(WithGoogle((setting, Path.Combine(dir, "nowhere.svg")))).Problems);
+        Assert.StartsWith("The file named by " + setting, problem);
+    }
+
+    [Theory]
+    [InlineData("not an image")]
+    [InlineData("<html><body>not svg</body></html>")]
+    [InlineData("<svg xmlns=\"http://www.w3.org/2000/svg\">unclosed")]
+    [InlineData("<!DOCTYPE svg [<!ENTITY x \"y\">]><svg xmlns=\"http://www.w3.org/2000/svg\">&x;</svg>")]
+    [InlineData("")]
+    public void An_icon_file_that_isnt_a_usable_image_is_an_error_naming_its_setting(string content)
+    {
+        var file = IconFile("icon", System.Text.Encoding.UTF8.GetBytes(content));
+        var problem = Assert.Single(Refused(WithGoogle(("POLLYANNA_OIDC_GOOGLE_ICON_FILE", file))).Problems);
+        Assert.StartsWith("The file named by POLLYANNA_OIDC_GOOGLE_ICON_FILE", problem);
+        Assert.Contains("PNG, JPEG, GIF, WebP or SVG", problem);
+    }
+
+    [Fact]
+    public void An_icon_file_for_a_key_that_isnt_listed_is_an_error()
+    {
+        var problem = Assert.Single(Refused(WithGoogle(("POLLYANNA_OIDC_WORK_ICON_FILE", IconFile("w.png", Support.TestImages.Png)))).Problems);
+        Assert.StartsWith("POLLYANNA_OIDC_WORK_ICON_FILE is set, but", problem);
+    }
+
     static Dictionary<string, string?> WithMail(params (string Key, string? Value)[] mail)
     {
         var values = Valid();

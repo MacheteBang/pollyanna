@@ -1,4 +1,5 @@
 using Pollyanna.Auth;
+using Pollyanna.Pages.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -14,7 +15,7 @@ namespace Pollyanna.Pages.Auth;
 public sealed class LoginModel(ProviderRegistry providers, ILoggerFactory loggers) : PageModel
 {
     /// <summary>The chooser's buttons, in configured order.</summary>
-    public IReadOnlyList<(string Label, string Href)> Choices { get; private set; } = [];
+    public IReadOnlyList<ProviderButtonView> Choices { get; private set; } = [];
 
     public async Task<IActionResult> OnGetAsync(string? key, string? returnUrl)
     {
@@ -28,7 +29,7 @@ public sealed class LoginModel(ProviderRegistry providers, ILoggerFactory logger
         if (provider is null)
         {
             var query = target == "/" ? "" : "?returnUrl=" + Uri.EscapeDataString(target);
-            Choices = [.. providers.Select(p => (p.Label, p.LoginPath + query))];
+            Choices = [.. providers.Select(p => new ProviderButtonView(p, "Sign in with " + p.Label, p.LoginPath + query))];
             return Page();
         }
 

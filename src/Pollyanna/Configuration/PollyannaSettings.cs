@@ -17,6 +17,7 @@ public sealed class PollyannaSettings
     public const string ClientSecretFileKey = "POLLYANNA_OIDC_CLIENT_SECRET_FILE";
     public const string LabelKey = "POLLYANNA_OIDC_LABEL";
     public const string AdmissionKey = "POLLYANNA_OIDC_ADMISSION";
+    public const string IconFileKey = "POLLYANNA_OIDC_ICON_FILE";
     public const string ProvidersKey = ProviderRegistry.ProvidersKey;
     public const string DrawKeyFileKey = "POLLYANNA_DRAW_KEY_FILE";
     public const string DataDirKey = "POLLYANNA_DATA_DIR";

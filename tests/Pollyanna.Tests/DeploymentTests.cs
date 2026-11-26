@@ -62,10 +62,11 @@ public sealed class DeploymentTests
         var settings = typeof(PollyannaSettings).GetFields()
             .Where(f => f.IsLiteral && f.Name.EndsWith("Key"))
             .Select(f => (string)f.GetRawConstantValue()!).ToList();
-        Assert.Equal(17, settings.Count);
+        Assert.Equal(18, settings.Count);
         Assert.All(settings, key => Assert.Contains(key, help));
         Assert.Contains("POLLYANNA_OIDC_<KEY>_ISSUER", help);
         Assert.Contains("POLLYANNA_OIDC_<KEY>_ADMISSION", help);
+        Assert.Contains("POLLYANNA_OIDC_<KEY>_ICON_FILE", help);
         Assert.Contains("POLLYANNA_OIDC_GOOGLE_LABEL", help);
         Assert.Contains("healthcheck", help);
         Assert.Contains("backup", help);

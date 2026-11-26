@@ -16,7 +16,7 @@ public sealed class OpenProviderTests : IAsyncLifetime
     TestApp app = null!;
 
     public async Task InitializeAsync() =>
-        app = await TestApp.StartAsync(providers: [new("google", "Google", "open"), new("work", "Work account")]);
+        app = await TestApp.StartAsync(providers: [new("google", "Google", "open", TestImages.Svg), new("work", "Work account")]);
     public async Task DisposeAsync() => await app.DisposeAsync();
 
     static readonly MockIdentity Sue = new("sue-google", "Sue Example", "Sue@Example.com", true, null);
@@ -98,6 +98,9 @@ public sealed class OpenProviderTests : IAsyncLifetime
         Assert.Equal("Pollyanna doesn't know Sue@Example.com yet. Ask whoever organizes your family's exchange to invite that address, or sign in another way.", text);
         Assert.Equal("Sue@Example.com", page.QuerySelector(".empty p strong")!.TextContent);
         Assert.Equal(EveryWayIn, buttons);
+        // The provider's icon shows beside its label, as on the chooser.
+        var icons = page.QuerySelectorAll(".actions .button img").Select(i => i.GetAttribute("src")).ToList();
+        Assert.StartsWith("/auth/icon/google?v=", Assert.Single(icons));
         await AssertNothingStoredAsync(0, 0, 0);
         AssertRefusalLogged("no invitation or person");
     }
