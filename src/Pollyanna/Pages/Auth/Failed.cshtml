@@ -2,6 +2,18 @@
 @{
     ViewData["Title"] = "Sign-in didn't work";
     var providerProblem = Request.Query["reason"] == "provider";
+    // PROTOTYPE (wayfinder #13): an open provider's refusal, Development only.
+    var protoVariant = Request.Query["variant"].ToString().ToUpperInvariant();
+    var proto = Request.Query["reason"] == "refused" && protoVariant is "A" or "B"
+        && HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+}
+@if (proto)
+{
+    ViewData["ProtoView"] = "refused";
+    ViewData["ProtoVariant"] = protoVariant;
+    ViewData["ProtoCase"] = Request.Query["case"].ToString() is "unverified" or "ambiguous" ? Request.Query["case"].ToString() : "unknown";
+    <partial name="_SignInPrototype" />
+    return;
 }
 
 <div class="empty">

@@ -1,2 +1,10 @@
 @page
 @model Pollyanna.Pages.Auth.LoginModel
+@if (Model.ProtoVariant is not null)
+{
+    ViewData["Title"] = "Sign in";
+    ViewData["ProtoView"] = "login";
+    ViewData["ProtoVariant"] = Model.ProtoVariant;
+    ViewData["ProtoReturnUrl"] = Model.ProtoReturnUrl;
+    <partial name="_SignInPrototype" />
+}

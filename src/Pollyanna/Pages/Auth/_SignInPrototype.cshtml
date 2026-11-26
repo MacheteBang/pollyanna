@@ -1,0 +1,202 @@
+@* PROTOTYPE (wayfinder #13, "Sign-in page with several providers"). Throwaway: lives on branch
+   prototype/sign-in-chooser, never merged. Development only.
+   - /auth/login?variant=A|B|C: three choosers for two configured providers (stubbed).
+   - /auth/failed?reason=refused&variant=A|B: two takes on an open provider's refusal, with
+     &case=unknown|unverified|ambiguous for the three refusal reasons.
+   The default provider's button really signs in (mock issuer). The Google button is a stub that
+   lands on the refused page, as if Google had sent an address nobody invited. *@
+@{
+    var view = (string)ViewData["ProtoView"]!;          // "login" or "refused"
+    var v = (string)ViewData["ProtoVariant"]!;
+    var returnUrl = ViewData["ProtoReturnUrl"] as string ?? "/";
+    var refusedCase = ViewData["ProtoCase"] as string ?? "unknown";
+    var last = Context.Request.Query["last"].ToString();   // C only: the remembered provider key
+
+    // Stub providers in configured order: the unnamed one first, then POLLYANNA_OIDC_PROVIDERS.
+    var providers = new[]
+    {
+        (Key: "default", Label: "Family account", Admission: "trusted",
+            Href: "/auth/login?returnUrl=" + Uri.EscapeDataString(returnUrl)),
+        (Key: "google", Label: "Google", Admission: "open",
+            Href: $"/auth/failed?reason=refused&variant={(v == "B" ? "B" : "A")}"),
+    };
+    const string address = "you@example.com";
+
+    var steps = new[]
+    {
+        (Url: "/auth/login?variant=A", Name: "Chooser A · Plain buttons"),
+        (Url: "/auth/login?variant=B", Name: "Chooser B · One slip per provider"),
+        (Url: "/auth/login?variant=C&last=google", Name: "Chooser C · Last used first"),
+        (Url: "/auth/failed?reason=refused&variant=A", Name: "Refused A · Note and every way in"),
+        (Url: "/auth/failed?reason=refused&variant=B", Name: "Refused B · Slip and other ways"),
+    };
+    var here = Array.FindIndex(steps, s => s.Url.StartsWith(view == "login" ? $"/auth/login?variant={v}" : $"/auth/failed?reason=refused&variant={v}"));
+    var prev = steps[(here + steps.Length - 1) % steps.Length];
+    var next = steps[(here + 1) % steps.Length];
+}
+
+<link rel="stylesheet" href="~/css/prototype-sign-in.css" asp-append-version="true">
+
+<div class="proto-note">
+    <p class="kicker">PROTOTYPE · @steps[here].Name.ToUpperInvariant()</p>
+    @if (view == "login")
+    {
+        <p>Two providers configured: the unnamed one ("Family account", trusted) and Google (open). With only one provider, /auth/login keeps going straight to it and this page never shows.</p>
+    }
+    else
+    {
+        <p>
+            Reason:
+            <a href="?reason=refused&variant=@v&case=unknown">nobody invited it</a> ·
+            <a href="?reason=refused&variant=@v&case=unverified">email not verified</a> ·
+            <a href="?reason=refused&variant=@v&case=ambiguous">two people match</a>
+        </p>
+    }
+</div>
+
+@if (view == "login" && v == "A")
+{
+    @* A: the signed-out page's shape. One full-width button per provider, all equal, in order. *@
+    <div class="empty">
+        <h1>Sign in to Pollyanna</h1>
+        <p>Choose how you'd like to sign in.</p>
+    </div>
+    <div class="actions">
+        @foreach (var p in providers)
+        {
+            <a class="button" href="@p.Href">Sign in with @p.Label</a>
+        }
+    </div>
+    <partial name="_About" />
+}
+else if (view == "login" && v == "B")
+{
+    @* B: each provider is a torn slip on the table, with a line saying who it's for. *@
+    <div class="page-head">
+        <p class="kicker">SIGN IN</p>
+        <h1>How do you sign in?</h1>
+        <p>Pick the one that uses the email address your invitation went to.</p>
+    </div>
+    <ul class="slips">
+        @foreach (var p in providers)
+        {
+            <li>
+                <a class="slip slip-link" href="@p.Href">
+                    <span class="kicker">SIGN IN WITH</span>
+                    <span class="slip-title">@p.Label</span>
+                    <span class="slip-line">@(p.Admission == "open"
+                        ? $"Use the {p.Label} account with the address you were invited at."
+                        : $"For anyone with a {p.Label.ToLowerInvariant()}.")</span>
+                </a>
+            </li>
+        }
+    </ul>
+    <partial name="_About" />
+}
+else if (view == "login" && v == "C")
+{
+    @* C: the provider used last time on this device (a cookie) is the one big button; the rest
+       sit under "Other ways". With no cookie, the first configured provider takes its place. *@
+    var first = providers.FirstOrDefault(p => p.Key == last);
+    var remembered = first.Key is not null;
+    if (!remembered) first = providers[0];
+    <div class="empty">
+        <h1>Sign in to Pollyanna</h1>
+        @if (remembered)
+        {
+            <p>Last time on this device you used @first.Label.</p>
+        }
+    </div>
+    <div class="actions">
+        <a class="button" href="@first.Href">Sign in with @first.Label</a>
+        <p class="kicker center proto-rule">OTHER WAYS</p>
+        @foreach (var p in providers.Where(p => p.Key != first.Key))
+        {
+            <a class="button button-outline" href="@p.Href">Sign in with @p.Label</a>
+        }
+    </div>
+    <p class="hint center">
+        @if (remembered)
+        {
+            <a href="?variant=C">See it without the remembered choice</a>
+        }
+        else
+        {
+            <a href="?variant=C&last=google">See it after a Google sign-in</a>
+        }
+    </p>
+}
+else if (view == "refused" && v == "A")
+{
+    @* A: the decided wording on /auth/failed, then every way in again, the same as the chooser. *@
+    <div class="empty">
+        @switch (refusedCase)
+        {
+            case "unverified":
+                <h1>Google hasn't confirmed this address</h1>
+                <p>Google says it hasn't verified <strong class="break">@address</strong>, so Pollyanna can't use it to let you in. Confirm it with Google, or sign in another way.</p>
+                break;
+            case "ambiguous":
+                <h1>Pollyanna can't tell who you are</h1>
+                <p>More than one person in Pollyanna uses <strong class="break">@address</strong>. Ask whoever organizes your family's exchange to sort it out, or sign in another way.</p>
+                break;
+            default:
+                <h1>Pollyanna doesn't know you yet</h1>
+                <p>Pollyanna doesn't know <strong class="break">@address</strong> yet. Ask whoever organizes your family's exchange to invite that address, or sign in another way.</p>
+                break;
+        }
+    </div>
+    <div class="actions">
+        @foreach (var p in providers)
+        {
+            <a class="button button-outline" href="@p.Href">Sign in with @p.Label</a>
+        }
+    </div>
+}
+else if (view == "refused" && v == "B")
+{
+    @* B: the address on a slip with a stamp; the provider just used is offered again only as
+       "a different Google account" (prompt=select_account), since a plain retry would sign the
+       same account straight back in and land here again. *@
+    var stamp = refusedCase switch { "unverified" => "NOT VERIFIED", "ambiguous" => "TWO MATCHES", _ => "NOT INVITED" };
+    <div class="page-head">
+        <p class="kicker">SIGN-IN DIDN'T WORK</p>
+        <h1>@(refusedCase == "ambiguous" ? "Pollyanna can't tell who you are" : "That address isn't on the list")</h1>
+    </div>
+    <div class="slip slip-plain">
+        <div class="slip-head">
+            <span class="kicker">GOOGLE SIGNED YOU IN AS</span>
+            <span class="stamp stamp-small">@stamp</span>
+        </div>
+        <span class="slip-title break">@address</span>
+        <p class="slip-line">
+            @switch (refusedCase)
+            {
+                case "unverified":
+                    @:Google hasn't verified this address, so Pollyanna can't use it to let you in.
+                    break;
+                case "ambiguous":
+                    @:More than one person in Pollyanna uses this address. Ask whoever organizes your family's exchange to sort it out.
+                    break;
+                default:
+                    @:Nobody has invited this address yet. Ask whoever organizes your family's exchange to invite it.
+                    break;
+            }
+        </p>
+    </div>
+    <div class="actions">
+        <a class="button" href="/auth/login?variant=A">Use a different Google account</a>
+        <p class="kicker center proto-rule">OR SIGN IN ANOTHER WAY</p>
+        @foreach (var p in providers.Where(p => p.Key != "google"))
+        {
+            <a class="button button-outline" href="@p.Href">Sign in with @p.Label</a>
+        }
+    </div>
+}
+
+<nav class="proto-switcher" aria-label="Prototype variants">
+    <a href="@prev.Url" data-proto-prev aria-label="Previous variant">←</a>
+    <span>@(here + 1)/@steps.Length · @steps[here].Name</span>
+    <a href="@next.Url" data-proto-next aria-label="Next variant">→</a>
+</nav>
+<script src="~/js/prototype-sign-in.js" asp-append-version="true" defer></script>

@@ -1,0 +1,12 @@
+/* PROTOTYPE (wayfinder #13). Throwaway: branch prototype/sign-in-chooser, never merged. */
+.proto-note { border: 2px dashed var(--ribbon); padding: 8px 12px; background: var(--bright); }
+.proto-note p { margin: 0; font-size: 0.875rem; }
+.proto-rule { margin: 6px 0 0; }
+.proto-switcher {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 100;
+    display: flex; gap: 16px; align-items: center; padding: 8px 16px; white-space: nowrap;
+    background: #111; color: #fff; font-family: system-ui, sans-serif; font-size: 14px;
+    border-radius: 999px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+}
+.proto-switcher a { color: #fff; text-decoration: none; font-size: 18px; padding: 4px 8px; }
+main { padding-bottom: 64px; }
