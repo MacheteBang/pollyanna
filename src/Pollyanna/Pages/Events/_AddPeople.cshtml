@@ -20,7 +20,7 @@
                script shows them again if another earlier event, or none, is picked. *@
             var groups = Model.GroupsOf(p.Id);
             var prefilled = Model.Prefilled(p.Id);
-            <li class="person" data-search="@p.Name.ToLowerInvariant()" data-previous-groups="@(groups.Count > 0 ? string.Join(' ', groups) : null)" data-prefilled="@prefilled" hidden="@prefilled">
+            <li class="person" data-search="@p.Name.ToLowerInvariant()" data-previous-groups="@(groups.Count > 0 ? string.Join(' ', groups) : null)" data-prefilled="@(prefilled ? "true" : "false")" hidden="@prefilled">
                 <input type="checkbox" name="personIds" value="@p.Id" id="add-@p.Id" checked="@Model.Ticked.Contains(p.Id)" disabled="@prefilled">
                 <partial name="_Avatar" model="p" />
                 <label class="person-body person-name" for="add-@p.Id">@p.Name</label>

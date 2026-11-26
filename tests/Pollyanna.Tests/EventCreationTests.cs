@@ -234,13 +234,33 @@ public sealed class EventCreationTests : IAsyncLifetime
         var annRow = form.QuerySelector($"input[name=personIds][value='{ann}']")!;
         Assert.True(annRow.HasAttribute("disabled"));
         Assert.True(annRow.ParentElement!.HasAttribute("hidden"));
+        Assert.Equal("true", annRow.ParentElement!.GetAttribute("data-prefilled"));
         // Bob isn't in an event Pat organizes, and Dee is only in an earlier event that isn't linked.
+        // The script hides a row whose data-prefilled is "true", so theirs must say "false".
         foreach (var shown in new[] { bob, dee })
         {
             var row = form.QuerySelector($"input[name=personIds][value='{shown}']")!;
             Assert.False(row.HasAttribute("disabled"));
             Assert.False(row.ParentElement!.HasAttribute("hidden"));
+            Assert.Equal("false", row.ParentElement!.GetAttribute("data-prefilled"));
         }
+    }
+
+    [Fact]
+    public async Task The_manage_pages_ticklist_marks_nobody_as_prefilled()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        var ann = await app.PersonAsync("Ann");
+        await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann]);
+        var draft = await app.EventAsync("Stockings 2026", EventStatus.Draft, [me], [me]);
+
+        var page = await browser.GetPageAsync($"/events/{draft}/manage");
+
+        // The script hides a row whose data-prefilled is "true", so a row here must say "false".
+        var annRow = page.QuerySelector($"input[name=personIds][value='{ann}']")!;
+        Assert.Equal("false", annRow.ParentElement!.GetAttribute("data-prefilled"));
+        Assert.False(annRow.ParentElement!.HasAttribute("hidden"));
     }
 
     [Fact]

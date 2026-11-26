@@ -28,7 +28,7 @@ function previousEventPicker() {
             el.hidden = select.value === "";
         for (const row of document.querySelectorAll("[data-add-people] li[data-search]")) {
             const prefilled = select.value !== "" && (row.dataset.previousGroups ?? "").split(" ").includes(select.value);
-            row.toggleAttribute("data-prefilled", prefilled);
+            row.dataset.prefilled = prefilled ? "true" : "false";
             row.hidden = prefilled;
             row.querySelector("input").disabled = prefilled;
         }
@@ -60,7 +60,7 @@ function addPeople() {
             const email = looksLikeEmail(typed);
             const term = typed.toLowerCase();
             for (const r of rows)
-                r.hidden = r.hasAttribute("data-prefilled") || (term !== "" && !email && !r.dataset.search.includes(term));
+                r.hidden = r.dataset.prefilled === "true" || (term !== "" && !email && !r.dataset.search.includes(term));
             row.hidden = !email;
             address.disabled = !email;
             address.value = typed;
