@@ -19,9 +19,10 @@ namespace Pollyanna.Tests.Support;
 /// <summary>
 /// An extra mock provider for <see cref="TestApp.StartAsync"/>: listed in
 /// <c>POLLYANNA_OIDC_PROVIDERS</c> after the unnamed one, with its own in-process issuer at
-/// <see cref="TestApp.IssuerOf"/>.
+/// <see cref="TestApp.IssuerOf"/>. <paramref name="Icon"/> is written to a file named by its
+/// <c>_ICON_FILE</c> setting.
 /// </summary>
-public sealed record TestProvider(string Key, string Label, string Admission = "trusted");
+public sealed record TestProvider(string Key, string Label, string Admission = "trusted", byte[]? Icon = null);
 
 /// <summary>
 /// Pollyanna wired to an in-process mock issuer (plus one per extra <see cref="TestProvider"/>), a fresh data directory, a fake clock and a stub
@@ -80,6 +81,13 @@ public sealed class TestApp : IAsyncDisposable
                 b.UseSetting(prefix + "CLIENT_SECRET", ClientSecretOf(provider.Key));
                 b.UseSetting(prefix + "LABEL", provider.Label);
                 b.UseSetting(prefix + "ADMISSION", provider.Admission);
+                if (provider.Icon is { } icon)
+                {
+                    var file = Path.Combine(dataDir, "icons", provider.Key);
+                    Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                    File.WriteAllBytes(file, icon);
+                    b.UseSetting(prefix + "ICON_FILE", file);
+                }
             }
             if (mail)
             {
