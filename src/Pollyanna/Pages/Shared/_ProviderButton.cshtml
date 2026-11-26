@@ -1,0 +1,14 @@
+@model Pollyanna.Pages.Shared.ProviderButtonView
+@* One provider's button, with its icon when the operator supplied one (ProviderButtonView). *@
+@{
+    var css = Model.Outline ? "button button-outline provider-button" : "button provider-button";
+    var icon = Model.Provider.IconPath;
+}
+@if (Model.Href is not null)
+{
+    <a class="@css" href="@Model.Href">@if (icon is not null) {<img class="provider-icon" src="@icon" alt="">}@Model.Text</a>
+}
+else
+{
+    <button class="@css" type="submit">@if (icon is not null) {<img class="provider-icon" src="@icon" alt="">}@Model.Text</button>
+}

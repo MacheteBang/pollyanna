@@ -65,6 +65,7 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 | Client ID / secret | OIDC client credentials; the secret is kept out of plain config |
 | Provider label / admission (optional) | The unnamed provider's button label (default: the issuer's host) and admission (default: `trusted`) |
 | More providers (optional) | `POLLYANNA_OIDC_PROVIDERS` lists extra provider keys; each key has its own issuer, client ID, secret (value or file), label and admission, all required |
+| Provider icons (optional) | `POLLYANNA_OIDC_ICON_FILE`, or `POLLYANNA_OIDC_<KEY>_ICON_FILE` for a listed provider: an image the operator supplies for that provider's buttons |
 | Draw key location | Where the draw key lives (§5.3); generated on first start if absent |
 | Data location | Where the app's data is stored |
 | Mail relay (optional) | SMTP host, port, TLS mode, login and From address for email notifications (§15); the password is kept out of plain config. Unset: no email. |
@@ -72,8 +73,9 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 - Providers are set by environment variables only, with no settings file:
   - The unnamed set (`POLLYANNA_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`
     or `_CLIENT_SECRET_FILE`) is a full provider with the key `default`. It
-    gains an optional `POLLYANNA_OIDC_LABEL` (default: the issuer's host) and
-    an optional `POLLYANNA_OIDC_ADMISSION` (default: `trusted`). It may be
+    gains an optional `POLLYANNA_OIDC_LABEL` (default: the issuer's host), an
+    optional `POLLYANNA_OIDC_ADMISSION` (default: `trusted`) and an optional
+    `POLLYANNA_OIDC_ICON_FILE`. It may be
     the only provider or sit next to listed ones. At least one provider must
     exist, so with nothing listed the unnamed set is required.
   - `POLLYANNA_OIDC_PROVIDERS` lists extra keys, separated by commas or
@@ -81,14 +83,20 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     `default` is reserved. Each key needs `POLLYANNA_OIDC_<KEY>_ISSUER`,
     `_CLIENT_ID`, exactly one of `_CLIENT_SECRET` or `_CLIENT_SECRET_FILE`,
     `_LABEL` and `_ADMISSION` (`trusted` or `open`, no default).
-  - Order: the unnamed provider first, then the list's order.
+    `_ICON_FILE` is optional.
+  - An icon file is an image the operator supplies, such as a provider's
+    downloadable button artwork; the repo ships no third-party logos. It is
+    read and checked at startup: it must be readable, at most 1 MB, and a
+    PNG, JPEG, GIF or WebP (by its first bytes) or an SVG (well-formed XML
+    with an `svg` root in the SVG namespace and no DTD).  - Order: the unnamed provider first, then the list's order.
   - Open admission is a settings error ("open admission is not supported
     yet") until the open providers' admission gate exists.
   - Settings errors, each naming its setting in full: two providers with the
     same issuer once trailing slashes are trimmed (naming both settings); a
     `POLLYANNA_OIDC_<KEY>_*` setting whose key isn't listed; a repeated,
     malformed or reserved key; any provider field missing or invalid, under
-    the same secret and https rules for every provider. When the public URL is
+    the same secret and https rules for every provider; an icon file that is
+    missing or isn't a usable image. When the public URL is
     valid, the closing hint lists the redirect URI of every provider the
     settings name.
   - The startup line `Pollyanna <version> is ready at <url>` is followed by
@@ -106,7 +114,8 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   Which providers are used is deployment configuration (§2), not part of the
   app. Development and tests use local test providers.
 - One module, the provider registry, owns the configured providers: key,
-  label, issuer, admission and callback path, in configured order. Each
+  label, issuer, admission, callback path and optional icon, in configured
+  order. Each
   provider has its own OpenID Connect authentication scheme. PKCE, the scopes,
   the `state` and `nonce` rules, and a pushed authorization request when the
   provider advertises one apply to every provider alike.
@@ -119,10 +128,20 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   registered before the first sign-in (§2, §11).
 - `/auth/login`: with one provider, it goes straight to that provider. With
   several, it shows a chooser: "Sign in to Pollyanna", "Choose how you'd like
-  to sign in.", then one equal, full-width, text-only "Sign in with <label>"
-  button per provider in configured order, and the about line. Each button
-  links to `/auth/login/<key>` and carries the return URL. The chooser
-  remembers nothing and stores no cookie.
+  to sign in.", then one equal, full-width "Sign in with <label>" button per
+  provider in configured order, and the about line. Each button links to
+  `/auth/login/<key>` and carries the return URL. The chooser remembers
+  nothing and stores no cookie.
+- Provider icons: with an icon file (§2), the provider's logo sits in an
+  `<img>` (empty `alt`, since the label names the provider) before the label
+  on every button for that provider: the chooser, the refused page and the
+  account page's "Add" buttons. Without one, the button is text only.
+  Pollyanna serves the icon itself at `/auth/icon/<key>` to anyone, signed in
+  or not, with its checked content type, `nosniff` and a CSP that blocks
+  everything (so an SVG opened on its own runs nothing). Buttons link to it
+  with a content hash (`?v=`) and it may be cached for a day, so a changed
+  file reaches browsers at the next start. No provider is special-cased: Google's logo is
+  just a file the operator names.
 - Sign-in failures go to `/auth/failed` ("Sign-in didn't work"), never the
   general error page. That includes failures before the redirect to the
   provider (discovery, metadata, a rejected pushed authorization request).
@@ -660,6 +679,7 @@ who is asking.
 | `/past` | signed in | Archived events the user took part in or organized |
 | `/account` | signed in | "Ways to sign in" (§3): one row per login with its provider's label, the email it last sent, "(no longer set up)" when its issuer isn't configured, and a "Remove" button; with more than one provider, an outline "Add <label>" button per provider in configured order; a note that a removed login whose verified email matches is added back on its next sign-in. Then the "Email me about Pollyanna events" switch (§15); sign out; delete account |
 | `/auth/login` | anyone | Starts sign-in. With one provider, goes straight to it; with several, the chooser (§3), whose buttons go to `/auth/login/<key>` |
+| `/auth/icon/<key>` | anyone | A provider's logo for its buttons (§3); 404 without one |
 | `/healthz` | anyone | Liveness, no data |
 
 - `/events/{id}` also holds, by status: "Leave this event" (its confirmation
