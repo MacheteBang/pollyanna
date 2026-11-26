@@ -23,6 +23,9 @@ public sealed record ProviderIdentity(
     bool? EmailVerified,
     string? PictureUrl)
 {
+    /// <summary>The normalized email, only when the provider explicitly marked it verified; null otherwise.</summary>
+    public string? VerifiedEmail => EmailVerified == true ? Person.NormalizeEmail(Email) : null;
+
     public static ProviderIdentity FromClaims(ClaimsPrincipal principal)
     {
         var sub = principal.FindFirst("sub") ?? throw new InvalidOperationException("The provider sent no sub claim.");
@@ -204,7 +207,7 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
     /// </summary>
     async Task<List<Person>> VerifiedEmailMatchesAsync(ProviderIdentity identity, CancellationToken cancellationToken)
     {
-        if (identity.EmailVerified != true || Person.NormalizeEmail(identity.Email) is not { } email)
+        if (identity.VerifiedEmail is not { } email)
             return [];
         return await db.People.Living().Where(p => p.EmailNormalized == email)
             .OrderBy(p => p.Id).ToListAsync(cancellationToken);
@@ -217,7 +220,7 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
     /// </summary>
     async Task<SignInRefusal?> AdmitAsync(ProviderIdentity identity, int matches, CancellationToken cancellationToken)
     {
-        if (identity.EmailVerified != true || Person.NormalizeEmail(identity.Email) is not { } email)
+        if (identity.VerifiedEmail is not { } email)
             return new SignInRefusal(RefusalReason.EmailNotVerified, identity.Email);
         if (matches > 1)
             return new SignInRefusal(RefusalReason.Ambiguous, identity.Email, matches);

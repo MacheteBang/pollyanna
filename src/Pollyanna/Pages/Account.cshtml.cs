@@ -13,7 +13,7 @@ namespace Pollyanna.Pages;
 /// when a mail relay is configured, sign out, and a link to delete the account.
 /// </summary>
 public sealed class AccountModel(PollyannaDb db, Outbox outbox, EmailSwitch emailSwitch, ProviderRegistry providers,
-    PersonSignIn signIn, ILoggerFactory loggers) : PageModel
+    PersonSignIn signIn) : PageModel
 {
     /// <summary>One login on the list: its provider's label (null when the provider is no longer set up) and the email it last sent.</summary>
     public sealed record LoginRow(Guid Id, string Label, bool NoLongerSetUp, string? LastEmail);
@@ -55,15 +55,7 @@ public sealed class AccountModel(PollyannaDb db, Outbox outbox, EmailSwitch emai
     {
         if (providers.Count < 2 || providers.ByKey(key) is not { } provider)
             return NotFound();
-        try
-        {
-            await HttpContext.ChallengeAsync(provider.Scheme, AddLogin.Properties(User.PersonId()));
-            return new EmptyResult();
-        }
-        catch (Exception e) when (!HttpContext.RequestAborted.IsCancellationRequested && !Response.HasStarted)
-        {
-            return LocalRedirect(SignInFailure.StartFailed(loggers.CreateLogger(SignInFailure.LoggerCategory), provider, e));
-        }
+        return await SignInFailure.ChallengeAsync(HttpContext, provider, AddLogin.Properties(User.PersonId()));
     }
 
     /// <summary>Removes one of this person's logins, any but the last (<see cref="PersonSignIn.RemoveLoginAsync"/>).</summary>

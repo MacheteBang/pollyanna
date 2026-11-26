@@ -6,8 +6,8 @@ namespace Pollyanna.Events;
 /// <summary>
 /// The organizer and late-joiner pickers (spec §4 Organizer, §5.4): one person picked from the
 /// viewer's list (<see cref="KnownTo"/>), or the one person a typed address belongs to. Unlike the
-/// add-people control, an address here never invites: organizers must already have an account,
-/// and invitations can't be used while names are drawn.
+/// add-people control, an address here never invites: an organizer must already be a person
+/// (have signed in), and invitations can't be used while names are drawn.
 /// </summary>
 public sealed partial class EventManager
 {
@@ -29,7 +29,7 @@ public sealed partial class EventManager
             return (null, Outcome.Fail("Pick one person, or type their email, not both."));
         if (personId is { } id)
         {
-            var person = await SignedInPeople.SingleOrDefaultAsync(p => p.Id == id);
+            var person = await db.People.Living().SingleOrDefaultAsync(p => p.Id == id);
             return person is null ? (null, Outcome.Fail("Pick someone from the list.")) : (person, null);
         }
         if (email == "")
@@ -51,5 +51,5 @@ public sealed partial class EventManager
     /// email marked unverified.
     /// </summary>
     IQueryable<Person> UsingAddress(string normalized) =>
-        SignedInPeople.Where(p => p.EmailNormalized == normalized && p.EmailVerified != false);
+        db.People.Living().Where(p => p.EmailNormalized == normalized && p.EmailVerified != false);
 }

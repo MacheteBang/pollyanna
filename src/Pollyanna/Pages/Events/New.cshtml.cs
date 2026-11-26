@@ -47,7 +47,7 @@ public sealed class NewModel(PollyannaDb db, EventManager events) : PageModel
         var me = User.PersonId();
         // A ticked person the creator may not pick is refused like any other bad input (spec §4).
         var ticked = PersonIds.Distinct().ToList();
-        if (await events.KnownTo(me).CountAsync(p => ticked.Contains(p.Id)) != ticked.Count)
+        if (!await events.AllKnownToAsync(me, ticked))
             return NotFound();
         var copy = PreviousEventId is { } p
             ? Request.Form[CopyField(p)].Select(v => Guid.TryParse(v, out var g) ? g : Guid.Empty).ToHashSet()
@@ -75,7 +75,7 @@ public sealed class NewModel(PollyannaDb db, EventManager events) : PageModel
         var ids = candidates.Select(c => c.Id).ToList();
         var people = await db.Participants
             .Where(p => ids.Contains(p.EventId) && p.PersonId != me)
-            .Join(events.SignedInPeople, p => p.PersonId, person => person.Id, (p, person) => new
+            .Join(db.People.Living(), p => p.PersonId, person => person.Id, (p, person) => new
             {
                 p.EventId,
                 Row = new PersonRow(person.Id, person.DisplayName ?? "", db.PersonPictures.Any(x => x.PersonId == person.Id)),

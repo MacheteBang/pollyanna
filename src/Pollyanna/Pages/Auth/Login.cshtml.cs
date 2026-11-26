@@ -12,7 +12,7 @@ namespace Pollyanna.Pages.Auth;
 /// the person returns to the page first asked for. The chooser remembers nothing and sets no
 /// cookie (spec §3, §7).
 /// </summary>
-public sealed class LoginModel(ProviderRegistry providers, ILoggerFactory loggers) : PageModel
+public sealed class LoginModel(ProviderRegistry providers) : PageModel
 {
     /// <summary>The chooser's buttons, in configured order.</summary>
     public IReadOnlyList<ProviderButtonView> Choices { get; private set; } = [];
@@ -33,16 +33,6 @@ public sealed class LoginModel(ProviderRegistry providers, ILoggerFactory logger
             return Page();
         }
 
-        // The challenge talks to the provider before redirecting (discovery, pushed authorization
-        // requests), so a misconfigured client fails here rather than at the callback.
-        try
-        {
-            await HttpContext.ChallengeAsync(provider.Scheme, new AuthenticationProperties { RedirectUri = target });
-            return new EmptyResult();
-        }
-        catch (Exception e) when (!HttpContext.RequestAborted.IsCancellationRequested && !Response.HasStarted)
-        {
-            return LocalRedirect(SignInFailure.StartFailed(loggers.CreateLogger(SignInFailure.LoggerCategory), provider, e));
-        }
+        return await SignInFailure.ChallengeAsync(HttpContext, provider, new AuthenticationProperties { RedirectUri = target });
     }
 }

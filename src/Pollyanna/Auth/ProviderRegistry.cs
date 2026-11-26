@@ -66,7 +66,7 @@ public sealed class Provider
 /// </summary>
 public sealed partial class ProviderRegistry(IReadOnlyList<Provider> providers) : IReadOnlyList<Provider>
 {
-    internal const string Prefix = "POLLYANNA_OIDC_";
+    public const string Prefix = "POLLYANNA_OIDC_";
     public const string ProvidersKey = Prefix + "PROVIDERS";
     public const string IssuerField = "ISSUER";
     public const string ClientIdField = "CLIENT_ID";

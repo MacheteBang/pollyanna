@@ -11,13 +11,13 @@ public sealed class PollyannaSettings
 {
     public const string PublicUrlKey = "POLLYANNA_PUBLIC_URL";
     // The unnamed provider's settings; listed providers use POLLYANNA_OIDC_<KEY>_* (ProviderRegistry).
-    public const string IssuerKey = "POLLYANNA_OIDC_ISSUER";
-    public const string ClientIdKey = "POLLYANNA_OIDC_CLIENT_ID";
-    public const string ClientSecretKey = "POLLYANNA_OIDC_CLIENT_SECRET";
-    public const string ClientSecretFileKey = "POLLYANNA_OIDC_CLIENT_SECRET_FILE";
-    public const string LabelKey = "POLLYANNA_OIDC_LABEL";
-    public const string AdmissionKey = "POLLYANNA_OIDC_ADMISSION";
-    public const string IconFileKey = "POLLYANNA_OIDC_ICON_FILE";
+    public const string IssuerKey = ProviderRegistry.Prefix + ProviderRegistry.IssuerField;
+    public const string ClientIdKey = ProviderRegistry.Prefix + ProviderRegistry.ClientIdField;
+    public const string ClientSecretKey = ProviderRegistry.Prefix + ProviderRegistry.ClientSecretField;
+    public const string ClientSecretFileKey = ProviderRegistry.Prefix + ProviderRegistry.ClientSecretFileField;
+    public const string LabelKey = ProviderRegistry.Prefix + ProviderRegistry.LabelField;
+    public const string AdmissionKey = ProviderRegistry.Prefix + ProviderRegistry.AdmissionField;
+    public const string IconFileKey = ProviderRegistry.Prefix + ProviderRegistry.IconFileField;
     public const string ProvidersKey = ProviderRegistry.ProvidersKey;
     public const string DrawKeyFileKey = "POLLYANNA_DRAW_KEY_FILE";
     public const string DataDirKey = "POLLYANNA_DATA_DIR";
