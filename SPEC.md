@@ -1674,14 +1674,10 @@ kind's words are unchanged, and there is no new setting.
   UTF-8); sending and its logging are unchanged. The footer is now
   structured lines (`AudienceRules.FooterLines`, `FooterLine`), joined
   into the same plain text as before.
-- **Gift tag (#42).** `Notifications/EmailLayout.razor` is the one layout,
-  rendered by `HtmlRenderer` (no package): kraft ground, slip-paper tag
-  with a ribbon-blue band, wordmark and status stamp (`Format.Stamp`),
-  the event name as `<h1>`, one paragraph per line of the text, the ink
-  button (label from the link: event, manage page or questions), the
-  printed URL, and the footer tag. Styles are inline; the `<style>` block
-  is only the stamp's narrow-screen reset. The colors are §12's plus the
-  email-only softened ink `#5A5048`.
+- **Gift tag (#42).** `Notifications/EmailLayout.razor` is the one layout
+  of §15 **Layout**, rendered by `HtmlRenderer` (no package). The stamp
+  comes from `Format.Stamp`, the text is one paragraph per line of the
+  plain text, and the button's label is chosen from the link.
 - **Preview text (#43).** The layout opens with the kind's text and a run
   of spacer characters, both hidden and `aria-hidden`.
 - **Tests.** `HtmlEmailTests` (the MIME step; every kind: same words,
@@ -1691,13 +1687,17 @@ kind's words are unchanged, and there is no new setting.
   shuffled pairings; content checks over the raw markup). The existing
   per-kind tests still read `Body` unchanged, which shows the plain text
   didn't change.
+- **Docs (#44).** DEPLOYMENT.md says emails carry an HTML part and a
+  plain-text part and load nothing remote.
 - **Checked by hand (#44).** Every kind sent through Mailpit
   (CONTRIBUTING.md): both parts present in order, the plain text as
   before, and the HTML with the stamp, button, printed URL and footer tag;
   inbox snippets show the kind's text. Mailpit's compatibility report
-  flags only what §15 accepts (no stamp tilt or `<style>` in Gmail, the
-  plainest layout in Outlook). Real clients (Apple Mail, Gmail web, a
-  forced-dark client, a phone) are checked by hand; notes go on #44.
+  flags only gaps already expected: no stamp tilt or `<style>` in Gmail
+  (§15 **Layout**), and Outlook for Windows ignoring the tag's width and
+  some spacing, the plainest rendering, which #40 accepts. Real clients
+  (Apple Mail, Gmail web, a forced-dark client, a phone) are still to be
+  checked by hand; notes go on #44.
 
 ## 15. Email notifications
 
@@ -1706,9 +1706,9 @@ event needs them, without weakening the sealed draw (§5.2).
 
 **Channel.** Email with an HTML part and a plain-text part
 (`multipart/alternative`, plain text first) over a mail relay the
-operator configures (§2, §11). With no relay configured the feature is off: nothing is queued,
-the `/account` switch is hidden, and the app behaves as in v1. There is no
-other channel (§1).
+operator configures (§2, §11). With no relay configured the feature is
+off: nothing is queued, the `/account` switch is hidden, and the app
+behaves as in v1. There is no other channel (§1).
 
 **What is emailed.**
 
