@@ -194,7 +194,14 @@ no-repeat rule), `no_repeat_depth` (N, default 1), `pairings_revealed`
 - When an event is created linked to a previous one, its participants are
   pre-filled from that event; the organizer unticks anyone not joining.
   The new-event form preselects the most recent event the creator organizes.
-  Anyone else is added on the manage page after "Create draft".
+  Next to those people, the form has the same add-people control as the
+  manage page (Participant, below), so the whole exchange can be set up
+  before "Create draft": ticked people become participants of the new
+  draft, and a typed address adds its person or becomes an invitation
+  created with it, whose email waits until the event opens (§15). A refused
+  form (such as an address more than one person uses) creates nothing and
+  comes back with what was ticked and typed. Anyone else can still be added
+  on the manage page afterward.
 - The previous-event link can never form a loop (an event whose own chain
   leads back to this one isn't offered). It and `no_repeat_depth` (1 to 3)
   can't change after the draw.
@@ -264,7 +271,7 @@ Without the script, the page falls back to the date alone.
 - Only the participant edits their own notes and `done_shopping`. The
   "done shopping" toggle is on the event page once the event is `drawn`.
 - Before the draw, organizers add participants with one control on the
-  manage page: a ticklist of the people they know, and an address that adds
+  manage page (and the same control on the new-event form): a ticklist of the people they know, and an address that adds
   or invites (below). One post takes the ticked people and an optional
   address, and adds them all at once.
   - **The people they know:** every person whose account still exists and
