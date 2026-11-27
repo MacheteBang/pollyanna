@@ -28,8 +28,11 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
 
 **Non-goals (v1)**
 - Wishlists with item links, claiming, or price tracking.
-- Notifications other than email (§15): no web push, no app push, no
-  in-app notification list.
+- Web push and app push. They depend on a browser vendor's push service the
+  operator didn't choose. Notifications reach people by email (§15) and in
+  the app, through the "What's new" menu and pages that update while open
+  (§16, which lifted the old "no in-app notification list" non-goal on map
+  #82, November 27, 2026).
 - Participants without an identity-provider account (proxies). Everyone who
   takes part, children included, signs in with their own account at one of
   the configured providers (ADR-0006).
@@ -428,7 +431,8 @@ event page and home page show a countdown to the exchange date ("12 days to
 go", "1 day to go", "Today's the day"; nothing once the date has passed).
 
 Times are shown in each viewer's browser time zone. The server stores UTC
-(message times rounded to the hour) and renders `<time datetime="…">`
+(message times exactly since map #82; older messages keep the hour they were
+stored with, §6) and renders `<time datetime="…">`
 elements; a small script formats them and computes the countdown from the
 viewer's local date. `exchange_date` is a plain date with no time zone.
 Without the script, the page falls back to the date alone.
@@ -579,9 +583,12 @@ Each assignment is stored as:
 | `notes_version_seen` | see below |
 | `recipient_changed` | bool: a patch changed this giver's recipient; shows the notice until the card is opened |
 | `thread_closed` | bool: the recipient closed the question thread (§6) |
-| `giver_read_upto` / `recipient_read_upto` | `seq` of the last message each side has seen (§6), for unread badges |
+| `thread_change_unseen` | bool: the thread was closed or reopened since the giver last opened the card or dismissed the notification (§16) |
+| `giver_read_upto` / `recipient_read_upto` | `seq` of the last message each side has seen (§6), for the unread lines and the "What's new" menu (§16) |
 
-None of these columns name the giver, and none hold timestamps.
+None of these columns name the giver, and none hold timestamps. They are
+also what the "What's new" menu works out a giver's and recipient's
+notifications from (§16); no other row records them (docs/adr/0008).
 
 - Each assignment also stores `notes_version_seen`: the recipient's
   `notes_version` when the giver last opened the reveal card. If the
@@ -689,9 +696,12 @@ an email invitation can't be added after the draw while it is pending.
 ### 5.5 Organizer visibility
 
 Organizers can see, for their event: participant list, who has written notes, who has
-viewed their assignment (bool, no timestamp), who has marked done shopping,
-and the draw status. They cannot see any pairing until the event is
-`revealed`.
+viewed their assignment (bool, no timestamp stored), who has marked done
+shopping, and the draw status. They cannot see any pairing until the event
+is `revealed`. The organizing page updates these live (§16), so an
+organizer with it open sees roughly when someone looked or marked done
+shopping. That pairs no one and is accepted (decided on #90, November 27,
+2026, user); nothing stores the time.
 
 Organizers are trusted not to steer the draw. An organizer who also takes
 part could tighten exclusions or redraw until they get a recipient they want;
@@ -704,11 +714,20 @@ who is asking.
 
 - A thread belongs to one assignment. Messages store `assignment_id`, `seq`,
   `sender` (`giver` or `recipient` — a role, not a person), `body`,
-  `created_at` (rounded to the hour to blunt timing guesses).
+  `created_at`, the exact moment it was sent (docs/adr/0007, superseding the
+  hour rounding of ADR-0004). Messages stored before that keep their hour,
+  with no migration and no marker.
 - `seq` is a per-thread counter (1, 2, 3…) that orders the thread. The read
   markers `giver_read_upto` / `recipient_read_upto` (§5.2) hold the last
   `seq` each side has seen. A counter only counts within its own thread, so it
   says nothing about activity elsewhere.
+- Read markers move only on a page load or a deliberate action (sending,
+  closing or reopening the thread, dismissing its notification, §16). A
+  message that arrives on an open page while it's open (§16) moves nothing,
+  and neither does a live refetch: a "read" post sent on arrival would
+  follow the other side's post in the proxy log and pair them.
+- There are no "seen", "typing…" or "online" indicators in the question
+  box, ever.
 - Each person has exactly one giver per event, so a recipient has at most one
   thread per event.
 - The giver reaches the thread through their own assignment (via `giver_tag`).
@@ -722,9 +741,11 @@ who is asking.
   archiving still deletes threads as described).
 - An unread question shows first on the event page and as the event's line
   on the home page ("Your giver asked you something", §7), with no badge or
-  dot. A new question is
-  also emailed to the recipient, held to the hour (§15); a reply is never
-  emailed to the giver.
+  dot. It shows the moment it is posted, everywhere: the questions page, the
+  event page, home's line and the "What's new" menu (§16). A new question is
+  also emailed to the recipient, held to the hour as batching (§15); a
+  reply is never emailed to the giver. Replies, closing and reopening reach
+  the giver's open page at once (§16).
 - Rate limit on posting: 20 messages per hour per person, across all their
   sessions (so signing in again doesn't reset it), as a sliding window. It is
   a constant in the code (tests override it) and counted in memory only, so
@@ -756,6 +777,8 @@ who is asking.
 | `/events/{id}/questions` | participant | The conversation with the user's giver |
 | `/events/{id}/manage` | organizer | The organizing page: the next step; people and invitations; who can't draw whom; details and organizers; the bigger changes (dropout, late joiner, redraw, archive, cancel); once revealed, the full pairing list |
 | `/past` | signed in | Archived events the user took part in or organized |
+| `/whats-new` | signed in | "What's new" without the script: the "Home" back link, the title, then the same rows as the masthead panel, each with a small "Dismiss" form button that posts to `/whats-new/dismiss` (§16) |
+| `/live` | signed in | The live connection (§16): a server-sent events stream every signed-in page holds open; no page or event in its path. A missing session gets a status, never the redirect to `/auth/login` |
 | `/account` | signed in | "Ways to sign in" (§3): one row per login with its provider's label, the email it last sent, "(no longer set up)" when its issuer isn't configured, and "Remove"; with more than one provider, an outlined "Add <label>" button per provider in configured order; a note that a removed login whose verified email matches is added back on its next sign-in. Then "Emails" with the "Email me about Pollyanna events" switch (§15); "Sign out"; "Delete my account" |
 | `/auth/login` | anyone | Starts sign-in. With one provider, goes straight to it; with several, the chooser (§3), whose buttons go to `/auth/login/<key>` |
 | `/auth/icon/<key>` | anyone | A provider's logo for its buttons (§3); 404 without one |
@@ -782,11 +805,35 @@ a season, usually from an email. Each screen opens on the one thing that is
 theirs to do; statuses and rare actions are demoted.
 
 **Masthead.** One row: the girl and the wordmark "pollyanna" on the left,
-linking to `/`; on the right a reserved place for a notification menu, then
+linking to `/`; on the right the bell that opens "What's new" (§16), then
 the account control, the person's first name linking to `/account`.
-"Sign out" is on the account page only. The notification menu is not part
-of this spec: its place stays empty until that feature exists. Signed-out
-pages show the mark and wordmark only.
+"Sign out" is on the account page only. Signed-out pages show the mark and
+wordmark only.
+
+**"What's new"** (decided on #89, November 27, 2026, user; what's in it is
+§16, how it looks §12).
+- The bell is a button labeled "What's new, 5 notifications" ("What's new,
+  nothing new" when empty), with `aria-expanded`. It shows no number, word,
+  badge or dot. Without the script it is a link to `/whats-new`.
+- It opens a panel under the masthead headed "What's new". Each row is the
+  notification's line as a link to the page it points to, with the event's
+  name and the time in small soft ink under it (the three kinds with no
+  time show the event only), and ends with a "×" labeled "Dismiss: <the
+  line>". There is no "Dismiss all": seeing a page clears its
+  notifications, and "Dismiss all" would mark messages read that nobody
+  read.
+- Empty: "Nothing new right now." and, small, "When something happens in
+  one of your events, it shows up here."
+- The panel is a disclosure, not a dialog. Focus stays on the bell when it
+  opens and Tab goes into the panel; Escape or a tap outside closes it and
+  puts focus back on the bell. After a dismiss, focus moves to the next
+  row's "×" (the previous one at the end, the panel's heading when the
+  panel is empty).
+- A notification arriving while the panel is open takes its place in the
+  order, without motion, and is announced politely ("Your giver asked you
+  something, Cousins' Swap").
+- The `/whats-new` page has no cloth, like the other pages with nothing to
+  do.
 
 **Page head.** Under the masthead: a small back link ("Home", or the event's
 name on its sub-pages); the page title; one small soft line. An organizer
@@ -937,7 +984,8 @@ row replace them. What organizers may see is unchanged (§5.5).
 **Questions for you** (`/events/{id}/questions`). Title "Questions for you",
 small line "Your giver asks, you answer. Their name stays a secret." The
 thread reads as a conversation, oldest at the top: a day line between days,
-and under each message its time, still rounded to the hour (§6). The reply
+and under each message its time to the minute ("7:42 PM"; older messages
+stored to the hour keep it, §6). The reply
 is a one-line box, "Reply to your giver", with "Send" beside it; "Close
 this conversation" is a small link under it. A question that hasn't been
 answered carries the word "new". Empty: "No questions yet. When your giver
@@ -1002,6 +1050,10 @@ interface.
   Pollyanna is or the activity itself.
 - Bow and gift words appear only where the bow or the gift is on screen.
 - No all-caps labels.
+- "Happening" is an internal word only (GLOSSARY.md) for the thing that
+  happens in an event and makes notifications; it never appears in the
+  interface. The menu's title is "What's new", never "Inbox" or
+  "Notifications"; only the bell's accessible label counts them.
 - Any string not listed in this section that says "hat", "slip" or
   "exchange" is reworded by these rules. The question box's words ("Your
   giver asks…", "Their name stays a secret", "Close this conversation",
@@ -1039,10 +1091,13 @@ no reveal animation under "reduce motion" (§12).
 - No request logging of paths that contain assignment or message IDs; access
   logs record method, route pattern and status only.
 - Security headers: strict CSP (`default-src 'self'`), `X-Frame-Options: DENY`,
-  `Referrer-Policy: no-referrer`.
+  `Referrer-Policy: no-referrer`. The live connection is a same-origin `GET`
+  under `default-src 'self'`; being read-only, it needs no CSRF token.
 - The draw key never appears in logs, error messages or the UI.
 - Logs stay quiet when nothing is wrong. Successful `/healthz` requests are
-  not logged. Each provider's OIDC callback is logged by its path
+  not logged. The live connection (§16) logs one line per connection, never
+  one per keep-alive, frame or hint, and no line names a person, event or
+  assignment. Each provider's OIDC callback is logged by its path
   (`/auth/callback` or `/auth/callback/<key>`). EF Core's
   warning about the SQLite table rebuild (`PRAGMA foreign_keys` outside a
   transaction) is ignored by its event ID; other EF warnings still log. The
@@ -1092,7 +1147,7 @@ no reveal animation under "reduce motion" (§12).
   people and nobody else, never for the person who acted, never while the
   event is a draft except "Made an organizer", and not at all with emails switched off or SMTP not
   configured; questions are held to the hour, grouped, and dropped if read
-  first; no email is ever queued for a giver because of their own
+  first (unchanged by §16); no email is ever queued for a giver because of their own
   assignment (docs/adr/0001); no email contains message bodies,
   notes or a recipient's name; and the outbox rules (retry, give up, drop
   on opt-out, account deletion, a cancelled or accepted invitation, or a
@@ -1137,6 +1192,11 @@ no reveal animation under "reduce motion" (§12).
   reworked page. Layout, color and the reveal's motion are checked by hand
   against the mockups, on a phone, with and without "reduce motion", and
   without the script.
+- Tests for in-app notifications and live pages (§16, decided on #92,
+  November 27, 2026, user): who gets which live frame, the secrecy of
+  frames, the menu and `/whats-new`, a live refetch moving nothing, the
+  connection's lifecycle and quiet logs, and exact message times. §16
+  **Testing** lists them, with what is checked by hand.
 - Manual end-to-end check against the production provider before first use.
 
 ## 10. Milestones
@@ -1166,6 +1226,26 @@ no reveal animation under "reduce motion" (§12).
 - Front end: server-rendered Razor Pages with a little plain JavaScript; no
   front-end build step. Pages work before scripts load where possible
   ("Untie the bow" can be a `<details>` element enhanced by script).
+- Live updates (§16; decided on #83 and #91, November 27, 2026, user):
+  server-sent events from `TypedResults.ServerSentEvents` in the shared
+  framework, read with the browser's built-in `EventSource`. No package, no
+  vendored client, no WebSockets and no proxy setting. SignalR was set
+  aside (a vendored client, WebSocket forwarding at the proxy, scale-out
+  Pollyanna doesn't need); polling is the fallback if server-sent events
+  ever disappoint.
+  - The stream flushes its headers at once (they otherwise wait for the
+    first item), sends a comment every 15 seconds on the app's
+    `TimeProvider` (a constant, not a setting), keeps
+    `Content-Encoding: identity` and adds `X-Accel-Buffering: no`. With
+    those, default Caddy, nginx, Traefik, Cloudflare and Cloudflare Tunnel
+    setups carry it unchanged.
+  - If response compression or a global request timeout is ever added,
+    `/live` must be exempt.
+  - Over HTTP/1.1 a browser holds at most six connections per host, so
+    seven tabs would stall; HTTP/2 at the proxy is preferred (DEPLOYMENT.md
+    §4).
+  - The script that reads it stays small and plain: the server marks each
+    live region with a stable id, and the script swaps regions by id.
 - Data: SQLite, a single file, accessed through EF Core. Code avoids
   provider-specific SQL and features so another EF Core provider (e.g.
   PostgreSQL) can replace SQLite later; schema migrations are per provider
@@ -1404,10 +1484,25 @@ is in §14.
   except the bottom corner nearest its speaker, which is 2px: the one
   exception to the single corner. A centered day line sits between days
   ("Today", the weekday, or the date after a week) and the time under each
-  message ("about 7 PM"). While a question is unanswered the whole
+  message to the minute ("7:42 PM"; messages stored to the hour before map
+  #82 show "about 7 PM"). While a question is unanswered the whole
   conversation and the reply box sit in the white panel on the cloth and
   "Send" is the filled button; with nothing new there is no cloth, the
   reply box sits in a bar under the conversation and "Send" is outlined.
+- The bell (§7, §16; decided on #89, November 27, 2026, user) sits in the
+  masthead left of the first name. With something new it is filled ribbon
+  blue with an ink clapper; with nothing it is a soft-ink outline. No
+  number, word, badge or dot beside it. (The bow was tried and ruled out:
+  it reads as the brand, not as notifications.)
+  - The "What's new" panel is the one thing in the app that sits over the
+    page: white, just under the masthead, 8px in from each edge on a phone
+    (in the 560px column on wider screens), a 2px ink border and the 10px
+    corner, no shadow. Rows are divided by pale-blue lines; the event and
+    time under each line are small soft ink. Each row's "×" is a 44px
+    target.
+  - Nothing in it moves: a new row takes its place without motion, and
+    rows above the one in view don't push it down (scroll anchoring).
+- Live changes on a page (§16) have no highlight flash or animation.
 - Light only: no dark mode and no switch. Pages declare
   `color-scheme: light` so browsers don't auto-darken them. The email
   declares light only too, has no designed dark version, and must stay
@@ -1430,7 +1525,7 @@ is in §14.
     wide shots 640, both at 2×, captured from the built app with the demo
     people and the "Cousins' Swap" event.
 - Avoid: gradients, pill buttons and badges, emoji, icons above headings,
-  card grids, shadows, all-caps labels, a cream + serif + coral (or
+  card grids, shadows, all-caps labels, unread counts or dots, a cream + serif + coral (or
   terracotta) look, Christmas red-and-green. The checklist on #51 is run on
   any new screen or mark.
 
@@ -1445,6 +1540,28 @@ v1 milestones are done, and milestone 7 (email notifications) is
 built. Branch, commit and PR rules are in CLAUDE.md. Questions about anything the spec
 doesn't cover go to the user one per turn, and each answer is written back into
 this spec.
+
+### Next: in-app notifications and live pages (specified, not built)
+
+Map #82, decided with the user on November 27, 2026 over #83 to #92. §16
+describes it, with follow-ons in §1, §4, §5.2, §5.5, §6, §7, §8, §9, §11,
+§12 and §15, docs/adr/0007 (superseding ADR-0004) and docs/adr/0008. The
+research and the menu mockup are on throwaway branches named in those
+tickets (`research/live-transport`, `research/live-connection-leaks`,
+`research/live-proxy`, `prototype/notification-menu`; never merged).
+
+- What changes: the masthead's bell and "What's new" panel, the
+  `/whats-new` page, the `/live` stream, four pages that update while
+  open, exact message times shown to the minute, one new yes/no column on
+  the assignment row and one new table of stored notifications.
+- What doesn't: who is emailed and when (§15), the question-email hour
+  hold, the draw, who sees what, and every page without the script.
+- Operator docs: DEPLOYMENT.md §4 gains a paragraph on `/live` (a
+  long-lived stream that default setups pass through; keep read and idle
+  timeouts above 15 seconds, don't buffer `text/event-stream`, prefer
+  HTTP/2), the nginx example an `http2 on;` hint, and §9 an entry for
+  "pages don't update by themselves". No new setting, and no change to
+  `help`, README.md or the example Compose file.
 
 ### Done: the "Tablecloth" identity
 
@@ -2273,7 +2390,9 @@ event needs them, without weakening the sealed draw (§5.2).
 (`multipart/alternative`, plain text first) over a mail relay the
 operator configures (§2, §11). With no relay configured the feature is
 off: nothing is queued, the `/account` switch is hidden, and the app
-behaves as in v1. There is no other channel (§1).
+behaves as in v1. The in-app "What's new" menu (§16) is a separate channel
+that works with or without email; nothing here changes because of it, and
+no email is skipped because it was seen in the app.
 
 **What is emailed.**
 
@@ -2292,7 +2411,8 @@ behaves as in v1. There is no other channel (§1).
 recipient has changed" after a patch, removals (as participant or
 organizer), archiving, canceling (which also drops every email still
 waiting for the event), accepted invitations (to the organizer), and note
-edits. Those stay in-app (badges, dots, notices) or aren't shown at all.
+edits. Those stay in-app (the "What's new" menu and home's lines, §16) or
+aren't shown at all.
 
 **The rule behind it:** no email is ever addressed to a giver because of
 their own assignment (a reply, a closed or reopened thread, a patch, a
@@ -2301,18 +2421,20 @@ participant at once. A new kind that would reach one giver, or some
 givers but not all, is out (docs/adr/0001).
 
 - **Why replies aren't emailed.** The operator runs the relay and can read
-  the database. Thread rows carry `recipient_id` in plaintext and message
-  times to the hour, so "your recipient replied" mailed to Bob at the hour
-  Carol's reply was stored would show that Bob is Carol's giver, with no
-  draw key needed. Even the mail log alone (for example at a third-party
+  the database. Thread rows carry `recipient_id` in plaintext and exact
+  message times (docs/adr/0007), so "your recipient replied" mailed to Bob
+  just after Carol's reply was stored would show that Bob is Carol's giver,
+  with no draw key needed. Even the mail log alone (for example at a third-party
   relay) would pair people off from the back and forth of question and
   reply emails. Emails to recipients are safe: the database already says
   whose thread it is, and the email names no giver. The same reasoning
   keeps "your recipient has changed" in-app only.
 - **Questions are held to the hour.** A question email is sent at the top
-  of the next full hour, matching the hour rounding of message times (§6),
-  so it doesn't tell the recipient when their giver was online. Questions
-  from the same thread within that hour make one email.
+  of the next full hour, and questions from the same thread within that
+  hour make one email. Since message times are exact and shown at once
+  (docs/adr/0007), the hold is batching only, not secrecy; it stays as it
+  is and may be revisited in a later effort. "Dropped if read by then"
+  now also fires when the recipient sees the question on a page first.
 - **Not for your own actions.** Nobody is emailed about something they did
   themselves (an organizer adding themselves, the organizer who ran the
   draw).
@@ -2432,7 +2554,7 @@ switch.
   rows).
 - A failed send is retried after 1, 2, 4 … minutes, at most an hour apart;
   the 24 hours count from the first failure. A row keeps no time it was
-  queued (docs/adr/0004).
+  queued (docs/adr/0003).
 - A row holds the kind, the event, and the person (or, for an invitation,
   the email); the address is read when it is sent, and the switch is
   checked again then (it was already checked when the row was queued). A row
@@ -2460,3 +2582,263 @@ switch.
   (§8). Successful sends and rows dropped by a rule aren't logged; only a
   failure and giving up are.
 
+
+## 16. In-app notifications and live pages
+
+Decided on map #82 (tickets #83 to #92, November 27, 2026, user). Every
+signed-in page holds one live connection to `/live`. Through it, the
+masthead's "What's new" menu (§7, §12) and four pages (home, the event
+page, questions, organizing) change the moment something happens, without
+weakening the sealed draw (§5.2) or the reasoning of ADR-0001. Email is
+unchanged (§15). Whether it is built yet is in §14.
+
+**Words.** The thing that happens in an event is a *happening* (an internal
+word, GLOSSARY.md). One happening makes zero or more notifications and
+live updates. A *notification* is now by email or in the app.
+
+### Which happenings make a notification
+
+Decided on #85. The seven account-holder email kinds, with the same people
+and moments, plus accepted invitations and four giver-side kinds.
+Invitations have no in-app form: the address has no account.
+
+| Kind | To | Line | Goes to | Kept as |
+|---|---|---|---|---|
+| Added to an event | the new participant; for a `draft`, not until it opens | "You're taking part. Write your notes" (`open`) / "You're taking part. See who you're giving to" (`drawn`) | event page | stored |
+| Made an organizer | the new organizer | "Alice made you an organizer" ("Someone" if their account is gone) | organizing page | stored |
+| Event is open | every participant | "It's open: write your notes" | event page | stored |
+| Names are drawn | every participant | "Names are drawn: see who you're giving to" / "Names were drawn again: take another look" | event page | stored |
+| Event is revealed | participants and organizers | "See who drew whom" | event page (organizing page for an organizer who doesn't take part) | stored |
+| Redraw needed | every organizer | "Sue wants to leave, and that needs a redraw" | organizing page | stored |
+| Accepted invitation | every organizer | "Sue is taking part" | organizing page | stored |
+| A question for you | the recipient | "Your giver asked you something" | questions page | worked out |
+| Reply | the giver | "Your recipient replied" | event page (the gift tied) | worked out |
+| Closed or reopened | the giver | "Your recipient closed the conversation" / "Your recipient reopened the conversation" | event page | worked out |
+| Patched | the giver | "You're giving to someone new" | event page | worked out |
+| Notes updated | the giver | "Your recipient updated their notes" | event page | worked out |
+
+- Nobody gets a notification about their own action, as with email.
+- One row per kind per event, with no counts (counts would show how much a
+  pair talks). The words follow the event's current name and state when
+  shown. Where a stored line names someone ("Sue"), it is the person of
+  the latest happening of that kind; a person whose account is gone is
+  "Former participant".
+- Independent of email: it works with no mail relay and with the email
+  switch off, and has no setting.
+- Left out: being taken out of an event (as participant or organizer),
+  canceling, archiving, other people's notes edits, "done shopping" and
+  "has looked". "Ready to open" and "Ready to draw names" are states, not
+  happenings, and stay as home's waiting lines only.
+- The giver-side lines say "Your recipient", as home already does, though
+  §7 otherwise keeps "recipient" for organizer-side text. They never name
+  the recipient, and they link to the plain event page, so the gift opens
+  tied.
+
+### Stored and worked-out notifications
+
+Decided on #86 (docs/adr/0008).
+
+- **Worked out on each request:** the five kinds tied to an assignment
+  come from the sealed row's markers, as home's waiting lines do. A
+  question is unread giver messages past `recipient_read_upto`; a reply is
+  recipient messages past `giver_read_upto`; notes updated is
+  `notes_version_seen` behind the recipient's `notes_version`; patched is
+  `recipient_changed`; closed or reopened is `thread_change_unseen` (§5.2),
+  which closing or reopening sets. No stored row names a person next to an
+  assignment.
+- **Stored:** the other seven kinds, one row per person, event and kind,
+  holding the kind, any name the line shows and the time it happened.
+  These rows hold nothing that email doesn't already send that person. A
+  new happening of the same kind replaces the row with new words and a new
+  time, even if the old one was dismissed ("Names were drawn again").
+- **Dismissing** is a deliberate post, from the panel's "×" or the
+  `/whats-new` page's "Dismiss". It uses the same markers home and the
+  thread use, so "seen" means one thing everywhere, and it clears home's
+  matching waiting line:
+  - a question moves `recipient_read_upto`; a reply moves `giver_read_upto`
+  - notes updated moves `notes_version_seen`; patched clears
+    `recipient_changed`; closed or reopened clears `thread_change_unseen`
+  - a stored kind deletes its row
+- **Seeing the thing clears it, by any route.** Opening the page a
+  notification points to clears it, whether from the menu, home or a
+  bookmark: the markers move as they do today (opening the card clears
+  `thread_change_unseen` too), and a stored row is deleted inside that same
+  page request, so no extra request shows in the proxy log.
+- **No read state.** A notification is in the menu or gone. Opening the
+  panel marks nothing, and the menu isn't a history.
+- **Stored rows never expire by age.** A row is deleted, never flagged,
+  when it's dismissed or its page is seen; all of an event's rows when it
+  is canceled or archived; a person's rows for an event when they are
+  taken out of it, or delete their account; and a row whose condition no
+  longer holds (a redraw-needed row once the request is withdrawn or the
+  redraw done).
+- **Order.** The three kinds with no time come first: patched, notes
+  updated, then closed or reopened. Everything else follows newest first:
+  questions and replies by their newest unread message's exact time,
+  stored rows by their own time. Nothing adds a time next to the sealed
+  row.
+
+### Who a live signal goes to
+
+Decided on #90. Everything is instant: every happening reaches the people
+it concerns the moment it happens. How it travels depends on what it
+reveals.
+
+| Happening | Goes to | Carried as |
+|---|---|---|
+| Public to the event: opened, names drawn or drawn again, revealed, archived, canceled, someone's notes edited, someone joining or leaving, details changed | every connected participant and organizer of the event | a hint naming the event and the area, never a person; the page refetches |
+| For organizers only: has looked, done shopping, wants to leave, invitations taken up, people, organizers and rules changed | the event's connected organizers | a hint, then a refetch |
+| Not about an assignment: made an organizer, added to an event, accepted invitation, redraw needed, taken out of an event | just the person it's for, or the organizers | a hint, then a refetch |
+| Between a giver and a recipient: question, reply, closed or reopened, patched, "your recipient updated their notes" | just that person | the content itself (each affected region's HTML and the menu's rows), inside the connection, with no follow-up fetch |
+| Your own action: a sent message, a dismissal, saved notes, "Done shopping" | your other tabs and devices | a hint, then a refetch |
+
+- A hint followed by a fetch from only one giver would pair them in the
+  proxy log, response size included. That's why giver-recipient
+  happenings carry their content.
+- One live address for every page, with no event or page in its path, so a
+  log line says "online", not where. A keep-alive comment every 15
+  seconds, so a visit is one log line, not one a minute.
+- Connections are tracked by person and event only. The target of an
+  assignment happening is worked out in memory when it's sent (as
+  `SealedHat` does) and never stored or subscribed under an assignment.
+- Left out: decoy refetches broadcast to the whole event, and releasing
+  on a tick or the hour. Both give up instant feedback.
+
+### What each page does live
+
+Decided on #88.
+
+| Page | Updates live |
+|---|---|
+| Home | each panel's waiting line; a new panel when you're added to an event or an invitation is accepted; a panel goes when its event is canceled or archived, or you're taken out; name, date, budget and status |
+| Event page, `open` | "Taking part"; details; state changes |
+| Event page, `drawn` | the giver's question box (replies, closed or reopened); the recipient's notes and "Notes updated since you last looked"; the "Your giver asked you something" line; patched to someone new; the people list; state changes |
+| Event page, over | state changes only (archived, canceled) |
+| Questions | new questions; replies, closing and reopening from your other tabs; the reveal (a state change: read-only, giver named) |
+| Organizing | the next step's sentence and button (counts, blockers); each person's row words; invitations taken up; people and organizers changed by another organizer; the "Who can't draw whom" summaries |
+
+Every other signed-in page holds the connection for the menu only. Not
+live: the countdown turning over at midnight, and past events.
+
+- **Small changes patch in place,** region by region: a new message, a
+  counter, someone's notes, a waiting line, a row's words. Counters, row
+  words, waiting lines and notes change silently.
+- **State changes** (opened, drawn, drawn again, revealed, archived,
+  canceled, you were taken out) change the page's shape:
+  - With nothing on the page being edited, the page body is swapped.
+  - With something being edited (a draft, an open confirmation, a form in
+    flight), a quiet line appears in its place instead and the draft stays
+    put: "Names have been drawn." / "Names have been drawn again." / "The
+    event is open." / "Everyone's been revealed." / "This event was
+    archived.", each with "Show", which loads the page.
+  - Canceled and taken out show "This event was canceled" / "You're no
+    longer in this event" with "Back to your events", since a reload would
+    give the not-found page.
+- **A live refetch isn't a visit.** It uses the page's own URL, marked
+  live by a request header, with no new endpoints. The server treats it as
+  a read-only view: it moves no read marker or `notes_version_seen`,
+  clears no `recipient_changed` or `thread_change_unseen`, deletes no
+  stored notification and sets no `viewed`. Only a real navigation or a
+  deliberate post counts as seeing something.
+- **Drafts are never touched.** A form with focus or unsaved text is left
+  alone while the regions around it update. Notes edited in one tab while
+  another tab saves them: the draft is kept silently and the last save
+  wins, as today.
+- **The gift keeps its tied or untied state,** held in the browser, since
+  a refetch always comes back tied. Notes update in place under "You're
+  giving to". Patched to someone new while the gift is open, it ties
+  itself again and shows "You're giving to someone new", so an old name is
+  never left on screen.
+- **Open folds stay open** (the collapsed notes and people list, "Who
+  can't draw whom", "Details and organizers"). An open confirmation from
+  "Bigger changes" counts as editing; submitted after a state change, the
+  server's existing refusal answers it.
+- **While a post is in flight, hints are ignored.** Its response is a
+  fresh page.
+- **Threads** (the questions page and the giver's question box): a new
+  message is added at the bottom with its time to the minute, and a
+  question carries "new". At or near the bottom, the view stays there;
+  scrolled up, a quiet "New message below" link appears instead. When the
+  conversation is closed, the giver's box shows "Your recipient has closed
+  this conversation" and Send is turned off, but a draft stays visible;
+  reopening turns Send back on. Live arrival never moves a read marker
+  (§6).
+- **Screen readers and motion.** New messages, state-change lines and new
+  notifications are announced politely through a live region. No
+  highlight or animation; content inserted above the view doesn't push it
+  down (scroll anchoring).
+- **Catching up.** A hidden page closes its connection (on `pagehide` or
+  when hidden) and reopens it when shown, then does one live refetch under
+  the same rules. The same refetch follows a network drop and
+  `EventSource`'s own reconnect. Nothing is replayed by the server.
+- **The connection ends** on sign-out, account deletion and session
+  expiry; nothing else happens on the page until the next click.
+- **Without the script** pages are unchanged (§11), the bell is a link to
+  `/whats-new`, and dismissing is a form post.
+
+### Accepted limits
+
+Written next to the draw key's limit (§5.2, ADR-0002):
+
+- Someone who deliberately captures traffic at the proxy can match the
+  moment a frame goes to Bob with Carol's post (#90).
+- The proxy's access log (`POST /events/X/ask` at 14:07) plus the stored
+  exact message time pairs a giver with their recipient from two passive
+  sources, with no draw key (docs/adr/0007). The operator already holds the
+  database, and the proxy log is theirs.
+- An organizer with the organizing page open sees roughly when someone
+  looked or marked done shopping (§5.5).
+
+### Testing
+
+Decided on #92. The live seam joins `docs/agents/testing.md`, which points
+back here for the hand checks.
+
+- **The real stream.** `TestBrowser.OpenLiveAsync()` opens `/live` through
+  `TestServer` and reads frames with `SseParser`. `await
+  app.Live.SettleAsync()` sends a marker frame down every open connection,
+  and each reader collects everything up to it, so a test proves nothing
+  else arrived without a timeout.
+- **Who gets what:** one theory-style test per row of the routing table,
+  driven by a per-kind data table so a new kind can't skip its row. The
+  cast is a giver, the recipient, a bystander, an organizer, the actor's
+  second tab and someone in another event. Public happenings give the
+  whole event a hint naming no person; personal ones reach only their
+  person; giver-recipient ones reach only that person, carrying the
+  region's HTML; other events get nothing.
+- **Secrecy:** `PairingSecrecyTests` and `NotificationSecrecyTests` run a
+  fixed script of happenings with everyone else's pairings shuffled; each
+  viewer's whole live frame sequence, masthead menu and `/whats-new` page
+  must come out byte-identical. Beside them: no stored notification row is
+  ever of the five worked-out kinds; no hint frame holds a person's id or
+  name; a giver-recipient happening causes no request from anyone.
+- **A live refetch isn't a visit:** for home, the event page, questions
+  and organizing, a live `GetPageAsync` moves no read marker, sets no
+  `viewed`, clears no flag and deletes no stored row, and a plain
+  navigation to the same page then does.
+- **Menu and "What's new":** the panel's rows are rendered by the server
+  into every signed-in page's masthead, hidden until the bell opens them;
+  the script only toggles and refreshes them, with no separate fragment
+  endpoint. HTML tests cover the bell's state and label, the rows, their
+  order, the empty state and `/whats-new`. Dismissing through the form
+  removes the row, moves the marker or deletes the stored row, clears
+  home's waiting line and hints the actor's other tabs.
+- **Connection:** headers arrive before any event; `X-Accel-Buffering:
+  no` is set; a keep-alive comment comes after 15 seconds of `app.Clock`; a
+  missing session gets a status, not a redirect; the stream ends on
+  sign-out, account deletion and session expiry; the log holds one line
+  per connection (`QuietLogTests`).
+- **Questions:** message times are stored exactly and shown to the minute
+  (older hour-rounded messages unchanged).
+- **Checked by hand,** with no browser test tooling (no Playwright, no
+  JavaScript test runner):
+  - a phone sleeping and waking, then catching up
+  - a tab hidden and then shown
+  - a network drop and reconnect
+  - drafts, folds and the gift's tied state kept
+  - "New message below"
+  - screen-reader announcements
+  - focus after a dismiss
+  - the panel with "reduce motion", and `/whats-new` without the script
+  - one run behind each of Caddy, nginx and Traefik, with the settings of
+    DEPLOYMENT.md §4
