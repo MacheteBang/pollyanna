@@ -14,17 +14,20 @@ namespace Pollyanna.Tests;
 public sealed class HtmlEmailTests
 {
     [Fact]
-    public void The_message_is_multipart_alternative_with_the_plain_text_first_and_the_html_second()
+    public void The_message_is_the_plain_text_then_the_html_related_to_its_inline_bow()
     {
+        byte[] png = [0x89, (byte)'P', (byte)'N', (byte)'G', 1, 2, 3];
         var mail = new OutgoingMail("sue@example.com", "Gifts 2026: names are drawn",
-            "Names are drawn — your slip is ready.\n\nhttps://pollyanna.test/events/1\n",
-            "<!DOCTYPE html><html lang=\"en\"><body><p>Names are drawn — your slip is ready.</p></body></html>");
+            "Names are drawn — you can see who you're giving to.\n\nhttps://pollyanna.test/events/1\n",
+            "<!DOCTYPE html><html lang=\"en\"><body><img src=\"cid:bow@test\" alt=\"\"><p>Names are drawn.</p></body></html>",
+            new InlineImage("bow@test", "bow.png", png));
 
         var message = SmtpMailSender.Build(mail, MailboxAddress.Parse("Pollyanna <pollyanna@pollyanna.test>"));
 
         Assert.Equal("sue@example.com", message.To.Mailboxes.Single().Address);
         Assert.Equal("pollyanna@pollyanna.test", message.From.Mailboxes.Single().Address);
         Assert.Equal("Gifts 2026: names are drawn", message.Subject);
+        // multipart/alternative: the plain text first, then multipart/related (spec §9, §15).
         var alternative = Assert.IsType<MultipartAlternative>(message.Body);
         Assert.Collection(alternative,
             plain =>
@@ -34,13 +37,37 @@ public sealed class HtmlEmailTests
                 Assert.Equal("utf-8", part.ContentType.Charset, ignoreCase: true);
                 Assert.Equal(mail.Body, part.Text);
             },
-            html =>
+            related =>
             {
-                var part = Assert.IsType<TextPart>(html);
-                Assert.Equal("text/html", part.ContentType.MimeType);
-                Assert.Equal("utf-8", part.ContentType.Charset, ignoreCase: true);
-                Assert.Equal(mail.Html, part.Text);
+                var parts = Assert.IsType<MultipartRelated>(related);
+                Assert.Collection(parts,
+                    html =>
+                    {
+                        var part = Assert.IsType<TextPart>(html);
+                        Assert.Equal("text/html", part.ContentType.MimeType);
+                        Assert.Equal("utf-8", part.ContentType.Charset, ignoreCase: true);
+                        Assert.Equal(mail.Html, part.Text);
+                    },
+                    image =>
+                    {
+                        var part = Assert.IsType<MimePart>(image);
+                        Assert.Equal("image/png", part.ContentType.MimeType);
+                        Assert.Equal("bow@test", part.ContentId);
+                        Assert.Equal(ContentDisposition.Inline, part.ContentDisposition!.Disposition);
+                        Assert.Equal("bow.png", part.ContentDisposition!.FileName);
+                        using var bytes = new MemoryStream();
+                        part.Content!.DecodeTo(bytes);
+                        Assert.Equal(png, bytes.ToArray());
+                    });
             });
+
+        // The same structure survives being written out and read back, as a relay sees it.
+        using var wire = new MemoryStream();
+        message.WriteTo(wire);
+        wire.Position = 0;
+        var read = MimeMessage.Load(wire);
+        var readRelated = Assert.IsType<MultipartRelated>(Assert.IsType<MultipartAlternative>(read.Body)[1]);
+        Assert.Equal("bow@test", readRelated[1].ContentId);
     }
 
     static IHtmlDocument Parse(string html) => new HtmlParser().ParseDocument(html);

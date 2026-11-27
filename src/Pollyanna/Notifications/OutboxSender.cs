@@ -197,7 +197,7 @@ public sealed class OutboxSender(
             return null;
         var content = kind.Compose(context);
         return new OutgoingMail(address, content.Subject, Render(content, kind.Audience, ev, settings.PublicUrl),
-            await MailHtml.RenderAsync(content, kind.Audience, ev, settings.PublicUrl));
+            await MailHtml.RenderAsync(content, kind.Audience, ev, settings.PublicUrl), EmailBow.Image);
     }
 
     /// <summary>

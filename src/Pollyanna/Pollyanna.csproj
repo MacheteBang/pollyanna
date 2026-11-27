@@ -22,6 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The bow every HTML email carries inside the message (spec §15). -->
+    <EmbeddedResource Include="Notifications/bow.png" LogicalName="Pollyanna.Notifications.bow.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Pollyanna.Tests" />
   </ItemGroup>
 
