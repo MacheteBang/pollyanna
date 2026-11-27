@@ -4,7 +4,6 @@
    it costs follows as plain text, then the filled button repeating the action and "Stay in". No
    cloth. Once names are drawn there is a second step, saying someone else's assignment changes. *@
 @{
-    Layout = "_Tablecloth";
     ViewData["Title"] = "Leave " + Model.Event.Name;
     var head = new Pollyanna.Pages.Shared.PageHeadView("Leave this event?", BackText: Model.Event.Name, BackHref: $"/events/{Model.Event.Id}");
 }
@@ -33,6 +32,6 @@
             <input type="hidden" name="confirmed" value="true">
         }
         <button type="submit" class="button button-fill">Leave this event</button>
-        <a class="button-start tap-link" href="/events/@Model.Event.Id">Stay in</a>
+        <a class="way-out" href="/events/@Model.Event.Id">Stay in</a>
     </form>
 </div>

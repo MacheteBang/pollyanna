@@ -2,7 +2,6 @@
 @model Pollyanna.Pages.Auth.FailedModel
 @using Pollyanna.Auth
 @{
-    Layout = "_Tablecloth";
     var refusal = Model.Refusal;
     var address = refusal?.Address ?? "this address";
     ViewData["Title"] = refusal?.Reason switch

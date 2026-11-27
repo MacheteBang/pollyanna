@@ -63,7 +63,7 @@ public sealed class OpenProviderTests : IAsyncLifetime
     (
         page.QuerySelector(".lone h1")!.TextContent.Trim(),
         string.Join(" ", page.QuerySelectorAll(".lone p").Select(p => p.TextContent.Trim())),
-        [.. page.QuerySelectorAll(".actions .button").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"), a.ClassList.Contains("button-outline")))]
+        [.. page.QuerySelectorAll(".actions .button").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"), !a.ClassList.Contains("button-fill")))]
     );
 
     void AssertRefusalLogged(string reason)

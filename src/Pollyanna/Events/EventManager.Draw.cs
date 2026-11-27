@@ -262,7 +262,7 @@ public sealed partial class EventManager
         if (await db.Participants.Where(p => p.EventId == id && p.PersonId == me).Select(p => p.WantsToLeave).SingleAsync())
             return Outcome.Done("You've already asked to leave. You'll be taken out when the organizers draw names again.");
         if (await InTransactionAsync(() => TakeOutAfterDrawAsync(id, me), left => left))
-            return Outcome.Done($"You've left {m.Event.Name}. One other person's slip changed to cover it.");
+            return Outcome.Done($"You've left {m.Event.Name}. One other person is now giving to someone new.");
 
         // Rolled back: they stay in, asking for a redraw.
         await InTransactionAsync(async () =>

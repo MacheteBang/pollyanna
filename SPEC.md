@@ -1424,34 +1424,99 @@ built. Branch, commit and PR rules are in CLAUDE.md. Questions about anything th
 doesn't cover go to the user one per turn, and each answer is written back into
 this spec.
 
-### Next: the "Tablecloth" identity (specified, not built)
+### Done: the "Tablecloth" identity
 
-Map #50, decided with the user on 2026-11-26 and 27 over tickets #51 to
-#64. §7 (what each screen shows, its words, the about text), §12 and §15
-(**Content**, **Nothing remote**, **Layout**, **Opting out**) now describe
-the new identity, and §9 its tests. **The app on `main` still has "Paper
-slips"** until the work is built; the "Done" entries below describe what
-was built at the time, in the old look and words, and are left as written.
+Spec issue #65 (map #50), decided with the user on 2026-11-26 and 27 over
+#51 to #64 and built as #67 to #79. §7 (what each screen shows, its words,
+the about text), §12 and §15 (**Content**, **Nothing remote**, **Layout**,
+**Opting out**) describe it, and §9 its tests. The "Done" entries below
+describe what was built at the time, in the old "Paper slips" look and
+words, and are left as written.
 
-- What changes: every page's look and layout, the interface words (no
+- What changed: every page's look and layout, the interface words (no
   "hat" or "slip"), the reveal's motion, the HTML email's layout with its
-  one embedded bow, the fonts and icons the app serves, and the README's
-  banner, screenshots and social preview.
-- What doesn't: the page set and paths, the flows, who sees what, the
-  draw, the question box's rules, who is emailed and when, and the emails'
-  words apart from three "slip" phrases (§15 **Content**). No setting, no
-  migration.
-- Decided while writing this spec (2026-11-27, user): the placeholder
-  words left by the mockups stand as drawn (the not-found and server-error
-  pages, "Bigger changes" and the lines under its buttons, "Invited, not
-  signed in yet", "Take back", "Keep X in instead", "Sign in to
-  Pollyanna", "Reply to your giver"), and the README's line under the
-  banner stays as it is.
-- Checked by hand on #64: one sample of the new email layout with the CID
-  bow went over a real relay to a real inbox, and the user reported that
-  it looks good in their mail clients. Which clients was not recorded.
-- The mockups were reviewed in the user's browser at desktop size, not on
-  a real phone.
+  one embedded bow, and the fonts and icons the app serves. What didn't:
+  the page set and paths, the flows, who sees what, the draw, the question
+  box's rules, who is emailed and when, and the emails' words apart from
+  three "slip" phrases (§15 **Content**). No setting, no migration.
+- Decided while writing the spec (2026-11-27, user): the placeholder words
+  left by the mockups stand as drawn (the not-found and server-error pages,
+  "Bigger changes" and the lines under its buttons, "Invited, not signed in
+  yet", "Take back", "Keep X in instead", "Sign in to Pollyanna", "Reply to
+  your giver"), and the README's line under the banner stays as it is.
+- **Foundation (#67).** `Pages/Shared/_Tablecloth.cshtml` is every page's
+  layout (`_ViewStart`): the one-row masthead (the girl, "pollyanna", an
+  empty reserved slot and the first name linking to `/account`, no "Sign
+  out"), then `<main>`; a page decides where the cloth goes. All styles
+  are in `wwwroot/css/tablecloth.css`: the six colors and the gingham's
+  thread as tokens, Figtree and Playpen Sans served from `wwwroot/fonts`
+  (Fontsource 5.3.0), `.cloth > .panel`, `.column`, `.below`, outlined
+  `.button` with `.button-fill` for the one thing to do and `.button-red`
+  for the two destructive actions, `_PageHead`, the girl as
+  `_TableclothGirl`, and the 180px touch icon from
+  `docs/assets/touch-icon.svg`. The signed-out pages carry the short
+  about text (`_AboutShort`); the chooser says "Continue with <label>".
+- **Email (#68).** `EmailLayout.razor` is one white panel on a pale-blue
+  band, with the bow PNG carried in the message as an inline `cid:` image
+  (`EmailBow`, `InlineImage`); `SmtpMailSender.Build` adds
+  `multipart/related`. No stamp.
+- **Error and sign-in failure pages (#69):** the girl large, one or two
+  sentences and one way out (`.lone`).
+- **Home, empty home and past events (#70).** One panel per event, its
+  waiting line (`EventManager.WaitingAsync`) the panel's filled button;
+  `Format.StatusLine` gives the status words used everywhere.
+- **Account and delete confirmation (#71).** Three groups; the email switch
+  saves on change (`site.js saveOnChange()`), with a Save button without
+  the script.
+- **Event page (#72, #76, #77).** `Event.cshtml` renders `_EventHead` (the
+  switch "My page" / "Organizing" for an organizer who takes part,
+  `_EventSwitch`; the countdown; date, budget and status) and then
+  `_EventBeforeDraw`, `_EventDrawn` or `_EventOver`. Before the draw the
+  notes editor comes first. Drawn, the gift (`section#gift`) unties with
+  one class, `.gift.untied`, its beats timed by `--k` (`.gift-later`
+  0.4); `/events/{id}/untie` shows it untied without the script; "reduce
+  motion" turns the motion off. The page preloads Playpen Sans while it
+  can write the name. Over, the viewer's own pairing first, then
+  `_WhoDrewWhom`, then folds (`.fold`) for threads and notes.
+- **Organizing (#73, #78).** One next step on the cloth per status, with
+  its blocker and the way to fix it in place, including "Keep X in
+  instead" (`EventManager.KeepInAsync`); the steps row; people rows in
+  words; "Who can't draw whom" and "Details and organizers" as folds with
+  a summary; "Bigger changes" at the bottom, each a button over one line.
+- **New event (#74).** Name, date, budget, taking part and an optional
+  earlier event; the form adds nobody else and lands on the organizing
+  page.
+- **Questions (#75).** Message bubbles (`ol.conversation`), "new" until a
+  reply, on the cloth with a filled "Send" only while unanswered;
+  `site.js conversations()` puts days and times in the viewer's zone.
+- **"Paper slips" removed (#79).** `_Layout`, `site.css`, `_Girl`,
+  `_Notes`/`NotesView`, `Format.Stamp`, Courier Prime and Reenie Beanie,
+  `messageTimes()` and the new-event prefill hooks are deleted. The last
+  "slip" strings were reworded: leaving after the draw says "One other
+  person is now giving to someone new.", and asking without a readable
+  assignment says "We can't find who you're giving to. Ask an organizer to
+  draw names again." The delete-account page's "Hand over first" names the
+  Organizing page instead of the manage page. THIRD-PARTY-NOTICES.md lists
+  Figtree and Playpen Sans; the banner's Courier Prime outlines keep their
+  credit until the banner is redrawn.
+- **Tests.** `TableclothTests`, `HomeTests`, `EventPageTests`,
+  `EventOverTests`, `OrganizingPageTests`, `OrganizingChangesTests`,
+  `QuestionConversationTests`, `AccountPageTests`, `ErrorPagesTests`,
+  `EventCreationTests`, `HtmlEmailTests`, and `OneLookTests`, which walks
+  every page a person can reach, as participant and organizer in each
+  status (leaving included), and finds no "hat" or "slip" outside the long
+  about text, no "exchanges", one stylesheet and nothing from another
+  origin; it also checks that the old stylesheet and fonts are gone and
+  the favicon is served. `PairingSecrecyTests` renders every reworked page,
+  the new-event form and the untied gift included.
+- **Checked by hand:** one sample of the new email over a real relay to a
+  real inbox (#64; the user found it good, clients not recorded). Each
+  page was rendered in headless Chromium at 390px and 900px by its ticket.
+  Not yet done: walking every screen on a real phone against the mockups,
+  with and without "reduce motion" and the script, and the #51 checklist
+  on states the mockups didn't cover.
+- **Still to do (#80):** the README's banner, screenshots and social
+  preview.
 
 ### Done: milestone 1 (sign-in)
 

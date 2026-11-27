@@ -187,7 +187,7 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         Assert.Contains("CAROL ASKED", page.QuerySelector("#questions")!.TextContent.ToUpperInvariant());
         Assert.DoesNotContain("Ann asks Bob privately", page.Source.Text);
         Assert.Null(page.QuerySelector("textarea[name='body']"));
-        Assert.Empty(page.QuerySelectorAll(".passed-new"));
+        Assert.Empty(page.QuerySelectorAll(".message-new"));
         Assert.DoesNotContain("Ann asks Bob privately", (await browser.GetPageAsync(Manage(ev))).Source.Text);
 
         // Posting is refused, and the questions page sends back to the event page.

@@ -129,7 +129,8 @@ public sealed class AccountPageTests : IAsyncLifetime
 
         var main = page.QuerySelector("main")!;
         Assert.Equal("Delete your account?", main.QuerySelector("h1")!.TextContent.Trim());
-        Assert.Contains("only organizer of Stockings", main.TextContent);
+        Assert.Contains("You're the only organizer of Stockings. Add another organizer on its Organizing page, then come back.", main.TextContent);
+        Assert.DoesNotContain("manage page", main.TextContent);
         Assert.Empty(main.QuerySelectorAll("form, button, .button"));
         Assert.DoesNotContain("Your name, email, picture and notes are deleted", main.TextContent);
         Assert.Equal("/account", main.QuerySelectorAll("a").Single(a => a.TextContent.Trim() == "Back to your account").GetAttribute("href"));

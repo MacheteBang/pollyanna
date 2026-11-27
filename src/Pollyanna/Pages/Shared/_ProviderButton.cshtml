@@ -1,9 +1,8 @@
 @model Pollyanna.Pages.Shared.ProviderButtonView
-@* One provider's button, with its icon when the operator supplied one (ProviderButtonView). Its
-   classes work under both stylesheets: in site.css ("Paper slips") .button is filled and
-   .button-outline outlined; in tablecloth.css .button is outlined and .button-fill filled. *@
+@* One provider's button, with its icon when the operator supplied one (ProviderButtonView).
+   Outlined by default; filled when it is the one thing to do. *@
 @{
-    var css = Model.Outline ? "button button-outline provider-button" : "button button-fill provider-button";
+    var css = Model.Outline ? "button provider-button" : "button button-fill provider-button";
     var icon = Model.Provider.IconPath;
 }
 @if (Model.Href is not null)

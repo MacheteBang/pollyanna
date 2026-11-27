@@ -51,7 +51,7 @@ function addPeople() {
             const email = looksLikeEmail(typed);
             const term = typed.toLowerCase();
             for (const r of rows)
-                r.hidden = r.dataset.prefilled === "true" || (term !== "" && !email && !r.dataset.search.includes(term));
+                r.hidden = term !== "" && !email && !r.dataset.search.includes(term);
             row.hidden = !email;
             address.disabled = !email;
             address.value = typed;
@@ -110,29 +110,6 @@ function gifts() {
         });
         // Rendered untied (just after asking something, say): it was seen.
         if (gift.classList.contains("untied")) tell();
-    }
-}
-
-// Question box times (spec §6, §12): "MON, ABOUT 7 PM" in the viewer's time zone, "TODAY" for
-// today, the date for anything older than a week. Times are stored on the hour; without the
-// script, the page shows the date alone.
-function messageTimes() {
-    const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-    const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    for (const el of document.querySelectorAll("time[data-hour]")) {
-        const time = new Date(el.getAttribute("datetime"));
-        if (isNaN(time)) continue;
-        const day = new Date(time);
-        day.setHours(0, 0, 0, 0);
-        const ago = Math.round((today - day) / 86400000);
-        const date = ago === 0 ? "TODAY"
-            : ago > 0 && ago < 7 ? days[day.getDay()]
-            : `${months[day.getMonth()]} ${day.getDate()}${day.getFullYear() === today.getFullYear() ? "" : ", " + day.getFullYear()}`;
-        const h = time.getHours();
-        const hour = h === 0 ? "MIDNIGHT" : h === 12 ? "NOON" : `${h % 12} ${h < 12 ? "AM" : "PM"}`;
-        el.textContent = `${date}, ABOUT ${hour}`;
     }
 }
 
@@ -217,7 +194,6 @@ document.addEventListener("DOMContentLoaded", () => {
     previousEventPicker();
     addPeople();
     gifts();
-    messageTimes();
     conversations();
     counters();
     saveOnChange();

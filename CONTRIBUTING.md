@@ -118,6 +118,6 @@ CI checks that the migrations match the model.
 - `docs/`: the architecture decisions (`adr/`), the agents' instructions (`agents/`), and the
   README's banner (`assets/`) and screenshots (`screenshots/`).
 
-Fonts (Courier Prime, Reenie Beanie) are served from `src/Pollyanna/wwwroot/fonts` under the
-SIL Open Font License; the licence texts sit beside them. The bow mark is adapted from
+Fonts (Figtree, Playpen Sans) are served from `src/Pollyanna/wwwroot/fonts` under the
+SIL Open Font License; the license texts sit beside them. The bow mark is adapted from
 Microsoft Fluent Emoji (MIT); see `THIRD-PARTY-NOTICES.md`.

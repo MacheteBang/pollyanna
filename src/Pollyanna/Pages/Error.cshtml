@@ -1,7 +1,6 @@
 @page "/error/{code:int?}"
 @model ErrorModel
 @{
-    Layout = "_Tablecloth";
     ViewData["Title"] = Model.Heading;
 }
 
@@ -10,5 +9,5 @@
     <partial name="_TableclothGirl" model="130" />
     <h1 class="page-title">@Model.Heading</h1>
     <p>@Model.Message</p>
-    <a class="lone-way-out" href="/">Back to your events</a>
+    <a class="way-out" href="/">Back to your events</a>
 </div>

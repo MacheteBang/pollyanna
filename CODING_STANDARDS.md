@@ -14,8 +14,8 @@ Reviewers check every diff against these rules. They are judgement calls; mechan
 - Refusals are `NotFound()`, so a refusal doesn't reveal that an event exists. The page checks the role; `EventManager` checks statuses and the event's own rules.
 - Every post carries a CSRF token, and every management action checks that the user is an organizer of that event.
 - After a post, redirect with a one-shot notice in TempData, shown by `_Notice`. Only the details forms re-render with what was typed.
-- No inline styles or scripts (strict CSP). CSS goes in `wwwroot/css/site.css`, in the block for its feature. Script goes in `wwwroot/js/site.js`, and anything essential keeps a no-script path, as the reveal card does with its `data-fold` form.
-- Visual choices follow §12: only the palette's colours, Courier Prime, and slips and stamps rather than cards and pills.
+- No inline styles or scripts (strict CSP). CSS goes in `wwwroot/css/tablecloth.css`, in the block for its feature. Script goes in `wwwroot/js/site.js`, and anything essential keeps a no-script path, as the gift does with its `/untie` link.
+- Visual choices follow §12 ("Tablecloth"): only the six colors as tokens, Figtree (Playpen Sans for the revealed name only), one white panel on the gingham for the one thing to do, and one filled button per screen.
 
 ## Domain code
 

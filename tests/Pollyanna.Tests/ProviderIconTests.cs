@@ -41,7 +41,7 @@ public sealed class ProviderIconTests : IAsyncLifetime
 
         var buttons = page.QuerySelectorAll("#logins form[action='/account/addlogin'] button").ToDictionary(b => b.TextContent.Trim());
         Assert.StartsWith("/auth/icon/google?v=", Assert.Single(buttons["Add Google"].QuerySelectorAll("img")).GetAttribute("src"));
-        Assert.Contains("button-outline", buttons["Add Google"].ClassList);
+        Assert.DoesNotContain("button-fill", buttons["Add Google"].ClassList);
         Assert.Empty(buttons["Add Work account"].QuerySelectorAll("img"));
     }
 

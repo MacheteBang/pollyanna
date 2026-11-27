@@ -60,7 +60,7 @@ public sealed partial class EventManager
             return refusal;
         var thread = await hat.ThreadStateAsync(m.Event.Id, me, MessageSender.Giver);
         if (thread is null)
-            return Outcome.Fail("Your slip can't be found. Ask an organizer to draw names again.");
+            return Outcome.Fail("We can't find who you're giving to. Ask an organizer to draw names again.");
         return await PostAsync(m.Event.Id, thread, MessageSender.Giver, me, body, "Sent. Your recipient won't see your name.");
     }
 
