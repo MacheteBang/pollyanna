@@ -172,6 +172,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         ev.Name = name!.Trim();
         ev.BudgetText = (budget ?? "").Trim();
         ev.ExchangeDate = date!.Value;
+        await announcer.AnnounceAsync(new Happening(HappeningKind.DetailsChanged, ev.Id, me));
         await db.SaveChangesAsync();
         return Outcome.Done("Details saved.");
     }
@@ -322,12 +323,13 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         && parsed.Address == email
         && parsed.Host.Length > 0;
 
-    public async Task<Outcome> CancelInvitationAsync(Membership m, Guid invitationId)
+    public async Task<Outcome> CancelInvitationAsync(Membership m, Guid me, Guid invitationId)
     {
         var invitation = await db.Invitations.SingleOrDefaultAsync(i => i.Id == invitationId && i.EventId == m.Event.Id);
         if (invitation is null)
             return Outcome.Fail("That invitation is gone already.");
         db.Invitations.Remove(invitation);
+        await announcer.AnnounceAsync(new Happening(HappeningKind.InvitationCanceled, m.Event.Id, me, invitation.Id));
         await db.SaveChangesAsync();
         return Outcome.Done($"Cancelled the invitation to {invitation.Email}.");
     }
@@ -336,14 +338,15 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     /// Takes someone out of the hat. After the draw they are a dropout (spec §5.4): the organizer
     /// picks <paramref name="change"/>.
     /// </summary>
-    public async Task<Outcome> RemoveParticipantAsync(Membership m, Guid personId, DrawChange? change = null)
+    public async Task<Outcome> RemoveParticipantAsync(Membership m, Guid me, Guid personId, DrawChange? change = null)
     {
         if (!m.PeopleChangeable)
             return Outcome.Fail("People can't be taken out any more.");
         var name = await db.People.Where(p => p.Id == personId).Select(p => p.DisplayName).SingleOrDefaultAsync();
+        var takenOut = new Happening(HappeningKind.TakenOut, m.Event.Id, me, personId);
         if (m.IsLive)
-            return await RemoveDropoutAsync(m, personId, name ?? "them", change);
-        return await RemoveAsync(m.Event.Id, personId)
+            return await RemoveDropoutAsync(m, takenOut, name ?? "them", change);
+        return await RemoveAsync(takenOut)
             ? Outcome.Done($"Took {name ?? "them"} out.")
             : Outcome.Fail("They aren't in this event.");
     }
@@ -361,7 +364,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
             return confirmedAfterDraw
                 ? await LeaveAfterDrawAsync(m, me)
                 : Outcome.Fail("Confirm that someone else's assignment will change.");
-        return await RemoveAsync(m.Event.Id, me)
+        return await RemoveAsync(new Happening(HappeningKind.Left, m.Event.Id, me, me))
             ? Outcome.Done($"You've left {m.Event.Name}.")
             : Outcome.Fail("You aren't in this event.");
     }
@@ -398,14 +401,19 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     /// <summary><see cref="InTransactionAsync{T}"/>, committed when the outcome is <see cref="Outcome.Ok"/>.</summary>
     Task<Outcome> InTransactionAsync(Func<Task<Outcome>> work) => InTransactionAsync(work, o => o.Ok);
 
-    /// <summary>Removes a participant with their notes, household place and exclusions.</summary>
-    async Task<bool> RemoveAsync(Guid eventId, Guid personId)
+    /// <summary>
+    /// Removes a participant (<paramref name="removal"/>'s <see cref="Happening.About"/>) with their
+    /// notes, household place and exclusions, and announces it.
+    /// </summary>
+    async Task<bool> RemoveAsync(Happening removal)
     {
+        var (eventId, personId) = (removal.EventId, removal.About!.Value);
         var participant = await db.Participants.SingleOrDefaultAsync(p => p.EventId == eventId && p.PersonId == personId);
         if (participant is null)
             return false;
         db.Participants.Remove(participant);
         db.Exclusions.RemoveRange(db.Exclusions.Where(x => x.EventId == eventId && (x.PersonA == personId || x.PersonB == personId)));
+        await announcer.AnnounceAsync(removal);
         await db.SaveChangesAsync();
         return true;
     }
@@ -428,7 +436,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         return Outcome.Done($"{person.DisplayName} is now an organizer.");
     }
 
-    public async Task<Outcome> RemoveOrganizerAsync(Membership m, Guid personId)
+    public async Task<Outcome> RemoveOrganizerAsync(Membership m, Guid me, Guid personId)
     {
         if (!m.Editable)
             return Outcome.Fail("This event is archived.");
@@ -439,6 +447,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (organizers.Count == 1)
             return Outcome.Fail("An event needs at least one organizer. Add another one first.");
         db.Organizers.Remove(organizer);
+        await announcer.AnnounceAsync(new Happening(HappeningKind.OrganizerRemoved, m.Event.Id, me, personId));
         await db.SaveChangesAsync();
         var name = await db.People.Where(p => p.Id == personId).Select(p => p.DisplayName).SingleOrDefaultAsync();
         return Outcome.Done($"{name} no longer organizes this event.");
@@ -450,7 +459,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     /// Creates a household (<paramref name="householdId"/> null) or renames it and sets its
     /// members. A participant is in at most one household, so ticking someone moves them.
     /// </summary>
-    public async Task<Outcome> SaveHouseholdAsync(Membership m, Guid? householdId, string? name, IReadOnlyCollection<Guid> members)
+    public async Task<Outcome> SaveHouseholdAsync(Membership m, Guid me, Guid? householdId, string? name, IReadOnlyCollection<Guid> members)
     {
         if (!m.PeopleEditable)
             return Outcome.Fail("Households can't change after the draw.");
@@ -483,11 +492,12 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
             else if (p.HouseholdId == household.Id)
                 p.HouseholdId = null;
         }
+        await announcer.AnnounceAsync(new Happening(HappeningKind.RulesChanged, m.Event.Id, me));
         await db.SaveChangesAsync();
         return Outcome.Done($"Saved {name}.");
     }
 
-    public async Task<Outcome> DeleteHouseholdAsync(Membership m, Guid householdId)
+    public async Task<Outcome> DeleteHouseholdAsync(Membership m, Guid me, Guid householdId)
     {
         if (!m.PeopleEditable)
             return Outcome.Fail("Households can't change after the draw.");
@@ -497,11 +507,12 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         foreach (var p in await db.Participants.Where(p => p.HouseholdId == householdId).ToListAsync())
             p.HouseholdId = null;
         db.Households.Remove(household);
+        await announcer.AnnounceAsync(new Happening(HappeningKind.RulesChanged, m.Event.Id, me));
         await db.SaveChangesAsync();
         return Outcome.Done($"Removed the household {household.Name}.");
     }
 
-    public async Task<Outcome> AddExclusionAsync(Membership m, Guid a, Guid b)
+    public async Task<Outcome> AddExclusionAsync(Membership m, Guid me, Guid a, Guid b)
     {
         if (!m.PeopleEditable)
             return Outcome.Fail("Rules can't change after the draw.");
@@ -514,11 +525,12 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (await db.Exclusions.AnyAsync(x => x.EventId == m.Event.Id && x.PersonA == exclusion.PersonA && x.PersonB == exclusion.PersonB))
             return Outcome.Fail("That rule is there already.");
         db.Exclusions.Add(exclusion);
+        await announcer.AnnounceAsync(new Happening(HappeningKind.RulesChanged, m.Event.Id, me));
         await db.SaveChangesAsync();
         return Outcome.Done("Added the rule.");
     }
 
-    public async Task<Outcome> RemoveExclusionAsync(Membership m, Guid exclusionId)
+    public async Task<Outcome> RemoveExclusionAsync(Membership m, Guid me, Guid exclusionId)
     {
         if (!m.PeopleEditable)
             return Outcome.Fail("Rules can't change after the draw.");
@@ -526,6 +538,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (exclusion is null)
             return Outcome.Fail("That rule is gone already.");
         db.Exclusions.Remove(exclusion);
+        await announcer.AnnounceAsync(new Happening(HappeningKind.RulesChanged, m.Event.Id, me));
         await db.SaveChangesAsync();
         return Outcome.Done("Removed the rule.");
     }
@@ -548,6 +561,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         {
             participant.Notes = notes;
             participant.NotesVersion++;
+            await announcer.AnnounceAsync(new Happening(HappeningKind.NotesEdited, m.Event.Id, me));
             await db.SaveChangesAsync();
         }
         return Outcome.Done("Notes saved.");

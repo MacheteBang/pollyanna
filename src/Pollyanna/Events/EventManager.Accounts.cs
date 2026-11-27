@@ -71,13 +71,15 @@ public sealed partial class EventManager
             {
                 var status = await db.Events.Where(e => e.Id == p.EventId).Select(e => e.Status).SingleAsync();
                 if (EventLifecycle.BeforeDraw.Contains(status))
-                    await RemoveAsync(p.EventId, me);
-                else if (!await TakeOutAfterDrawAsync(p.EventId, me))
+                    await RemoveAsync(new Happening(HappeningKind.Left, p.EventId, me, me));
+                else if (!await TakeOutAfterDrawAsync(new Happening(HappeningKind.Left, p.EventId, me, me)))
                     blocked.Add(p.EventId);
             }
             if (blocked.Count > 0)
                 return blocked;
 
+            foreach (var organized in await db.Organizers.Where(o => o.PersonId == me).Select(o => o.EventId).ToListAsync())
+                await announcer.AnnounceAsync(new Happening(HappeningKind.OrganizerRemoved, organized, me, me));
             await db.Organizers.Where(o => o.PersonId == me).ExecuteDeleteAsync();
             // Revealed and archived events keep the participant row; their notes go.
             await db.Participants.Where(p => p.PersonId == me)

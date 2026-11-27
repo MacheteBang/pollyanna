@@ -101,6 +101,9 @@ CI checks that the migrations match the model.
     archive (`EventManager.Reveal.cs`) and account deletion (`EventManager.Accounts.cs`).
     `SealedHat.cs` is the only code that reads or writes assignments and their threads, and
     the only user of the draw key's giver tags (docs/adr/0002).
+  - `Happenings/`: the one entry point every happening is announced through
+    (`Announcer.cs`, spec §16), and the per-kind table of what each kind does
+    (`HappeningKinds.cs`). Email is the first listener behind it.
   - `Notifications/`: email notifications (spec §15): the outbox (`Outbox.cs`), the
     background sender (`OutboxSender.cs`), the MailKit relay (`MailSender.cs`), the HTML
     part's layout (`EmailLayout.razor`, rendered by `MailHtml.cs`) and one file per

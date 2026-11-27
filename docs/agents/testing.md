@@ -29,6 +29,8 @@ Tests are integration tests against the real app through `tests/Pollyanna.Tests/
   - `app.Mail.DuringNextSend` runs code while an email is being sent.
   - The background sender doesn't run in tests (`OutboxSenderOptions.SendInBackground` is off). Only the test that covers the background sender itself turns it back on.
 
+- **Happenings:** `app.Happenings.Heard` holds every happening announced, in order, with its kind, event, actor and who it's about (spec §16). `app.Happenings.Clear()` forgets the setup's.
+
 ## Time
 
 - `app.Clock` is a `FakeTimeProvider` that the app uses everywhere. Move it with `app.Clock.Advance(…)` or `SetUtcNow(…)`, for example to cross the hour boundary for question emails or to reach a retry's backoff.

@@ -1,5 +1,4 @@
 using Pollyanna.Data;
-using Pollyanna.Notifications.Kinds;
 using Pollyanna.Happenings;
 using Microsoft.EntityFrameworkCore;
 
@@ -171,12 +170,12 @@ public sealed partial class EventManager
     /// Puts every name back in the hat (spec §4): assignments and their question threads deleted,
     /// back to open. Anyone who asked to leave after the draw is taken out now.
     /// </summary>
-    public async Task<Outcome> RedrawAsync(Membership m)
+    public async Task<Outcome> RedrawAsync(Membership m, Guid me)
     {
         if (EventLifecycle.Redraw.Refusal(m.Event.Status) is { } refusal)
             return Outcome.Fail(refusal);
         return await InTransactionAsync(async () =>
-            await ResetToOpenAsync(m.Event.Id) is { } left
+            await ResetToOpenAsync(m.Event.Id, me) is { } left
                 ? Outcome.Done("The draw is undone. Draw again when you're ready." + LeftNote(left))
                 : Outcome.Fail("Names haven't been drawn."));
     }
@@ -188,14 +187,14 @@ public sealed partial class EventManager
     /// The redraw itself, inside the caller's transaction. Returns the names of those taken out
     /// because they had asked to leave, or null if the event wasn't drawn.
     /// </summary>
-    async Task<IReadOnlyList<string>?> ResetToOpenAsync(Guid eventId)
+    async Task<IReadOnlyList<string>?> ResetToOpenAsync(Guid eventId, Guid me)
     {
         var claimed = await db.Events.Where(e => e.Id == eventId && EventLifecycle.Redraw.From.Contains(e.Status))
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.Status, EventLifecycle.Redraw.To).SetProperty(e => e.Redrawn, true));
         if (claimed == 0)
             return null;
         await hat.ClearAsync(eventId);
-        await NamesDrawn.WithdrawWaitingAsync(db, eventId);
+        await announcer.AnnounceAsync(new Happening(HappeningKind.NamesPutBack, eventId, me));
         // A new recipient means shopping starts over.
         await db.Participants.Where(p => p.EventId == eventId && p.DoneShopping)
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.DoneShopping, false));
@@ -204,15 +203,16 @@ public sealed partial class EventManager
             .Join(db.People, p => p.PersonId, person => person.Id, (p, person) => new { p.PersonId, person.DisplayName })
             .ToListAsync();
         foreach (var l in leaving)
-            await RemoveAsync(eventId, l.PersonId);
+            await RemoveAsync(new Happening(HappeningKind.TakenOut, eventId, me, l.PersonId));
         return [.. leaving.Select(l => l.DisplayName ?? "Former participant")];
     }
 
     // ---------- Dropouts ----------
 
-    async Task<Outcome> RemoveDropoutAsync(Membership m, Guid personId, string name, DrawChange? change)
+    async Task<Outcome> RemoveDropoutAsync(Membership m, Happening takenOut, string name, DrawChange? change)
     {
         var id = m.Event.Id;
+        var personId = takenOut.About!.Value;
         var people = await db.Participants.Where(p => p.EventId == id).Select(p => p.PersonId).ToListAsync();
         if (!people.Contains(personId))
             return Outcome.Fail("They aren't in this event.");
@@ -225,13 +225,13 @@ public sealed partial class EventManager
         {
             if (change == DrawChange.Redraw)
             {
-                await RemoveAsync(id, personId);
-                return await ResetToOpenAsync(id) is { } left
+                await RemoveAsync(takenOut);
+                return await ResetToOpenAsync(id, takenOut.Actor!.Value) is { } left
                     ? Outcome.Done($"Took {name} out. The draw is undone. Draw again when you're ready." + LeftNote(left))
                     : Outcome.Fail("Names haven't been drawn.");
             }
 
-            return await TakeOutAfterDrawAsync(id, personId)
+            return await TakeOutAfterDrawAsync(takenOut)
                 ? Outcome.Done($"Took {name} out. One person is now giving to someone new, and they'll see a notice. Nobody else changed.")
                 : Outcome.Fail($"A patch isn't possible for {name}: their giver can't take over their recipient under the draw rules. Draw names again instead.");
         });
@@ -244,13 +244,15 @@ public sealed partial class EventManager
     /// leave fewer than <see cref="Draw.MinPeople"/> people or the patch isn't possible. It doesn't
     /// say which, so no caller can give an answer that hints at anyone's assignment.
     /// </summary>
-    async Task<bool> TakeOutAfterDrawAsync(Guid eventId, Guid dropout)
+    async Task<bool> TakeOutAfterDrawAsync(Happening removal)
     {
+        var (eventId, dropout) = (removal.EventId, removal.About!.Value);
         if (await db.Participants.CountAsync(p => p.EventId == eventId) - 1 < Draw.MinPeople)
             return false;
         if (!await hat.PatchOutAsync(eventId, dropout, await RulesAsync(eventId)))
             return false;
-        return await RemoveAsync(eventId, dropout);
+        await announcer.AnnounceAsync(new Happening(HappeningKind.Patched, eventId, removal.Actor, dropout));
+        return await RemoveAsync(removal);
     }
 
     /// <summary>
@@ -262,7 +264,7 @@ public sealed partial class EventManager
         var id = m.Event.Id;
         if (await db.Participants.Where(p => p.EventId == id && p.PersonId == me).Select(p => p.WantsToLeave).SingleAsync())
             return Outcome.Done("You've already asked to leave. You'll be taken out when the organizers draw names again.");
-        if (await InTransactionAsync(() => TakeOutAfterDrawAsync(id, me), left => left))
+        if (await InTransactionAsync(() => TakeOutAfterDrawAsync(new Happening(HappeningKind.Left, id, me, me)), left => left))
             return Outcome.Done($"You've left {m.Event.Name}. One other person is now giving to someone new.");
 
         // Rolled back: they stay in, asking for a redraw.
@@ -284,6 +286,7 @@ public sealed partial class EventManager
         if (participant is null || !participant.WantsToLeave)
             return Outcome.Fail("You haven't asked to leave.");
         participant.WantsToLeave = false;
+        await announcer.AnnounceAsync(new Happening(HappeningKind.LeaveWithdrawn, m.Event.Id, me, me));
         await db.SaveChangesAsync();
         return Outcome.Done("You're staying in. The organizers won't see your request any more.");
     }
@@ -292,7 +295,7 @@ public sealed partial class EventManager
     /// An organizer keeps someone in who asked to leave (spec §7, "Keep X in instead"): the request
     /// is dropped and nothing else changes, as revealing or archiving would do.
     /// </summary>
-    public async Task<Outcome> KeepInAsync(Membership m, Guid personId)
+    public async Task<Outcome> KeepInAsync(Membership m, Guid me, Guid personId)
     {
         if (!m.IsLive)
             return Outcome.Fail("There's nobody to keep in now.");
@@ -300,6 +303,7 @@ public sealed partial class EventManager
         if (participant is null || !participant.WantsToLeave)
             return Outcome.Fail("They haven't asked to leave.");
         participant.WantsToLeave = false;
+        await announcer.AnnounceAsync(new Happening(HappeningKind.LeaveWithdrawn, m.Event.Id, me, personId));
         await db.SaveChangesAsync();
         var name = await db.People.Where(p => p.Id == personId).Select(p => p.DisplayName).SingleAsync();
         return Outcome.Done($"Kept {name ?? "them"} in. Their request to leave is dropped.");
@@ -324,11 +328,11 @@ public sealed partial class EventManager
             await db.SaveChangesAsync();
 
             if (change == DrawChange.Redraw)
-                return await ResetToOpenAsync(id) is { } left
+                return await ResetToOpenAsync(id, me) is { } left
                     ? Outcome.Done($"Added {person.DisplayName}. The draw is undone. Draw again when you're ready." + LeftNote(left))
                     : Outcome.Fail("Names haven't been drawn.");
 
-            return await PatchInAsync(id, person.Id)
+            return await PatchInAsync(id, me, person.Id)
                 ? Outcome.Done($"Added {person.DisplayName}. One person is now giving to someone new to make room, and they'll see a notice. Nobody else changed.")
                 : Outcome.Fail($"A patch isn't possible: no pairing can make room for {person.DisplayName} under the draw rules. Add them and draw names again instead.");
         });
@@ -338,8 +342,13 @@ public sealed partial class EventManager
     /// The late-joiner patch (spec §5.4) under the event's draw rules, inside the caller's
     /// transaction, with the late joiner already a participant.
     /// </summary>
-    async Task<bool> PatchInAsync(Guid eventId, Guid lateJoiner) =>
-        await hat.PatchInAsync(eventId, lateJoiner, await RulesAsync(eventId));
+    async Task<bool> PatchInAsync(Guid eventId, Guid me, Guid lateJoiner)
+    {
+        if (!await hat.PatchInAsync(eventId, lateJoiner, await RulesAsync(eventId)))
+            return false;
+        await announcer.AnnounceAsync(new Happening(HappeningKind.Patched, eventId, me, lateJoiner));
+        return true;
+    }
 
     // ---------- The giver's own slip ----------
 
@@ -387,6 +396,9 @@ public sealed partial class EventManager
             return false;
         var notesVersion = await db.Participants.Where(p => p.EventId == m.Event.Id && p.PersonId == slip.RecipientId)
             .Select(p => p.NotesVersion).SingleOrDefaultAsync();
+        // Saved by MarkSeenAsync, with the marker.
+        if (!slip.Viewed)
+            await announcer.AnnounceAsync(new Happening(HappeningKind.HasLooked, m.Event.Id, me));
         return await hat.MarkSeenAsync(slip, notesVersion, threadUpto);
     }
 
@@ -396,6 +408,8 @@ public sealed partial class EventManager
         if (!m.IsParticipant || !m.IsLive)
             return Outcome.Fail("Names haven't been drawn.");
         var participant = await db.Participants.SingleAsync(p => p.EventId == m.Event.Id && p.PersonId == me);
+        if (participant.DoneShopping != done)
+            await announcer.AnnounceAsync(new Happening(HappeningKind.DoneShopping, m.Event.Id, me));
         participant.DoneShopping = done;
         await db.SaveChangesAsync();
         return Outcome.Done(done ? "Marked as done shopping." : "Marked as still shopping.");

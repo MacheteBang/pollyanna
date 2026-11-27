@@ -38,6 +38,26 @@ public static class HappeningKinds
         // Nothing is ever queued for the giver (docs/adr/0001).
         new(HappeningKind.Question,
             Email: (h, q) => q.Outbox.QueueAsync(new Question.Cause(h.EventId, h.About!.Value, h.Actor))),
+        // A redraw sends nothing, and a slip email still waiting is about a slip that's gone (spec §15).
+        new(HappeningKind.NamesPutBack, Email: (h, q) => NamesDrawn.WithdrawWaitingAsync(q.Db, h.EventId)),
+        new(HappeningKind.EventArchived),
+        // Nobody is emailed, and its waiting emails are deleted (spec §4).
+        new(HappeningKind.EventCanceled,
+            Email: (h, q) => q.Db.Notifications.Where(n => n.EventId == h.EventId).ExecuteDeleteAsync()),
+        new(HappeningKind.DetailsChanged),
+        new(HappeningKind.NotesEdited),
+        new(HappeningKind.Left),
+        new(HappeningKind.TakenOut),
+        new(HappeningKind.Patched),
+        new(HappeningKind.InvitationCanceled),
+        new(HappeningKind.OrganizerRemoved),
+        new(HappeningKind.RulesChanged),
+        new(HappeningKind.HasLooked),
+        new(HappeningKind.DoneShopping),
+        new(HappeningKind.LeaveWithdrawn),
+        new(HappeningKind.Reply),
+        new(HappeningKind.ConversationClosed),
+        new(HappeningKind.ConversationReopened),
     ];
 
     /// <summary>"Event is open" for the participants, and every invitation made while it was a draft (spec §15).</summary>
