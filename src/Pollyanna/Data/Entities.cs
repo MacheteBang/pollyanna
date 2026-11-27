@@ -213,8 +213,9 @@ public enum MessageSender
 
 /// <summary>
 /// One passed note in an assignment's anonymous question thread (spec §6). It names a role, not
-/// a person; <see cref="Seq"/> orders the thread and counts only within it, and the time is
-/// rounded down to the hour.
+/// a person; <see cref="Seq"/> orders the thread and counts only within it. The time is the
+/// exact moment it was sent (docs/adr/0007); messages stored before that keep the hour they were
+/// rounded down to, with no marker (<see cref="Pollyanna.Events.Note.OnTheHour"/>).
 /// </summary>
 public sealed class Message
 {
@@ -225,12 +226,8 @@ public sealed class Message
     public int Seq { get; set; }
     public MessageSender Sender { get; set; }
     public required string Body { get; set; }
-    /// <summary>UTC, rounded down to the hour (<see cref="HourOf"/>).</summary>
+    /// <summary>UTC, the moment it was sent.</summary>
     public DateTime CreatedAt { get; set; }
-
-    /// <summary>The hour a message posted at <paramref name="now"/> (UTC) is stored under, to blunt timing guesses (spec §6).</summary>
-    public static DateTime HourOf(DateTime now) =>
-        new(now.Ticks - now.Ticks % TimeSpan.TicksPerHour, DateTimeKind.Utc);
 }
 
 /// <summary>
