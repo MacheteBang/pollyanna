@@ -135,9 +135,9 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   settings error report every provider's callback URL so the clients can be
   registered before the first sign-in (§2, §11).
 - `/auth/login`: with one provider, it goes straight to that provider. With
-  several, it shows a chooser: "Sign in to Pollyanna", "Choose how you'd like
-  to sign in.", then one equal, full-width "Sign in with <label>" button per
-  provider in configured order, and the about line. Each button links to
+  several, it shows a chooser: "Sign in to Pollyanna", the short about text
+  (§7), then one equal, full-width "Continue with <label>" button per
+  provider in configured order. Each button links to
   `/auth/login/<key>` and carries the return URL. The chooser remembers
   nothing and stores no cookie.
 - Provider icons: with an icon file (§2), the provider's logo sits in an
@@ -228,7 +228,7 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
     people (an organizer of any event in `draft` or `open`), can load it. It
     is deleted with the account.
   - Pictures appear small beside names in the people lists (event page,
-    manage page, new-event form): the picture, or the initials on paper.
+    manage page): the picture, or the initials on pale blue.
 - Admission: anyone a **trusted provider** authenticates may use the app.
   The app does no group checks of its own; limiting who can sign in is the
   provider's job. An **open provider** lets in only someone whose verified
@@ -271,7 +271,7 @@ Pollyanna on 2026-10-17; see §14 and DEPLOYMENT.md. Still pre-1.0: versions run
   event's organizers (§4).
 - Devices are assumed to be personal. "Sign out" ends only the Pollyanna
   session, not the provider's, and shared-device use is not designed for
-  beyond the "Tap to reveal" guard (§7).
+  beyond the "Untie the bow" guard (§7).
 - No local passwords and no fallback login. If the provider is down, the app is
   down.
 - Server-side sessions (random 256-bit ID in an `HttpOnly`, `Secure`,
@@ -333,19 +333,11 @@ no-repeat rule), `no_repeat_depth` (N, default 1), `pairings_revealed`
 - When an event is created linked to a previous one, its participants are
   pre-filled from that event; the organizer unticks anyone not joining.
   The new-event form preselects the most recent event the creator organizes.
-  Next to those people, the form has the same add-people control as the
-  manage page (Participant, below), so the whole exchange can be set up
-  before "Create draft": ticked people become participants of the new
-  draft, and a typed address adds its person or becomes an invitation
-  created with it, whose email waits until the event opens (§15). A refused
-  form (such as an address more than one person uses) creates nothing and
-  comes back with what was ticked and typed. Anyone else can still be added
-  on the manage page afterward.
-  - People prefilled from the linked event are left out of the add-people
-    ticklist, since they already show, ticked, under that event. Picking
-    another earlier event, or none, brings them back. The check that a
-    ticked person is one the organizer knows stays as it is. (Decided on
-    November 26, 2026.)
+  The form itself adds nobody else (decided on #53, 2026-11-26, user,
+  replacing the add-people control the form carried): it creates the draft
+  with the linked event's participants, if one is picked, and lands on the
+  manage page, where the add-people control lives (Participant, below) and
+  anyone not joining is taken out.
   - When the typed address became an invitation, the "Draft created" notice
     adds "<address> is invited; they'll get an email when the event opens."
     It says nothing more when the address added a person, or when none was
@@ -416,7 +408,7 @@ draft, open, drawn, revealed ──► canceled   (any organizer, irreversible)
   - Any organizer can cancel an event that is `draft`, `open`, `drawn` or
     `revealed`; an archived one is already out of the way. It is
     irreversible.
-  - The manage page's Status section ends with "Cancel this event…". It
+  - The manage page's "Bigger changes" group (§7) holds "Cancel this event". It
     opens a confirmation naming the event: canceling is permanent and the
     event disappears for everyone; how many participants and pending
     invitations it has; nobody is emailed; for a drawn or revealed event,
@@ -598,15 +590,15 @@ None of these columns name the giver, and none hold timestamps.
 - Each assignment also stores `notes_version_seen`: the recipient's
   `notes_version` when the giver last opened the reveal card. If the
   recipient's notes have changed since, the card shows "Notes updated since
-  you last looked" and the home page marks the event with a dot. Opening the
+  you last looked" and the home page's row for the event says so (§7). Opening the
   card clears it. A counter, not a timestamp, so it records nothing about
   when anyone looked. Before the giver has opened the card at all there is
   nothing to mark.
-- The home page's dot comes with a line that never names the recipient
-  ("Your recipient updated their notes", "Your recipient has changed"):
-  the home page isn't behind "Tap to reveal".
+- The home page's line never names the recipient ("Your recipient updated
+  their notes", "You're giving to someone new"): the home page isn't behind
+  the bow. There is no dot (§12).
 - Opening the card is recorded when it unfolds (the script posts it), or,
-  without the script, when "Tie it back up" is pressed.
+  without the script, when "Hide the name" is pressed.
 - To show a logged-in user their recipient, the server computes their
   `giver_tag` and looks it up. Nothing else maps tags back to people.
 - Rows are inserted in shuffled order, and `id`s are random (not
@@ -732,8 +724,9 @@ who is asking.
 - Bodies are plain text, max 1,000 characters, rendered escaped. Messages are
   final: nobody edits or deletes one once it's sent (a redraw, a patch or
   archiving still deletes threads as described).
-- An unread badge appears on the event page, and the home page marks the
-  event with a dot (the same dot as for updated notes). A new question is
+- An unread question shows first on the event page and as the event's line
+  on the home page ("Your giver asked you something", §7), with no badge or
+  dot. A new question is
   also emailed to the recipient, held to the hour (§15); a reply is never
   emailed to the giver.
 - Rate limit on posting: 20 messages per hour per person, across all their
@@ -760,42 +753,278 @@ who is asking.
 
 | Path | Who | Content |
 |---|---|---|
-| `/` | signed in | Events the user participates in or organizes (status, date, budget), a "past events" link, "New event", and the about line |
-| `/events/new` | signed in | Create an event; the creator becomes its organizer |
-| `/events/{id}` | participant | Event details; own notes editor; after the draw, the reveal card: "You're getting **Carol** a gift", her notes, budget, date, question thread |
-| `/events/{id}/questions` | participant | Threads where the user is the recipient |
-| `/events/{id}/manage` | organizer | Edit details; participants and invitations; organizers; households; exclusions; open, draw, redraw, reveal, archive, cancel; once revealed, the full pairing list |
+| `/` | signed in | One panel per event the user takes part in or organizes: its name and the one thing waiting on them; then "New event" and "Past events". With no events, the empty home |
+| `/events/new` | signed in | Create an event as a draft; the creator becomes its organizer and lands on the organizing page, where people are added |
+| `/events/{id}` | participant | Before the draw, the notes editor; after it, the gift that unties to show who the user is giving to, with that person's notes and the question box; once the event is over, the pairings |
+| `/events/{id}/questions` | participant | The conversation with the user's giver |
+| `/events/{id}/manage` | organizer | The organizing page: the next step; people and invitations; who can't draw whom; details and organizers; the bigger changes (dropout, late joiner, redraw, archive, cancel); once revealed, the full pairing list |
 | `/past` | signed in | Archived events the user took part in or organized |
-| `/account` | signed in | "Ways to sign in" (§3): one row per login with its provider's label, the email it last sent, "(no longer set up)" when its issuer isn't configured, and a "Remove" button; with more than one provider, an outline "Add <label>" button per provider in configured order; a note that a removed login whose verified email matches is added back on its next sign-in. Then the "Email me about Pollyanna events" switch (§15); sign out; delete account |
+| `/account` | signed in | "Ways to sign in" (§3): one row per login with its provider's label, the email it last sent, "(no longer set up)" when its issuer isn't configured, and "Remove"; with more than one provider, an outlined "Add <label>" button per provider in configured order; a note that a removed login whose verified email matches is added back on its next sign-in. Then "Emails" with the "Email me about Pollyanna events" switch (§15); "Sign out"; "Delete my account" |
 | `/auth/login` | anyone | Starts sign-in. With one provider, goes straight to it; with several, the chooser (§3), whose buttons go to `/auth/login/<key>` |
 | `/auth/icon/<key>` | anyone | A provider's logo for its buttons (§3); 404 without one |
 | `/healthz` | anyone | Liveness, no data |
 
-- `/events/{id}` also holds, by status: "Leave this event" (its confirmation
-  step is the page `/events/{id}/leave`); the "done
-  shopping" toggle (`drawn`); the full pairing list (`revealed`). An organizer
-  who isn't a participant is sent to `/events/{id}/manage` instead.
+- `/events/{id}` also holds "Leave this event" (its confirmation step is the
+  page `/events/{id}/leave`). An organizer who isn't a participant is sent to
+  `/events/{id}/manage` instead.
 - After sign-in, a user returns to the page they first asked for.
-- The about line says what Pollyanna is and nods to the name. It sits at the
-  bottom of `/` (with or without events), of `/auth/signed-out` and of the
-  sign-in chooser, the signed-out pages that aren't about a failure or a
-  deletion; `/` itself still
-  needs sign-in (§3). The text: "Every family has a version of this: names on
-  folded slips, a hat going round the table, someone squinting at the
-  handwriting. Around Philadelphia they call it a Pollyanna. This is the hat,
-  minus the squinting."
+- The page set, the flows and every rule about who sees what are unchanged
+  by the "Tablecloth" identity (§12). What changed on map #50 (decided
+  2026-11-26 and 27, user) is what each screen shows, in what order, and its
+  words; that is the rest of this section. How it looks is §12.
 
 When adding people, organizers pick from the people they've shared an event
 with, by name and picture only, and reach anyone else only by typing their
 exact address (§4 Participant). No page lists everyone who has signed in, and
 no people picker shows another person's email.
 
-The reveal card is hidden behind a "Tap to reveal" button so a phone left on
-the table does not give it away.
+### What each screen shows
 
-Accessibility: text contrast at least 4.5:1 (3:1 for large text), tap
-targets at least 44 px, everything usable by keyboard, real form controls
-with labels, and the reveal animation turned off under "reduce motion".
+Every screen is ranked for a participant on a phone, who comes once or twice
+a season, usually from an email. Each screen opens on the one thing that is
+theirs to do; statuses and rare actions are demoted.
+
+**Masthead.** One row: the girl and the wordmark "pollyanna" on the left,
+linking to `/`; on the right a reserved place for a notification menu, then
+the account control, the person's first name linking to `/account`.
+"Sign out" is on the account page only. The notification menu is not part
+of this spec: its place stays empty until that feature exists. Signed-out
+pages show the mark and wordmark only.
+
+**Page head.** Under the masthead: a small back link ("Home", or the event's
+name on its sub-pages), or the two-way switch; the page title; one small
+soft line. An organizer who also takes part gets the same switch, "My page"
+/ "Organizing", at the top of both the event page and the organizing page.
+An organizer who doesn't take part sees no switch.
+
+**Home, with events.**
+- One panel per event: the event's name and the one thing waiting on the
+  viewer, which links to where it is done. Then the date and countdown.
+  Status, budget and "You organize · N people" are small text.
+- The waiting line:
+  - `open`, no notes: "Write your notes"
+  - `open`, notes written: "Nothing to do until names are drawn"
+  - `drawn`, not yet looked: "See who you're giving to"
+  - `drawn`, recipient changed by a patch: "You're giving to someone new"
+  - `drawn`, the recipient's notes changed since the viewer last looked:
+    "Your recipient updated their notes" (§5.2)
+  - an unread question: "Your giver asked you something"
+  - for an organizer: "Ready to open", "Ready to draw names", "Someone wants
+    to leave"
+- When several apply, the first of these shows: an unread question, a
+  changed recipient, an organizer's line, updated notes, then the status's
+  own line. No line names the recipient: the home page isn't behind the bow.
+- There is no dot or badge; the line itself is the signal.
+- "New event" is a quiet secondary action, then "Past events". No about
+  text.
+
+**Empty home.** Title "No events yet". One panel in two equal halves: "I was
+invited", with the viewer's email address and a "Copy" button, to pass to
+whoever organizes; and "I'm organizing one", with "New event". Below: the
+about text (long version, under "About text" below), then "Past events".
+
+**Event page, before the draw** (`open`).
+1. Head: date, budget and countdown, the countdown the prominent part; the
+   small status line (§12 Statuses).
+2. One line, "Write your notes so your giver knows what you'd like. You'll
+   see who you're giving to once names are drawn.", then the notes editor,
+   labeled "Likes, sizes, no-gos. Everyone taking part can read them."
+   After a redraw the line is "Names are being drawn again. You'll see who
+   you're giving to once they are."
+3. "Taking part (N)", the people.
+4. "Leave this event", a small link at the very bottom.
+
+There is no separate status block.
+
+**Event page, after the draw** (`drawn`).
+1. An unread question from the viewer's giver, when there is one, above
+   everything: "Your giver asked you something", linking to the
+   conversation.
+2. The gift, alone until untied (§12 The reveal). The button is "Untie the
+   bow". After a redraw, "Names were drawn again, so this may be someone
+   new." sits under the date line, above the gift.
+3. Once untied, one group: under "You're giving to", the name; their notes
+   ("Notes updated since you last looked" when they changed, §5.2); the
+   question box; "Done shopping" as a small control; "Hide the name".
+4. "Questions from your giver", a quiet link when nothing is unread.
+5. The viewer's own notes, collapsed to a preview with an edit control.
+6. Everyone taking part, collapsed to a count that opens the list.
+7. "Leave this event", a small link at the very bottom.
+
+Every visit starts tied, so a phone left on the table gives nothing away.
+When the assignment can't be read: heading "We can't show who you're giving
+to", body "Names have been drawn, but yours can't be read any more. Ask an
+organizer to draw names again."
+
+**Event page, once the event is over** (`revealed` or `archived`).
+1. The viewer's own pairing: who they gave to and who gave to them.
+2. The full "Who drew whom" list ("Ana gave to Kofi"). Where pairings are
+   lost: "Some pairings can't be read any more, so their giver isn't
+   shown."
+3. The old question threads and the viewer's notes, collapsed.
+
+There is no separate people list; the pairing list names everyone. An event
+archived straight from `drawn` stays sealed (§4): the viewer sees only who
+they were giving to, and no list.
+
+**Organizing an event** (`/events/{id}/manage`).
+1. Head: the switch or a "Home" back link; the title; date and budget; the
+   row of steps (§12 Statuses).
+2. The next step: one sentence on where the event stands and one button.
+   - `draft`: "Only organizers can see this event. Open it so the people
+     you've added can write their notes." / "Open the event"
+   - `open`, ready: how many people are in and how many have written notes,
+     then "Draw names whenever you're ready." / "Draw names"
+   - `drawn`: how many have looked, then "Reveal who drew whom once the
+     gifts are opened." / "Reveal who drew whom"
+   - `revealed`: "Everyone can see who drew whom. Archive the event when
+     you're done with it, and it moves to past events." / "Archive this
+     event"
+   - A blocker replaces both the sentence and the button: "Can't draw yet:
+     at least N people need to take part." with "Add people"; "X wants to
+     leave, and that needs a redraw. Drawing names again takes them out."
+     with "Draw names again" and a small "Keep X in instead" link. The
+     other reasons a draw is refused (§5.1) are stated in the same place,
+     such as "The household X has more than half the people taking part, so
+     they can't all draw someone outside it."
+3. "Taking part (N)": one row per person. A row says in small words what is
+   missing ("no notes yet", "hasn't looked yet", "wants to leave") or
+   "done shopping"; a row with nothing to say stays quiet. With nobody:
+   "Nobody's taking part yet." Then "Invited, not signed in yet (N)", with
+   "Take back" per row, and "Add people". Once names are drawn: "Invitations
+   by email wait until names are drawn again."
+4. "Who can't draw whom" (households and extra rules) and "Details and
+   organizers": closed rows with a summary on the right ("2 households, 1
+   rule", "2 organizers") that open in place. The organizers hint reads
+   "Organizers manage the event but don't see who drew whom. Being one
+   doesn't make them a participant."
+5. "Bigger changes", always open at the bottom. Each is a real button that
+   opens its confirmation, with one small line on what it does:
+   - "Someone is dropping out": "Only that one person's recipient changes,
+     and nobody, you included, is told whose."
+   - "Someone is joining late": "One person gives to someone new to make
+     room. Nobody else changes."
+   - "Draw names again": "Every assignment is deleted and the event goes
+     back to open. Everyone is told names were drawn again." Its
+     confirmation says in full: "Every assignment is deleted and the event
+     goes back to open, so people and rules can change before you draw
+     again. Everyone is told names were drawn again."
+   - "Archive this event": "Pairings that haven't been revealed stay hidden
+     for good."
+   - "Cancel this event": "Everyone's assignments go, and any question-box
+     messages are deleted. This can't be undone."
+
+   Before the draw the group holds cancel alone. Once revealed, archiving is
+   the next step and the group holds cancel and "Nothing to change now that
+   everyone's been revealed."
+6. Once revealed, the "Who drew whom" list takes the place of the people
+   list.
+
+Notices after an action: "The draw is undone. Draw again when you're
+ready."; "Took X out. One person is now giving to someone new, and they'll
+see a notice. Nobody else changed."; "Added X. One person is now giving to
+someone new to make room, and they'll see a notice. Nobody else changed.";
+"X is already taking part."
+
+The three checkbox columns (notes, seen, done) are gone; the words on each
+row replace them. What organizers may see is unchanged (§5.5).
+
+**Questions for you** (`/events/{id}/questions`). Title "Questions for you",
+small line "Your giver asks, you answer. Their name stays a secret." The
+thread reads as a conversation, oldest at the top: a day line between days,
+and under each message its time, still rounded to the hour (§6). The reply
+is a one-line box, "Reply to your giver", with "Send" beside it; "Close
+this conversation" is a small link under it. A question that hasn't been
+answered carries the word "new". Empty: "No questions yet. When your giver
+asks you something, it shows up here and you can reply." The rules of §6
+are unchanged.
+
+**New event.** Name, Exchange date, Budget, "Yes, I'm taking part too", and
+"Same group as an earlier event" as one optional choice; the don't-repeat
+choice shows only once an earlier event is picked. Then "Create event" and
+a small line: "It starts as a draft only organizers can see. You add people
+next." The form no longer adds people: picking an earlier event still
+brings its people along (§4), and everyone else is added on the organizing
+page.
+
+**Sign-in chooser, signed out, account deleted.** A heading ("Sign in to
+Pollyanna" on the chooser), the short about text, then the buttons:
+"Continue with <label>" per provider, or "Sign in again". The about text
+comes above the buttons, as the answer to "what is this?" for someone
+arriving from an invitation.
+
+**Past events.** A plain list. Each row is one link: the event's name; date
+and budget; the viewer's part in it ("You took part · 9 people · pairings
+revealed"). No status word. Empty: "No past events yet. Events move here
+once an organizer archives them."
+
+**Account.** Title "Your account", with name and email in the small line.
+Three groups: "Ways to sign in"; "Emails", whose switch saves when it is
+flipped, with no Save button (without the script a Save button shows, §15);
+then "Sign out" and "Delete my account".
+
+**Confirmations** (leaving, deleting the account). The question is the page
+title ("Leave this event?", "Delete your account?"). What it costs follows
+as plain text: "Your notes for this event are deleted."; once drawn, "Names
+are drawn, so one other person will be giving to someone new." Then one
+button that repeats the action's name and the way out as a link ("Stay
+in", "Keep my account"). When deleting is blocked there is no action
+button, only what to do first.
+
+**Error pages.** One or two sentences and one way out.
+- Not found: "We can't find that page" / "It may have moved, or the event
+  may have been canceled."
+- Server error: "Something went wrong" / "That one's on Pollyanna, not you.
+  Nothing was changed. Try again in a minute."
+- Way out: "Back to your events". Sign-in failure pages keep their words
+  (§3) and offer the provider buttons again.
+
+### Words
+
+Decided on #60 (2026-11-27, user). The paper metaphor is gone from the
+interface.
+
+- "Hat", "slip" and every stamp, fold and paper word leave the interface.
+  Operator-facing text (`--help`, startup logs) and the code keep the
+  glossary's internal terms.
+- "Draw names" and its family (draw, redraw, names drawn) stay.
+- Being a participant is "taking part". Undoing a draw is "draw names
+  again".
+- "Slip" gets no replacement noun. The assignment is "who you're giving
+  to", everywhere, paired with "your giver". "Recipient" is for
+  organizer-side explanations.
+- "Event" is the word for one event. "Gift exchange" only describes what
+  Pollyanna is or the activity itself.
+- Bow and gift words appear only where the bow or the gift is on screen.
+- No all-caps labels.
+- Any string not listed in this section that says "hat", "slip" or
+  "exchange" is reworded by these rules. The question box's words ("Your
+  giver asks…", "Their name stays a secret", "Close this conversation",
+  "Reopen it"), "Done shopping", "Leave this event", "Who can't draw whom",
+  the household and rule labels, and the account, delete-account and
+  sign-in failure pages are otherwise left as they are.
+
+### About text
+
+Says what Pollyanna is and nods to the name. Two versions:
+
+- Long, on the empty home only: "Every family has a version of this: names
+  on folded slips, a hat going round the table, someone squinting at the
+  handwriting. Around Philadelphia they call it a Pollyanna. This is that,
+  minus the squinting." Here the hat and slips describe the real tradition,
+  so they stay.
+- Short, on the sign-in chooser, `/auth/signed-out` and the account-deleted
+  page: "Pollyanna is your family's gift exchange: everyone draws one name
+  and nobody sees who drew whom. Around Philadelphia, that's what they call
+  it."
+
+Home with events and the failure pages carry neither.
+
+### Accessibility
+
+Text contrast at least 4.5:1 (3:1 for large text), tap targets at least
+44 px, everything usable by keyboard, real form controls with labels, and
+no reveal animation under "reduce motion" (§12).
 
 ## 8. Security notes
 
@@ -865,23 +1094,44 @@ with labels, and the reveal animation turned off under "reduce motion".
   lost role) hold.
 - Tests for the HTML part of emails (§15, decided 2026-11-26, user). The
   outgoing mail carries the HTML next to the plain text, so the test mail
-  relay sees both; building the `multipart/alternative` message is a
-  separate step with its own test (plain text first, HTML second, both
-  UTF-8, the plain part exactly the text). The secrecy tests cover the HTML
+  relay sees both; building the message is a separate step with its own test
+  (`multipart/alternative` with the plain text first, exactly the text, then
+  `multipart/related` holding the HTML and the bow as an inline `image/png`
+  whose `Content-ID` the HTML's `cid:` names; text parts UTF-8). The secrecy tests cover the HTML
   part too: the shuffled-pairings run requires it byte-identical, and the
   content checks (no message bodies, notes or giver's or recipient's names,
   no Santa or stockings) read the raw markup, hidden preview text and links
   included. Over every kind: each paragraph of the plain text appears in
   the HTML's text, and the preview text is the kind's text word for word;
-  nothing remote (no image, script, frame, media, stylesheet link, `src`,
-  `background`, `url(` or `@import`, and every link starts with the public
-  URL); the stamp shows the event's status when sent, and the button's
-  label follows its link, whose URL matches the one printed under it and
+  nothing remote (no script, frame, media or stylesheet link, no
+  `background`, `url(` or `@import`, exactly one `<img>`, whose `src` is the
+  `cid:` of the attached bow and whose `alt` is empty, no other `src`, and
+  every link starts with the public URL); there is no status stamp; the
+  button's label follows its link, whose URL matches the one printed under it and
   the plain text's; the markup carries `lang="en"`, every `<table>` has
   `role="presentation"`, and the preview text is `aria-hidden="true"`
   (contrast isn't tested; the palette fixes it). One test puts markup in an event's name and a person's
   name and requires it shown as typed, never as elements. No snapshot
   (golden-file) tests of the whole HTML.
+- Tests for the "Tablecloth" identity (§7, §12; decided 2026-11-27, user),
+  through the pages as a signed-in person sees them. Each state of the home
+  row shows its one waiting line and links to where it is done, and no line
+  names a recipient. The event page puts first what §7 puts first in each
+  status (the notes editor; an unread question, then the tied gift; the
+  viewer's own pairing). The organizing page shows one next step per
+  status, each blocker in its place, people rows in words with no checkbox
+  columns, and "Bigger changes" with the right buttons per status. The
+  switch between "My page" and "Organizing" shows only for an organizer who
+  takes part. The new-event form adds nobody and lands on the manage page.
+  The masthead has no "Sign out"; the account page does. The about text is
+  long on the empty home, short on the chooser and signed-out pages, and
+  absent from home with events. No page a person can reach says "hat" or
+  "slip" outside the long about text, or "exchanges" for events. The fonts,
+  the favicon and the touch icon are served by the app, and no page loads
+  anything from another origin. The pairing secrecy tests cover every
+  reworked page. Layout, color and the reveal's motion are checked by hand
+  against the mockups, on a phone, with and without "reduce motion", and
+  without the script.
 - Manual end-to-end check against the production provider before first use.
 
 ## 10. Milestones
@@ -910,7 +1160,7 @@ with labels, and the reveal animation turned off under "reduce motion".
   the LTS before it, so staying current costs no support time.
 - Front end: server-rendered Razor Pages with a little plain JavaScript; no
   front-end build step. Pages work before scripts load where possible
-  ("Tap to reveal" can be a `<details>` element enhanced by script).
+  ("Untie the bow" can be a `<details>` element enhanced by script).
 - Data: SQLite, a single file, accessed through EF Core. Code avoids
   provider-specific SQL and features so another EF Core provider (e.g.
   PostgreSQL) can replace SQLite later; schema migrations are per provider
@@ -996,56 +1246,175 @@ with labels, and the reveal animation turned off under "reduce motion".
   fonts (OFL) and the Fluent bow (MIT) keep their own licences, credited in
   `THIRD-PARTY-NOTICES.md`.
 
-## 12. Visual design: "Paper slips"
+## 12. Visual design: "Tablecloth"
 
-Mockups: https://claude.ai/artifact/AxLjeyG2zj8wgSriRFESVb (the marks and the
-2.x screens; the v1 mockups with the top hat stay at
-https://claude.ai/artifact/VFStJPRMNMiqeZG5ZrVhgY, where rows B and C are
-rejected alternatives).
+Decided on map #50 (tickets #51 to #64, 2026-11-26 and 27, user). It
+replaces "Paper slips" entirely: no kraft, slips, stamps, tears, tilt or
+typewriter face. The mockups are the prototypes on the throwaway
+`prototype/*` branches those tickets name (never merged); each ticket says
+which options on its page show the decided version. Whether it is built yet
+is in §14.
 
-- Concept: the app is a table with a gift on it. Events and sections are torn
-  paper slips, slightly rotated; status labels are rubber stamps ("DRAFT",
-  "OPEN", "DRAWN"); the reveal is a slip tied with ribbon: pulling the ribbon
-  unties the bow, then the slip unfolds. Nothing references the novel or the
-  film, and nothing is tied to one holiday. The name's regional meaning
-  ("a Pollyanna" is a gift exchange around Philadelphia) may be mentioned,
-  as the about line does (§7).
-- Palette: kraft ground `#C9A77C`; slip paper `#F4EDE0`; bright paper (inputs,
-  replies) `#FFFDF8`; ink `#1E1A16`; stamp red `#B3261E`, darker red for red
-  text `#9E2019`; ribbon blue `#3F6E8C`. Ribbon blue means "the gift" and is
-  used only for bows and ribbon (the marks, the gift box, the reveal ribbon);
-  red stays for stamps, unread dots, errors and the one red button,
-  "Cancel this event" (§4). Folds and shadows inside a
-  bow are ink at 30% over ribbon blue. No other colours, and no red-and-green
-  pairing.
-- Type: Courier Prime (typewriter) for everything; Reenie Beanie (pencil
-  hand) only for the revealed name. Both are open-licensed and served by the
+- Concept: a table laid for the family. Each screen has one white panel
+  holding the one thing that is yours to do, on a band of blue gingham, the
+  tablecloth, with quiet rows on white beneath it. The gingham is the
+  identity's one distinctive device and is not optional: without it the
+  design read as a generic app. The reveal is a gift wrapped in the cloth
+  and tied with the bow. The feel is homey and family. Nothing references
+  the novel or the film, and nothing is tied to one holiday. The name's
+  regional meaning ("a Pollyanna" is a gift exchange around Philadelphia)
+  may be mentioned, as the about text does (§7).
+- Color, six and no others:
+
+  | Token | Hex | Use |
+  |---|---|---|
+  | White | `#FFFFFF` | Ground and panels, text on ink |
+  | Ink | `#1E1A16` | Text, the filled button, field borders, the bow's knot |
+  | Soft ink | `#5B5650` | Secondary text |
+  | Ribbon blue | `#3F6E8C` | Bows, the cloth's thread, the focus ring, link underlines |
+  | Pale blue | `#DCE7EE` | Row dividers, the email band, the girl's shirt, the other side's message bubbles |
+  | Red | `#9E2019` | Error text, "Cancel this event" and "Delete my account" only |
+
+  - Contrast: ink on white 17.29, soft ink on white 7.26, red on white
+    7.85, ink on pale blue 13.76, soft ink on pale blue 5.78, ribbon blue on
+    white 5.50, all passing AA for text. Ribbon blue on pale blue is 4.37:
+    shapes only, never small text.
+  - Red marks nothing else. "Leave this event" stays ink. Unread questions
+    are shown by position and words, never a red dot.
+  - Statuses get no color. No red-and-green pairing.
+- Gingham: two CSS layers of ribbon blue at 50% opacity on white, 14px
+  checks (a 28px repeat), so one thread reads `#9FB7C6` and a crossing
+  `#6F92A9`. No image file.
+  - It appears once per screen, as a full-width band under the one white
+    panel; around the gift at the reveal; and behind the mark on the touch
+    icon, the README banner and the social preview.
+  - Never behind text, links or fields; never as a border, divider, button
+    fill or page background; never in email.
+  - Nothing but a white panel sits on the cloth, the marks included (the
+    reveal's gift is the one exception, below).
+  - Screens with the cloth: home, the event page while there is something
+    to do on it, the organizing page while it has a next step, questions
+    while one is unanswered, new event, the sign-in chooser, signed out and
+    account deleted. Without: past events, account, the leave and
+    delete-account confirmations, error and sign-in failure pages,
+    questions with nothing new, and an event that is over.
+- Type: Figtree for everything, at weights 400, 600 and 800. Playpen Sans
+  500 for the revealed name only. Both are SIL OFL 1.1 and served by the
   app.
-- Marks, one family:
-  - Bow (favicon, apple-touch-icon on a kraft square, the reveal ribbon, the
-    gift box): a ribbon bow adapted from Microsoft Fluent Emoji "Ribbon"
-    (Flat, MIT), recoloured: ribbon-blue loops and tails, the inner folds in
-    ink at 30%, an ink knot. At 16px the folds are dropped.
-  - Girl (masthead, beside the wordmark, 40px): seen from behind, two
+  - Scale: page title 29px/1.1 at 800; panel title 23px/1.15 at 800; action
+    and countdown 18px/1.3 at 800; body 16px/1.5 at 400; links 600 and row
+    labels 800 at 16px; small 14px/1.5; the revealed name 52px/1.1, down to
+    35px for long names.
+  - Titles are tightened by 0.02em. No italics, no all-caps labels, nothing
+    below 14px.
+- Space and shape: steps of 4, 8, 12, 16, 24, 32 and 56px. 16 is the page
+  gutter, 24 the panel padding, 56 the cloth showing below a panel. One
+  corner, 10px, on panels, buttons and fields. Nothing fully rounded, no
+  shadows. Lines are 2px: ink around fields and outlined buttons, pale blue
+  between rows. On wider screens the page is one 560px column; the masthead
+  and the cloth run the full width, and the panel and everything under it
+  stay in the column.
+- Controls: one filled ink button per screen, for the one thing to do.
+  Other actions are outlined buttons or plain links; the action that can't
+  be undone has a red outline. Links are ink at weight 600 with a 2px
+  ribbon-blue underline. Keyboard focus is a 3px ribbon-blue ring, offset
+  2px. The empty home is the one screen with no filled button: its two
+  halves are equal. With several sign-in providers every provider button is
+  outlined, each with its logo (§3); a single button is filled.
+- Wordmark: the girl at 40px, then "pollyanna" in lowercase Figtree 800,
+  tightened by 0.02em. There is no separate logo drawing. The product's
+  name in running text stays "Pollyanna".
+- Marks, kept as drawn:
+  - Bow (the favicon, the touch icon, the reveal, the email): adapted from
+    Microsoft Fluent Emoji "Ribbon" (Flat, MIT): ribbon-blue loops and
+    tails, the inner folds in ink at 30%, an ink knot. At 16px the folds are
+    left out; the favicon and any 16px use is the bow.
+  - Girl (the masthead, the banner, error pages): seen from behind, two
     braids each tied with a small ribbon-blue bow, no face. Generated with
-    Recraft by the project owner, who holds the rights to it, then cleaned
-    up and recoloured to the palette (`Pages/Shared/_Girl.cshtml`); no
-    credit is needed.
-  - Gift box (empty home page): slip-paper box outlined in ink, a
-    ribbon-blue band and bow, and a bright-paper tag.
-  The Fluent credit lives in the repo (`THIRD-PARTY-NOTICES.md`, plus a
-  comment in `favicon.svg`), not on the site.
-- Questions are passed notes, not chat bubbles: the viewer's own on slip
-  paper, the other side's on bright paper with a red top edge; times read
-  "MON, ABOUT 7 PM" ("TODAY" for today, the date after a week).
-- Light only: no dark mode. Pages declare `color-scheme: light` so browsers
-  don't auto-darken them.
-- Avoid: gradients, pill badges, emoji, chat bubbles, card grids, a cream +
-  serif + coral look, Christmas red-and-green.
-- Screens in the v1 mockups: home, first sign-in (empty) home, event page with
-  reveal, organizer manage page, ask your recipient, questions for you, new
-  event. The 2.x mockups redo home, empty home and the event page with the
-  reveal; the other screens change only in their masthead.
+    Recraft by the project owner, who holds the rights to it; no credit is
+    needed. Her gaps take the color of the ground she stands on; her shirt
+    is pale blue on white and white on pale blue. Never shown below 32px.
+    She appears large, about 130px, on error and sign-in failure pages and
+    nowhere else in the app.
+  - The gift box of "Paper slips" is retired.
+  - The Fluent credit lives in the repo (`THIRD-PARTY-NOTICES.md`, plus a
+    comment in `favicon.svg`), not on the site.
+- The white edge: a mark or ribbon that sits on the cloth, or on a ground a
+  mail client may darken, carries a white edge so it stays legible. Three
+  places only: the reveal (3px, on the bow and both ribbons), the touch
+  icon, and the email's bow (1.5px at 26px, §15).
+- Statuses are states, shown as plain words. No tags, stamps or badges.
+  - A participant sees a small line under the date: `open` "names not drawn
+    yet"; `drawn` "names drawn"; `revealed` "everyone's been revealed";
+    `archived` "over"; `draft` (organizers only) "draft, only organizers can
+    see it". Past-event rows carry no status word.
+  - The organizing page adds a row of steps, Draft, Open, Names drawn,
+    Revealed, with the current one in ink over a ribbon-blue line.
+- The reveal is the one orchestrated motion; nothing else on the page
+  moves.
+  - Tied: the whole gingham band is the gift, and no white panel shows. A
+    ribbon-blue ribbon, 30px wide, runs edge to edge across the band and
+    top to bottom, crossing under the bow, which is the kept mark at 150px.
+    Bow and ribbons carry the 3px white edge. The one filled button, "Untie
+    the bow", sits below the band on white; tapping the gift does the same.
+  - Untying, the first time:
+
+    | Beat | Starts | Lasts |
+    |---|---|---|
+    | Tails pull longer while the loops shrink into the knot | 0 ms | 350 ms |
+    | The knot lets go; the bow drops away and fades | 330 ms | 290 ms |
+    | Both ribbons slide off the cloth | 450 ms | 350 ms |
+    | The cloth parts from the middle to both sides, showing the white panel | 750 ms | 500 ms |
+    | The name is written left to right | 900 ms | 550 ms |
+    | Notes, the question box, "Done shopping" and "Hide the name" open below | 1250 ms | 350 ms |
+
+    Everything is settled by about 1.6 s.
+  - Untied: the band stays as the cloth under one white panel holding the
+    name (Playpen Sans, under the small line "You're giving to"), the
+    recipient's notes, the question box, "Done shopping" and "Hide the
+    name". No bow or ribbon remains on screen.
+  - Later visits: the same sequence at 0.4× the length (about 0.65 s), with
+    the name already there when the cloth parts, not written again. "First
+    time" is the assignment's `viewed` flag (§5.2), which a redraw or a
+    patch resets with the new assignment.
+  - "Hide the name" ties it back at once, with no motion.
+  - Reduce motion: no animation; the name and notes replace the gift at
+    once.
+- Questions read as a conversation (§7). The giver's messages sit on the
+  left in pale blue with ink text, the viewer's own on the right in ink
+  with white text. A bubble is at most 84% wide and has the 10px corner,
+  except the bottom corner nearest its speaker, which is 2px: the one
+  exception to the single corner. A centered day line sits between days
+  ("Today", the weekday, or the date after a week) and the time under each
+  message ("about 7 PM"). While a question is unanswered the whole
+  conversation and the reply box sit in the white panel on the cloth and
+  "Send" is the filled button; with nothing new there is no cloth, the
+  reply box sits in a bar under the conversation and "Send" is outlined.
+- Light only: no dark mode and no switch. Pages declare
+  `color-scheme: light` so browsers don't auto-darken them. The email
+  declares light only too, has no designed dark version, and must stay
+  readable when a mail client darkens it anyway (§15).
+- Outside the app:
+  - Touch icon, 180px: the bow, with folds and the white edge, tied on
+    gingham that fills the square. Its cloth has six checks across (30px
+    checks), so it still reads as gingham at 60px: an exception to the 14px
+    check.
+  - README banner, 1280 × 320 (`docs/assets/banner.svg`): gingham edge to
+    edge at 20px checks, with one centered white panel holding the girl and
+    the lowercase wordmark, Figtree 800 converted to outlines. Light only;
+    it fills its own rectangle on a dark page.
+  - Social preview, 1280 × 640: the same composition, with no line of words
+    in the image. A PNG kept in `docs/assets/`; the owner uploads it in the
+    repository settings.
+  - README screenshots: three phones in a row at the top (home, the event
+    tied, the event untied); further down, organizing (wide), questions
+    (phone) and a GIF of the untying. Phone shots are 390 CSS px wide and
+    wide shots 640, both at 2×, captured from the built app with the demo
+    people and the "Cousins' Swap" event.
+- Avoid: gradients, pill buttons and badges, emoji, icons above headings,
+  card grids, shadows, all-caps labels, a cream + serif + coral (or
+  terracotta) look, Christmas red-and-green. The checklist on #51 is run on
+  any new screen or mark.
 
 ## 13. Open items
 
@@ -1058,6 +1427,35 @@ v1 milestones are done, and milestone 7 (email notifications) is
 built. Branch, commit and PR rules are in CLAUDE.md. Questions about anything the spec
 doesn't cover go to the user one per turn, and each answer is written back into
 this spec.
+
+### Next: the "Tablecloth" identity (specified, not built)
+
+Map #50, decided with the user on 2026-11-26 and 27 over tickets #51 to
+#64. §7 (what each screen shows, its words, the about text), §12 and §15
+(**Content**, **Nothing remote**, **Layout**, **Opting out**) now describe
+the new identity, and §9 its tests. **The app on `main` still has "Paper
+slips"** until the work is built; the "Done" entries below describe what
+was built at the time, in the old look and words, and are left as written.
+
+- What changes: every page's look and layout, the interface words (no
+  "hat" or "slip"), the reveal's motion, the HTML email's layout with its
+  one embedded bow, the fonts and icons the app serves, and the README's
+  banner, screenshots and social preview.
+- What doesn't: the page set and paths, the flows, who sees what, the
+  draw, the question box's rules, who is emailed and when, and the emails'
+  words apart from three "slip" phrases (§15 **Content**). No setting, no
+  migration.
+- Decided while writing this spec (2026-11-27, user): the placeholder
+  words left by the mockups stand as drawn (the not-found and server-error
+  pages, "Bigger changes" and the lines under its buttons, "Invited, not
+  signed in yet", "Take back", "Keep X in instead", "Sign in to
+  Pollyanna", "Reply to your giver"), and the README's line under the
+  banner stays as it is.
+- Checked by hand on #64: one sample of the new email layout with the CID
+  bow went over a real relay to a real inbox, and the user reported that
+  it looks good in their mail clients. Which clients was not recorded.
+- The mockups were reviewed in the user's browser at desktop size, not on
+  a real phone.
 
 ### Done: milestone 1 (sign-in)
 
@@ -1770,7 +2168,7 @@ behaves as in v1. There is no other channel (§1).
 
 | Kind | To | When |
 |---|---|---|
-| Added to an event | the new participant | when added: by an organizer (also by inviting the address of someone who has signed in, and as a late joiner by patch or redraw), or by an invitation accepted at sign-in; for a `draft` event, not until it opens (the "open" email covers it). The wording follows the status when it is sent: "write your notes" while `open`, "see your slip and write your notes" once drawn. It doesn't name who added them. |
+| Added to an event | the new participant | when added: by an organizer (also by inviting the address of someone who has signed in, and as a late joiner by patch or redraw), or by an invitation accepted at sign-in; for a `draft` event, not until it opens (the "open" email covers it). The wording follows the status when it is sent: "write your notes" while `open`, "see who you're giving to and write your notes" once drawn. It doesn't name who added them. |
 | Invitation | an invited email address with no account yet | when the invitation is made, or when the event opens if it is still a `draft`. Names the organizer who invited ("Someone" if their account is gone). When at least one open provider is configured (§3), it adds one line naming every open provider by label, in configured order, and the invited address: "Sign in with Google using this address (sue@example.com).", or "Sign in with A or B …" ("A, B or C …") for several. Trusted providers are never named, and with only trusted providers the line is left out. Inviting the address again while its email still waits adds nothing. |
 | Made an organizer | the new organizer | when made one, in any status, `draft` included; names who did it and links to the manage page |
 | Event is open | every participant | `draft → open`: subject "<event> is open: write your notes" |
@@ -1811,7 +2209,11 @@ givers but not all, is out (docs/adr/0001).
 **Content.** Each email says what happened, names the event and links to
 the page (`<public URL>/events/{id}` and so on). It never contains a
 message body, anyone's notes, or the name of a giver or recipient; draw
-emails say "your slip is ready", not whose. Organizer emails may name the
+emails say "you can see who you're giving to", not who (the three "slip"
+phrases of the draw and added-to-an-event emails were reworded on #60,
+2026-11-27, user: "…and you can see who you're giving to", "Open it to see
+who you're giving to and write your notes", "take another look at who
+you're giving to in …"; no other email words changed). Organizer emails may name the
 person concerned where the manage page already does (redraw needed). Who
 acted may be named where it isn't secret ("Alice made you an organizer").
 The footer says why the email came and links to `/account` to turn emails
@@ -1824,48 +2226,74 @@ a named person whose account is gone appears as "Former participant".
 else: no remote images, no web fonts, no tracking pixels. Fetching one
 would tell the server (and its access logs) roughly when someone opened an
 email, and from where, which is the timing record ADR-0003 avoids. The
-HTML part carries no images either, not even embedded (CID) ones: the
-masthead is typographic, the wordmark in the font stack, which starts at
-Courier New since Courier Prime can't be loaded.
+HTML part carries exactly one image, the bow beside the wordmark, and it
+travels inside the message as a CID attachment (decided on #61 to #64,
+2026-11-27, user, replacing the earlier "no images, not even embedded").
+`data:` URIs and inline `<svg>` aren't used: Gmail and Outlook drop them.
+Type is the system font stack (`-apple-system, "Segoe UI", Roboto,
+Helvetica, Arial, sans-serif`), since Figtree can't be loaded.
 
-**Layout.** All eight kinds share one HTML layout, the "gift tag" (decided
-2026-11-26, user, from the prototype on the `prototype/email-layout`
-branch). On a kraft ground sits a slip-paper tag with a ribbon-blue band
-across its top. The tag's header row holds the POLLYANNA wordmark and,
-opposite, a red stamp with the event's status when the email is sent
-(DRAFT, OPEN, DRAWN, REVEALED, the app's own labels). Below come the
-event's name as the heading, the kind's text, a full-width ink button,
-and the link's URL in small type under the button for clients where the
-button fails. The button's label follows where the link goes, not the
-kind: "Open the event", "Open the manage page", "Read the question". The
-footer, the invitation's included, is a second, smaller bright-paper tag
-under the first, with the account page as a link. The stamp is tilted
-only where `transform` works; the `<style>` block holds just its reset
-for narrow screens.
-- The plain-text part stays exactly as it is. The HTML part has the same
-  text and footer and adds only the wordmark, the stamp, the event-name
-  heading, the button label and the URL.
+**Layout.** All eight kinds share one HTML layout, "the panel on the band"
+(decided on #61, 2026-11-27, user, replacing the gift tag of 2026-11-26).
+From the top: the wordmark on white, which is the bow image and then
+"pollyanna" in bold lowercase text; a pale-blue band holding one white
+panel; the footer on white under the band. The panel holds, in order, the
+event's name as the heading, the kind's text, a full-width ink button, and
+the link's URL in small soft type under the button for clients where the
+button fails. There is no status stamp: the text already says what
+happened. The button's label follows where the link goes, not the kind, in
+sentence case: "Open the event", "Open the manage page", "Read the
+question". The footer, the invitation's included, is soft-ink text on
+white, with the account page as a link. No text sits on the band: it is
+the email's stand-in for the cloth, and the gingham itself never appears
+in email (§12).
+- Colors are the six of §12, all solid, and every surface sets its own
+  background, so a client that darkens the email swaps whole surfaces and
+  the text stays readable. The panel and the button have the 10px corner;
+  where a client squares them nothing is lost. The `<style>` block holds
+  only extras that can be lost without harm.
+- The bow image: the bow as drawn (§12), folds kept, with a 1.5px white
+  edge around the whole silhouette, the knot included, and everything
+  outside it transparent. On white the edge can't be seen; on a darkened
+  ground it outlines the bow (17.0:1 against `#1C1C1C`, where the loops
+  alone are 3.1:1 and the knot 1.0:1). A 52 × 52px PNG shown at
+  `width="26" height="26"`, 8px before the 22px wordmark, with `alt=""`:
+  it is decoration, and the text wordmark carries the name, so a screen
+  reader or a client that doesn't draw the image says "pollyanna" once.
+  About 2.5 KB, kept with the app.
+- The message is `multipart/alternative` holding `text/plain` first, then
+  `multipart/related` holding `text/html` and the `image/png` part. The
+  image part carries a `Content-ID` and
+  `Content-Disposition: inline; filename="bow.png"`, and the HTML refers
+  to it as `<img src="cid:…">`. This is the structure that was sent in the
+  hand check (#64).
+- The plain-text part is the kind's text and footer, as before. The HTML
+  part has the same text and footer and adds only the wordmark and bow,
+  the event-name heading, the button label and the URL.
 - The HTML part opens with hidden preview text, the snippet inbox lists
   show after the subject: the kind's text, word for word, followed by a
   run of invisible spacer characters so clients don't carry on into the
-  wordmark and stamp (decided 2026-11-26, user). Nothing new is written
+  wordmark and heading (decided 2026-11-26, user). Nothing new is written
   for it. The plain-text part needs none, since it already starts with
   the same text.
 - Emails declare `color-scheme: light only` (and the matching meta tags),
-  as the pages do (§12). Clients that darken them anyway (Gmail on iOS,
-  classic Outlook, Outlook.com's recoloring) are accepted.
+  as the pages do (§12). That keeps them light in Apple Mail and the Gmail
+  phone apps. Clients that recolor a message whatever it declares (classic
+  Outlook, new Outlook, Outlook.com) are accepted, and the email must stay
+  readable there: explicit backgrounds on every surface, the white edge on
+  the bow, and no text baked into an image.
 - Accessibility (decided 2026-11-26, user). `lang="en" dir="ltr"` sits on
   `<html>` and again on the outer wrapper, since webmail such as Gmail
   strips `<html>`. `<title>` is the subject. Every table is a layout table
   with `role="presentation"`. The hidden preview text and its spacer run
   carry `aria-hidden="true"`, so screen readers read the kind's text once,
   in the body. Every piece of text meets WCAG AA contrast (4.5:1) against
-  its own background (ink on slip paper 14.9, and slip paper on the ink
-  button the same, the red stamp 5.6, the small URL 6.7, the footer on
-  bright paper 7.7 and its ink link 17.0). The small URL and the footer
-  are in a softened ink, `#5A5048`, used only in email; the ribbon-blue
-  band holds no text and is decoration. There is no `role="article"` wrapper: the title
-  and the event-name heading are the structure.
+  its own background (ink on white 17.3 for the wordmark, heading, text
+  and footer link, and white on the ink button the same; soft ink on white
+  7.3 for the small URL and the footer). The email-only softened ink
+  `#5A5048` is gone; soft ink `#5B5650` replaces it. The pale-blue band
+  holds no text and is decoration. There is no `role="article"` wrapper:
+  the title and the event-name heading are the structure.
 
 **Address.** The email from the person's last sign-in, unless the provider
 sent `email_verified: false` for it (the same leniency as invitations,
@@ -1875,8 +2303,10 @@ invited address.
 **Opting out.** One switch on `/account`, "Email me about Pollyanna events",
 on by default. There are no per-kind settings. Every page needs sign-in
 (§3), so the footer link leads to `/account` rather than to a one-click
-unsubscribe. It is a checkbox with a Save button under the heading
-"Emails", posting to `/account/emails`; the notice reads "Emails are on."
+unsubscribe. It is a switch under the heading "Emails" that saves when it
+is flipped, posting to `/account/emails` (decided on #59, 2026-11-27, user;
+without the script it is a checkbox with a Save button, since every page
+works without the script); the notice reads "Emails are on."
 or "Emails are off.". The switch is checked when a row would be queued
 (nothing is queued while it is off) and again when it is sent; switching
 off deletes the person's waiting rows at once, so switching back on only

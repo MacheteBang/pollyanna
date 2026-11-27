@@ -124,7 +124,7 @@ The operator-held secret that, together with the database, is the only way to li
 _Avoid_: Encryption key, master key, secret
 
 **Slip**:
-A participant's own view of their assignment, revealed behind "Tap to reveal".
+A participant's own view of their assignment, revealed by untying the bow. An internal term: user-facing text says "who you're giving to".
 _Avoid_: Card, ticket, result
 
 **Predictability warning**:
