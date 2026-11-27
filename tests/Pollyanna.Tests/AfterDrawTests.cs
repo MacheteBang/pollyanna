@@ -340,11 +340,11 @@ public sealed class AfterDrawTests : IAsyncLifetime
         var page = await browser.GetPageAsync($"/events/{ev}");
         Assert.Contains("Your recipient has changed", page.QuerySelector("main")!.TextContent);
         Assert.Equal("Ann", page.QuerySelector(".reveal-name")!.TextContent);
-        Assert.Equal("Your recipient has changed", (await browser.GetPageAsync("/")).QuerySelector(".slip-update")!.TextContent.Trim());
+        Assert.Equal("You're giving to someone new", (await browser.GetPageAsync("/")).QuerySelector(".waiting")!.TextContent.Trim());
 
         await browser.SubmitAsync(page, $"/events/{ev}/seen");
         Assert.DoesNotContain("Your recipient has changed", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
-        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".slip-update"));
+        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".waiting"));
     }
 
     // ---------- Leaving on one's own ----------

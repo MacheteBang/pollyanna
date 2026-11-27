@@ -66,7 +66,7 @@ public sealed class QuestionTests : IAsyncLifetime
     }
 
     static async Task<List<string>> HomeLinesAsync(TestBrowser browser) =>
-        [.. (await browser.GetPageAsync("/")).QuerySelectorAll(".slip-update").Select(e => e.TextContent.Trim())];
+        [.. (await browser.GetPageAsync("/")).QuerySelectorAll(".waiting").Select(e => e.TextContent.Trim())];
 
     [Fact]
     public async Task The_giver_asks_and_the_recipient_sees_it_without_their_name()
@@ -82,7 +82,7 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.Contains("You asked", mine.TextContent);
         Assert.Contains("What's your shoe size?", mine.TextContent);
 
-        // Ann: a dot on the home page and a note pinned on the event page, naming nobody.
+        // Ann: the waiting line on home and a note pinned on the event page, naming nobody.
         Assert.Equal(["Your giver asked you something"], await HomeLinesAsync(ann));
         var link = (await ann.GetPageAsync(Page)).QuerySelector(".passed-link")!;
         Assert.Equal(Questions, link.GetAttribute("href"));
@@ -98,7 +98,7 @@ public sealed class QuestionTests : IAsyncLifetime
 
         // Opening the page read it, though it stays "new" on the page until it's answered.
         Assert.NotNull((await ann.GetPageAsync(Questions)).QuerySelector(".message-new"));
-        Assert.Empty(await HomeLinesAsync(ann));
+        Assert.DoesNotContain("Your giver asked you something", await HomeLinesAsync(ann));
         Assert.Contains("Questions from your giver", (await ann.GetPageAsync(Page)).QuerySelector(".passed-link")!.TextContent);
     }
 
@@ -113,8 +113,8 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.StartsWith("You:", mine.QuerySelector(".bubble")!.TextContent.Trim());
         Assert.Null((await ann.GetPageAsync(Questions)).QuerySelector(".message-new"));
 
-        // Pat: a dot, a hint on the folded card, and the reply inside it.
-        Assert.Equal(["Your recipient replied"], await HomeLinesAsync(pat));
+        // Pat: a hint on the folded card and the reply inside it. Home has no line for a reply (spec §7).
+        Assert.Equal(["See who you're giving to"], await HomeLinesAsync(pat));
         var page = await pat.GetPageAsync(Page);
         Assert.Contains("A NEW REPLY INSIDE", page.QuerySelector(".reveal-cover")!.TextContent);
         var reply = page.QuerySelector("#ask .passed-theirs")!;
@@ -139,7 +139,7 @@ public sealed class QuestionTests : IAsyncLifetime
         await ReplyAsync("Actually, a scarf.");
 
         await pat.SubmitAsync(page, $"{Page}/seen");
-        Assert.Equal(["Your recipient replied"], await HomeLinesAsync(pat));
+        Assert.Empty(await HomeLinesAsync(pat));
         var notes = (await pat.GetPageAsync(Page)).QuerySelectorAll("#ask .passed-note").ToList();
         Assert.Equal(3, notes.Count);
         Assert.Null(notes[1].QuerySelector(".passed-new"));
@@ -277,11 +277,11 @@ public sealed class QuestionTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync(Questions)).StatusCode);
             foreach (var action in new[] { $"{Questions}/reply", $"{Questions}/close", $"{Questions}/reopen" })
-                Assert.Equal(HttpStatusCode.NotFound, (await browser.PostWithTokenAsync("/", action, Form(("body", "hi")))).StatusCode);
+                Assert.Equal(HttpStatusCode.NotFound, (await browser.PostWithTokenAsync("/account", action, Form(("body", "hi")))).StatusCode);
         }
-        Assert.Equal(HttpStatusCode.NotFound, (await outsider.PostWithTokenAsync("/", $"{Page}/ask", Form(("body", "hi")))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await outsider.PostWithTokenAsync("/account", $"{Page}/ask", Form(("body", "hi")))).StatusCode);
         // The organizer can see the event, so asking is refused like their other event-page posts.
-        await organizer.PostWithTokenAsync("/", $"{Page}/ask", Form(("body", "hi")));
+        await organizer.PostWithTokenAsync("/account", $"{Page}/ask", Form(("body", "hi")));
         Assert.Contains("You aren't in this event", await NoticeAsync(organizer, $"{Page}/manage"));
         Assert.Equal(0, await app.WithDbAsync(db => db.Messages.CountAsync()));
         Assert.False((await app.AssignmentOfAsync(ev, patId)).ThreadClosed);

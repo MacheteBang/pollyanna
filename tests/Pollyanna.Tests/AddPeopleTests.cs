@@ -161,7 +161,7 @@ public sealed class AddPeopleTests : IAsyncLifetime
         await app.EventAsync("Last year", EventStatus.Archived, [me], [me, ann]);
         var theirs = await app.EventAsync("Theirs", EventStatus.Open, [org], [me, org]);
 
-        var response = await browser.PostWithTokenAsync("/", AddPeople(theirs), [new("personIds", ann.ToString())]);
+        var response = await browser.PostWithTokenAsync("/account", AddPeople(theirs), [new("personIds", ann.ToString())]);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.DoesNotContain(ann, await app.ParticipantsAsync(theirs));
 
