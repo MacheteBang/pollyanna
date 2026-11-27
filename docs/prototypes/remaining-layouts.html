@@ -113,6 +113,25 @@ body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--ui) }
 .lone .girl-big { --g-gap: var(--white); --g-shirt: var(--pale); width: 132px; height: 132px; margin: 8px 0 4px -14px }
 .nogirl .girl-big { display: none }
 .err { color: var(--red); font-weight: 600; font-size: 14px }
+/* questions as a conversation (takes B, C, D) */
+.thread { display: flex; flex-direction: column; gap: 6px }
+.thread .day { align-self: center; font-size: 14px; color: var(--muted); padding: 10px 0 2px }
+.thread .day:first-child { padding-top: 0 }
+.bub { max-width: 84%; padding: 10px 14px; border-radius: 10px; overflow-wrap: anywhere }
+.bub.g { align-self: flex-start; background: var(--pale); border-bottom-left-radius: 2px }
+.bub.y { align-self: flex-end; background: var(--ink); color: var(--white); border-bottom-right-radius: 2px }
+.ln { max-width: 84%; display: flex; flex-direction: column; padding: 4px 0 }
+.ln b { font-weight: 800; font-size: 14px }
+.ln.g { align-self: flex-start } .ln.y { align-self: flex-end; text-align: right }
+.thread .meta { font-size: 14px; color: var(--muted); align-self: flex-start; margin-bottom: 4px }
+.thread .meta.y { align-self: flex-end }
+.thread .meta strong { color: var(--ink); font-weight: 800 }
+.composer { display: flex; gap: 8px; align-items: flex-end }
+.composer textarea { flex: 1; min-width: 0; font: inherit; border: 2px solid var(--ink); border-radius: 10px; padding: 10px 12px; min-height: 48px; background: var(--white); color: var(--ink); resize: none }
+.composer textarea::placeholder { color: var(--muted) }
+.composer .btn { font-size: 16px; padding: 10px 16px }
+.bar { padding: 12px 16px; border-top: 2px solid var(--pale) }
+.chat-foot { padding: 4px 16px 16px }
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -290,6 +309,8 @@ body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--ui) }
     <div class="phone">
       <div data-mast></div>
       <div class="head"><a class="back" href="#questions">Cousins' gift swap</a><h3>Questions for you</h3><p class="when">Your giver asks, you answer. Their name stays a secret.</p></div>
+      <div id="q-chat" data-show="qv:b c d"></div>
+      <div data-show="qv:a">
       <div class="cloth gingham" data-show="q:new">
         <div class="panel">
           <p class="small soft">new · today, 9:14 AM</p>
@@ -315,15 +336,22 @@ body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--ui) }
         <button type="button" class="plainbtn small" style="align-self:flex-start">Close this conversation</button>
       </div>
       <div class="body" data-show="q:none"><p>No questions yet. When your giver asks you something, it shows up here and you can reply.</p></div>
+      </div>
     </div>
     <div class="side">
       <h2>Questions for you</h2>
-      <div class="ctl"><label for="c-q">State
-        <select id="c-q" data-ctl="q"><option value="new">A new question is waiting</option><option value="quiet">Nothing new</option><option value="none">No questions yet</option></select></label></div>
+      <div class="ctl">
+        <label for="c-qv">Take
+          <select id="c-qv" data-ctl="qv"><option value="b">B · Bubbles, reply bar at the bottom</option><option value="c">C · The conversation on the cloth</option><option value="d">D · Left and right, no bubbles</option><option value="a">A · Rows (the first version)</option></select></label>
+        <label for="c-q">State
+          <select id="c-q" data-ctl="q"><option value="new">A new question is waiting</option><option value="quiet">Nothing new</option><option value="none">No questions yet</option></select></label></div>
       <ul>
-        <li>A question you haven't answered goes on the cloth with the reply box under it: someone is waiting on you. Earlier messages sit below as plain rows, newest first.</li>
-        <li>With nothing new there is no cloth; the page is the conversation and a quiet box to add more.</li>
-        <li>Messages are rows with a name and a time, not chat bubbles, so they read like the rest of the app.</li>
+        <li><b>B, C and D</b> all read like a messaging app: oldest at the top, newest at the bottom, days marked between, your giver on the left and you on the right, and a one-line reply box with Send beside it.</li>
+        <li><b>B</b> is the closest to a phone's own messages. Your giver's messages are pale blue, yours are ink. No cloth on this page at all.</li>
+        <li><b>C</b> puts the whole conversation in the white panel on the cloth while a question is waiting, so it still matches the other screens. Once you've answered, the cloth goes.</li>
+        <li><b>D</b> keeps the left and right sides but drops the colored bubbles, which is quieter and closer to the rest of the app.</li>
+        <li>In all three the unanswered question is marked "new" and Send is the filled button. With nothing new, Send is outlined.</li>
+        <li><b>A</b> is the first version, kept for comparison.</li>
       </ul>
     </div>
   </section>
@@ -563,7 +591,29 @@ body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--ui) }
   document.querySelectorAll('[data-mast]').forEach(function (el) { el.innerHTML = el.dataset.mast === 'out' ? outMast : inMast; });
 
   var state = {};
+  function chat() {
+    var box = document.getElementById('q-chat'), take = state.qv, st = state.q;
+    if (take === 'a') { box.innerHTML = ''; return; }
+    if (st === 'none') { box.innerHTML = '<div class="body" style="padding-top:0"><p>No questions yet. When your giver asks you something, it shows up here and you can reply.</p></div>'; return; }
+    var msgs = [
+      { day: 'Tuesday, December 1' }, { who: 'g', t: '4:02 PM', x: 'Do you have a table for jigsaw puzzles?' },
+      { day: 'Wednesday, December 2' }, { who: 'y', t: '8:15 AM', x: 'Yes, a small one that folds away.' },
+      { day: 'Today' }, { who: 'g', t: '9:14 AM', x: "What's your favorite kind of tea?", fresh: st === 'new' }
+    ];
+    if (st === 'quiet') msgs.push({ who: 'y', t: '9:40 AM', x: 'Earl Grey, or anything smoky.' });
+    var thread = '<div class="thread">' + msgs.map(function (m) {
+      if (m.day) return '<p class="day">' + m.day + '</p>';
+      var meta = '<p class="meta ' + m.who + '">' + m.t + (m.fresh ? ' · <strong>new</strong>' : '') + '</p>';
+      if (take === 'd') return '<div class="ln ' + m.who + '"><b>' + (m.who === 'g' ? 'Your giver' : 'You') + '</b><span>' + m.x + '</span></div>' + meta;
+      return '<p class="bub ' + m.who + '"><span class="sr" hidden>' + (m.who === 'g' ? 'Your giver: ' : 'You: ') + '</span>' + m.x + '</p>' + meta;
+    }).join('') + '</div>';
+    var composer = '<div class="composer"><textarea id="q-chat-reply" rows="1" aria-label="Your reply" placeholder="Reply to your giver"></textarea><button type="button" class="btn ' + (st === 'new' ? 'fill' : 'line') + '">Send</button></div>';
+    var close = '<div class="chat-foot"><button type="button" class="plainbtn small">Close this conversation</button></div>';
+    if (take === 'c' && st === 'new') box.innerHTML = '<div class="cloth gingham"><div class="panel" style="gap:20px">' + thread + composer + '</div></div>' + close.replace('4px 16px 16px', '');
+    else box.innerHTML = '<div class="body" style="padding-top:4px;padding-bottom:20px">' + thread + '</div><div class="bar">' + composer + '</div>' + close;
+  }
   function apply() {
+    chat();
     document.querySelectorAll('[data-show]').forEach(function (el) {
       var parts = el.dataset.show.split(':');
       el.hidden = parts[1].split(' ').indexOf(state[parts[0]]) < 0;
