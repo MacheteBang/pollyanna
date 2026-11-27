@@ -206,6 +206,8 @@ public sealed class WhatsNewTests : IAsyncLifetime
         Assert.Equal("/whats-new", quiet.GetAttribute("href"));
         Assert.Equal("What's new, nothing new", quiet.GetAttribute("aria-label"));
         Assert.False(quiet.ClassList.Contains("bell-new"));
+        // The red dot is there only with something new (owner, November 27, 2026), on the link and the button alike.
+        Assert.True(quiet.QuerySelector(".bell-dot")!.HasAttribute("hidden"));
         Assert.Equal("", quiet.TextContent.Trim());
 
         var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me, annId]);
@@ -213,6 +215,8 @@ public sealed class WhatsNewTests : IAsyncLifetime
         var one = (await ann.GetPageAsync(path)).QuerySelector(".masthead a.bell")!;
         Assert.Equal("What's new, 1 notification", one.GetAttribute("aria-label"));
         Assert.True(one.ClassList.Contains("bell-new"));
+        Assert.False(one.QuerySelector(".bell-dot")!.HasAttribute("hidden"));
+        Assert.False(one.ParentElement!.QuerySelector("button.bell .bell-dot")!.HasAttribute("hidden"));
         Assert.Equal("", one.TextContent.Trim());
 
         await Post(ev, "addorganizer", ("email", "ann@example.com"));

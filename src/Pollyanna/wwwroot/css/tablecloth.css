@@ -80,7 +80,7 @@
     --soft-ink: #5B5650;   /* secondary text */
     --ribbon: #3F6E8C;     /* bows, the cloth's thread, the focus ring, link underlines */
     --pale: #DCE7EE;       /* row dividers, the girl's shirt, the other side's bubbles */
-    --red: #9E2019;        /* error text, "Cancel this event" and "Delete my account" only */
+    --red: #9E2019;        /* error text, "Cancel this event", "Delete my account" and the bell's dot only */
     --thread: color-mix(in srgb, var(--ribbon) 50%, transparent); /* ribbon blue at 50%: one gingham thread */
 
     /* Type. */
@@ -182,8 +182,9 @@ summary::-webkit-details-marker { display: none; }
 }
 
 /* The bell (spec §12): a 44px link to "What's new", or with the script a button that opens the
-   panel below. With something new it is filled ribbon blue with an ink clapper; with nothing, a
-   soft-ink outline. No number, word, badge or dot. */
+   panel below. With something new it is filled ribbon blue with an ink clapper and a small red
+   dot at its top right (the one dot in the app), ringed in white so it reads on the fill; with
+   nothing, a soft-ink outline and no dot. No number, word or badge, and nothing moves. */
 .bell {
     display: inline-flex;
     align-items: center;
@@ -201,6 +202,7 @@ summary::-webkit-details-marker { display: none; }
 .bell path { fill: none; stroke: var(--soft-ink); stroke-width: 1.6; stroke-linejoin: round; }
 .bell-new .bell-body { fill: var(--ribbon); stroke: none; }
 .bell-new .bell-clapper { fill: var(--ink); stroke: none; }
+.bell-dot { fill: var(--red); stroke: var(--white); stroke-width: 1.5; }
 
 /* The "What's new" panel (spec §12, the #89 mockup, variant A): the one thing that sits over the
    page. White, just under the masthead, 8px in from each edge on a phone and in the 560px column
@@ -224,9 +226,9 @@ summary::-webkit-details-marker { display: none; }
     font: var(--type-action);
     letter-spacing: var(--tight);
 }
-.bell-rows .row { align-items: flex-start; }
-.bell-line { overflow-wrap: anywhere; }
-.bell-row form { flex: none; }
+.bell-rows .row, .whats-new-rows .row { align-items: flex-start; }
+.bell-line, .whats-new-line { overflow-wrap: anywhere; }
+.bell-row form, .whats-new-row form { flex: none; }
 /* The row's "×": a 44px target, drawn 14px. */
 .bell-x {
     display: grid;
@@ -241,8 +243,8 @@ summary::-webkit-details-marker { display: none; }
     cursor: pointer;
 }
 .bell-x svg { width: 14px; height: 14px; fill: none; stroke: var(--ink); stroke-width: 2.4; }
-.bell-empty { display: flex; flex-direction: column; gap: var(--space-1); padding-block: var(--space-2); }
-.bell-empty-title { font-weight: 800; }
+.bell-empty, .whats-new-empty { display: flex; flex-direction: column; gap: var(--space-1); padding-block: var(--space-2); }
+.bell-empty-title, .whats-new-empty-title { font-weight: 800; }
 
 .masthead-account {
     display: flex;
@@ -876,12 +878,7 @@ summary::-webkit-details-marker { display: none; }
 
 /* "What's new" without the script (spec §7, §16): divided rows, the line as a link with the
    event and time under it, and a small "Dismiss" on the right. No cloth. */
-.whats-new-rows .row { align-items: flex-start; }
-.whats-new-line { overflow-wrap: anywhere; }
-.whats-new-row form { flex: none; }
 .whats-new-row .link-button { margin-top: -10px; }
-.whats-new-empty { display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-2); }
-.whats-new-empty-title { font-weight: 800; }
 
 /* ---------- Event page once the event is over (#77): no cloth, nothing left to do ---------- */
 

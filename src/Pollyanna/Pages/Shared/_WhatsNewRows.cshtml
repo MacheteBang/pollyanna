@@ -1,0 +1,47 @@
+@model Pollyanna.Pages.Shared.WhatsNewRowsView
+@using Pollyanna.Infrastructure
+@* "What's new"'s rows (spec §7, §16), the one markup for the bell's panel ("bell-") and the
+   /whats-new page ("whats-new-"): each row's line is a link to where it's dealt with, the event
+   and time under it in small soft ink, then a form posting /whats-new/dismiss. The panel's
+   button is the "×" (site.js dismisses in place with that same post); the page's is a small
+   "Dismiss". The empty state follows the list, hidden while there are rows. A row of a kind tied
+   to an assignment is a pair part (data-live-pair), which a refetch a hint set off leaves out. *@
+@{
+    var p = Model.Prefix;
+}
+<ul class="rows @(p)-rows" role="list" @(Model.Withheld ? Html.Raw("data-live-withheld") : null)>
+    @foreach (var row in Model.Rows)
+    {
+        <li class="row @(p)-row" @(row.WorkedOut ? Html.Raw("data-live-pair") : null)>
+            <span class="row-stack">
+                <a class="@(p)-line" href="@row.Href">@row.Line</a>
+                <span class="small soft @(p)-meta">@row.EventName@if (row.At is { } at)
+                {<text> · </text><time datetime="@Format.IsoMinute(at)" data-when>@Format.When(at, Model.Now)</time>}</span>
+            </span>
+            @* Not the form tag helper, so the panel's marker can be left off the page's; the token goes in by hand. *@
+            <!form method="post" action="/whats-new/dismiss" @(Model.InPanel ? Html.Raw("data-bell-dismiss") : null)>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="event" value="@row.EventId">
+                <input type="hidden" name="kind" value="@row.Kind">
+                @if (row.Upto is { } upto)
+                {
+                    <input type="hidden" name="upto" value="@upto">
+                }
+                @if (Model.InPanel)
+                {
+                    <button type="submit" class="bell-x" aria-label="Dismiss: @row.Line">
+                        <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M2 2l10 10M12 2L2 12"/></svg>
+                    </button>
+                }
+                else
+                {
+                    <button type="submit" class="link-button small" aria-label="Dismiss: @row.Line">Dismiss</button>
+                }
+            </!form>
+        </li>
+    }
+</ul>
+<div class="@(p)-empty" hidden="@(Model.Rows.Count > 0)">
+    <p class="@(p)-empty-title">Nothing new right now.</p>
+    <p class="small soft">When something happens in one of your events, it shows up here.</p>
+</div>

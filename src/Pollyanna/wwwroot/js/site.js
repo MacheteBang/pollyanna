@@ -5,6 +5,14 @@
 // each takes the root to look in. all(root, selector) includes the root itself when it matches.
 const all = (root, selector) => [...(root.matches?.(selector) ? [root] : []), ...root.querySelectorAll(selector)];
 
+// Puts a list's children in the order given (kept, new or moved), moving only those out of place,
+// so a row that stays keeps its focus and nothing flashes: home's panels and the bell's rows.
+function inOrder(list, children) {
+    children.forEach((child, i) => {
+        if (list.children[i] !== child) list.insertBefore(child, list.children[i] ?? null);
+    });
+}
+
 // Countdown to the exchange date, from the viewer's own date (spec §4). The date is a plain
 // calendar date with no time zone, so it is read as local midnight.
 function countdowns(root = document) {
@@ -216,15 +224,17 @@ function whatsNewPanel() {
         close(!focus || focus === document.body || panel.contains(focus));
     });
 
-    // The bell's state and label follow the rows left; only the label counts them.
+    // The bell's state and label follow the rows left; only the label counts them, in the
+    // server's words (data-bell-labels: none, one, many with "{n}"). Its fill and red dot go together.
+    let labels = [];
+    try { labels = JSON.parse(button.dataset.bellLabels || "[]"); } catch { /* the label stays as it was */ }
     const update = () => {
         const count = list.children.length;
-        const label = count === 0 ? "What's new, nothing new"
-            : count === 1 ? "What's new, 1 notification"
-            : `What's new, ${count} notifications`;
+        const label = (labels[Math.min(count, 2)] ?? "").replace("{n}", String(count));
         for (const bell of [button, link]) {
             bell.classList.toggle("bell-new", count > 0);
-            bell.setAttribute("aria-label", label);
+            for (const dot of bell.querySelectorAll(".bell-dot")) dot.toggleAttribute("hidden", count === 0);
+            if (label) bell.setAttribute("aria-label", label);
         }
         empty.hidden = count > 0;
     };
@@ -303,9 +313,7 @@ function whatsNewPanel() {
             lostFocus ||= gone.contains(document.activeElement);
             gone.remove();
         }
-        rows.forEach((row, i) => {
-            if (list.children[i] !== row) list.insertBefore(row, list.children[i] ?? null);
-        });
+        inOrder(list, rows);
         update();
         whatsNewTimes();
         if (lostFocus && isOpen()) heading.focus();
@@ -436,9 +444,7 @@ function livePage() {
                 return added;
             });
             for (const gone of here.values()) gone.remove();
-            order.forEach((row, i) => {
-                if (list.children[i] !== row) list.insertBefore(row, list.children[i] ?? null);
-            });
+            inOrder(list, order);
         }
     };
     const regions = page => {

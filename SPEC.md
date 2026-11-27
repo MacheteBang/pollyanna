@@ -813,8 +813,11 @@ wordmark only.
 **"What's new"** (decided on #89, November 27, 2026, user; what's in it is
 §16, how it looks §12).
 - The bell is a button labeled "What's new, 5 notifications" ("What's new,
-  nothing new" when empty), with `aria-expanded`. It shows no number, word,
-  badge or dot. Without the script it is a link to `/whats-new`.
+  nothing new" when empty), with `aria-expanded`. With something new it
+  shows a small red dot (decided November 27, 2026, owner: the blue fill
+  alone hid too easily); it never shows a number, word or badge, and the
+  label is the same with or without the dot. Without the script it is a
+  link to `/whats-new`, with the same fill and dot.
 - It opens a panel under the masthead headed "What's new". Each row is the
   notification's line as a link to the page it points to, with the event's
   name and the time in small soft ink under it (the three kinds with no
@@ -1358,14 +1361,15 @@ is in §14.
   | Soft ink | `#5B5650` | Secondary text |
   | Ribbon blue | `#3F6E8C` | Bows, the cloth's thread, the focus ring, link underlines |
   | Pale blue | `#DCE7EE` | Row dividers, the email band, the girl's shirt, the other side's message bubbles |
-  | Red | `#9E2019` | Error text, "Cancel this event" and "Delete my account" only |
+  | Red | `#9E2019` | Error text, "Cancel this event", "Delete my account" and the bell's dot only |
 
   - Contrast: ink on white 17.29, soft ink on white 7.26, red on white
     7.85, ink on pale blue 13.76, soft ink on pale blue 5.78, ribbon blue on
     white 5.50, all passing AA for text. Ribbon blue on pale blue is 4.37:
     shapes only, never small text.
   - Red marks nothing else. "Leave this event" stays ink. Unread questions
-    are shown by position and words, never a red dot.
+    are shown by position and words, never a red dot of their own; the
+    bell's dot (§12 the bell) is the only one.
   - Statuses get no color. No red-and-green pairing.
 - Gingham: two CSS layers of ribbon blue at 50% opacity on white, 14px
   checks (a 28px repeat), so one thread reads `#9FB7C6` and a crossing
@@ -1491,8 +1495,11 @@ is in §14.
   reply box sits in a bar under the conversation and "Send" is outlined.
 - The bell (§7, §16; decided on #89, November 27, 2026, user) sits in the
   masthead left of the first name. With something new it is filled ribbon
-  blue with an ink clapper; with nothing it is a soft-ink outline. No
-  number, word, badge or dot beside it. (The bow was tried and ruled out:
+  blue with an ink clapper and has a small red dot at its top right,
+  ringed in white (November 27, 2026, owner); with nothing it is a
+  soft-ink outline with no dot. No number, word or badge beside it, and
+  nothing moves (reduce motion has nothing to stop). The dot is the
+  bell's alone: nothing else in the app gains a dot. (The bow was tried and ruled out:
   it reads as the brand, not as notifications.)
   - The "What's new" panel is the one thing in the app that sits over the
     page: white, just under the masthead, 8px in from each edge on a phone
@@ -1525,7 +1532,8 @@ is in §14.
     wide shots 640, both at 2×, captured from the built app with the demo
     people and the "Cousins' Swap" event.
 - Avoid: gradients, pill buttons and badges, emoji, icons above headings,
-  card grids, shadows, all-caps labels, unread counts or dots, a cream + serif + coral (or
+  card grids, shadows, all-caps labels, unread counts or dots (the bell's
+  one red dot aside, above), a cream + serif + coral (or
   terracotta) look, Christmas red-and-green. The checklist on #51 is run on
   any new screen or mark.
 
