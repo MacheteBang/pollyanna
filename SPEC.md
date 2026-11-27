@@ -1427,7 +1427,7 @@ this spec.
 ### Done: the "Tablecloth" identity
 
 Spec issue #65 (map #50), decided with the user on 2026-11-26 and 27 over
-#51 to #64 and built as #67 to #79. §7 (what each screen shows, its words,
+#51 to #64 and built as #67 to #80. §7 (what each screen shows, its words,
 the about text), §12 and §15 (**Content**, **Nothing remote**, **Layout**,
 **Opting out**) describe it, and §9 its tests. The "Done" entries below
 describe what was built at the time, in the old "Paper slips" look and
@@ -1497,8 +1497,7 @@ words, and are left as written.
   assignment says "We can't find who you're giving to. Ask an organizer to
   draw names again." The delete-account page's "Hand over first" names the
   Organizing page instead of the manage page. THIRD-PARTY-NOTICES.md lists
-  Figtree and Playpen Sans; the banner's Courier Prime outlines keep their
-  credit until the banner is redrawn.
+  Figtree and Playpen Sans.
 - **Tests.** `TableclothTests`, `HomeTests`, `EventPageTests`,
   `EventOverTests`, `OrganizingPageTests`, `OrganizingChangesTests`,
   `QuestionConversationTests`, `AccountPageTests`, `ErrorPagesTests`,
@@ -1515,8 +1514,28 @@ words, and are left as written.
   Not yet done: walking every screen on a real phone against the mockups,
   with and without "reduce motion" and the script, and the #51 checklist
   on states the mockups didn't cover.
-- **Still to do (#80):** the README's banner, screenshots and social
-  preview.
+- **README, banner, screenshots and social preview (#80).**
+  `docs/assets/banner.svg` is redrawn as §12 says (the girl from
+  `_TableclothGirl` and the wordmark as Figtree 800 outlines on a 680 × 200
+  panel, its 16px corner the 10px one at the README's 820px, over 20px
+  gingham), and
+  `docs/assets/social-preview.png` is the same at 1280 × 640 (an 880 × 280
+  panel); the owner uploads it in the repository settings. Courier Prime
+  left `THIRD-PARTY-NOTICES.md`, and the bow's credit no longer names the
+  banner. The screenshots were taken with headless Chromium from a locally
+  run app with the demo people (Mary Johnson organizing, James & John and
+  Robert & Linda as households, `example.com` addresses), "Cousins' Swap"
+  drawn and "Book Club Swap" open, after `document.fonts.ready`:
+  `home.png`, `event-tied.png`, `event-untied.png` and
+  `questions-phone.png` at 390 CSS px, `organizing.png` at 640 (cropped
+  under the folds), all at 2×, and `untie.gif`, the first untying slowed
+  ten times through the DevTools animation clock and replayed at its real
+  timing. The old screenshots are gone. The README's alt texts describe the
+  new look, and README, CONTRIBUTING.md and DEPLOYMENT.md no longer speak of
+  slips or the manage page (the README's line under the banner and its
+  "names in the hat" description of the tradition stay). Checked by hand:
+  the rendered banner, social preview, screenshots and frames of the GIF;
+  not the README as GitHub shows it in its light and dark themes.
 
 ### Done: milestone 1 (sign-in)
 

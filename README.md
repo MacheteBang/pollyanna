@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="Pollyanna: a girl with braided hair tied in ribbon bows, beside a paper slip tied with ribbon" width="820">
+  <img src="docs/assets/banner.svg" alt="Pollyanna: the girl with two braids tied in blue bows, and the word pollyanna, on a white panel over blue gingham" width="820">
 </p>
 
 <p align="center"><em>Names in a hat for your family's gift exchange. Self-hosted, and sealed even from you.</em></p>
@@ -20,15 +20,17 @@
 > versions.
 
 <p align="center">
-  <img src="docs/screenshots/event.png" alt="The event page after the draw: the unfolded slip names the recipient, with their notes and an anonymous question" width="420">
+  <img src="docs/screenshots/home.png" alt="Home on a phone: Cousins' Swap and Book Club Swap, each on a white panel over blue gingham with its date, countdown, status and one black button, 'See who you're giving to' and 'Write your notes'" width="260">
   &nbsp;
-  <img src="docs/screenshots/event-phone.png" alt="The event page on a phone: a slip tied with ribbon and a 'Pull the ribbon' button" width="210">
+  <img src="docs/screenshots/event-tied.png" alt="The event page on a phone after the draw: the gingham band is wrapped like a gift, with a blue ribbon each way and a bow where they cross, above an 'Untie the bow' button" width="260">
+  &nbsp;
+  <img src="docs/screenshots/event-untied.png" alt="The same page untied: a white panel on the gingham says 'You're giving to Patricia Wilson' in handwriting, with her notes, a box to ask her something and a 'Done shopping' checkbox" width="260">
 </p>
 
 ## What it is
 
 Pollyanna is a small web app for a family gift exchange: everyone's name goes in the hat,
-and each person draws someone to get a gift for. Each person sees only their own slip, and
+and each person draws someone to get a gift for. Each person sees only who they're giving to, and
 the draw stays sealed from whoever runs the server as well: no screen or log shows who
 drew whom, and the database alone can't tell, until the organizer reveals it. It suits
 any occasion, from the holidays to a birthday swap or a book club. "A Pollyanna" is what a
@@ -57,20 +59,18 @@ gift exchange is called around Philadelphia.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/home.png" alt="Home: the events you're in, as paper slips stamped DRAWN and OPEN"></td>
-    <td width="50%"><img src="docs/screenshots/manage.png" alt="The manage page: status, the six people with their notes, seen and done ticks, and two households"></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/organizing.png" alt="The Organizing page: the steps Draft, Open, Names drawn and Revealed with Names drawn current; on the gingham, a panel saying all 6 people have looked, with a 'Reveal who drew whom' button; below, the six people taking part, two marked done shopping, and folds for who can't draw whom and the details" width="520"></td>
   </tr>
   <tr>
-    <td><strong>Home.</strong> Every event you're in, each on its own slip with a status stamp.</td>
-    <td><strong>Manage.</strong> Organizers add people, set households and draw names, but never see the pairings.</td>
+    <td colspan="2"><strong>Organizing.</strong> One next step at a time: add people, set households, draw names, reveal. Organizers see who has looked and who is done shopping, never the pairings.</td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/reveal.gif" alt="Pulling the ribbon: the bow lifts off, and the slip unfolds to show the recipient's name in pencil" width="330"></td>
-    <td align="center"><img src="docs/screenshots/questions-phone.png" alt="On a phone: 'Your giver asks…', with the giver's question and the recipient's reply" width="250"></td>
+    <td width="50%" align="center"><img src="docs/screenshots/untie.gif" alt="Untying the bow: the loops shrink into the knot and the bow drops away, the ribbons slide off, the gingham parts from the middle, and the name Patricia Wilson is written out on the white panel underneath" width="300"></td>
+    <td width="50%" align="center"><img src="docs/screenshots/questions-phone.png" alt="Questions for you, on a phone: the giver's messages in pale blue on the left, the recipient's reply in black on the right, the newest question marked new, and a reply box with a Send button" width="260"></td>
   </tr>
   <tr>
-    <td><strong>Your slip.</strong> Pull the ribbon, the bow unties, and the slip unfolds.</td>
-    <td><strong>The question box.</strong> The recipient replies to "Your giver asks…" without knowing who's asking.</td>
+    <td><strong>The reveal.</strong> Untie the bow, and the cloth parts to show who you're giving to.</td>
+    <td><strong>The question box.</strong> Your giver asks, you answer, and their name stays a secret.</td>
   </tr>
 </table>
 
@@ -115,8 +115,8 @@ you choose to configure. Before you start, have:
 6. Point your reverse proxy at port 8080 ([examples](DEPLOYMENT.md#4-the-reverse-proxy)).
 
 > [!WARNING]
-> **Back up the draw key now.** If `draw-key/draw.key` is lost, every slip that's drawn but
-> not yet revealed becomes unreadable, and the only fix is a redraw. Keep the copy apart from
+> **Back up the draw key now.** If `draw-key/draw.key` is lost, every assignment that's drawn
+> but not yet revealed becomes unreadable, and the only fix is a redraw. Keep the copy apart from
 > your data backups ([DEPLOYMENT.md §6](DEPLOYMENT.md#6-the-draw-key-read-this)).
 
 Then run through the [end-to-end check](DEPLOYMENT.md#8-check-it-end-to-end-before-first-use)
