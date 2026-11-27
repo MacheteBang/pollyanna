@@ -52,6 +52,7 @@ services.AddScoped<WhatsNewList>();
 services.AddSingleton<LiveConnections>();
 services.AddSingleton<LiveAfterCommit>();
 services.AddScoped<LiveSignals>();
+services.AddSingleton<LiveContent>();
 services.AddScoped<IHappeningListener, LiveOnHappening>();
 
 services.AddDbContext<PollyannaDb>((sp, options) => options

@@ -188,4 +188,77 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         else
             Assert.All(lines, line => Assert.DoesNotContain(line, whatsNew));
     }
+
+    /// <summary>
+    /// Live (spec §16 Testing): a fixed script of giver-recipient happenings, every giver asking
+    /// and every recipient replying, closing and reopening, through the pages, with the viewer's
+    /// page open throughout. Run twice with everyone else's pairings shuffled, the viewer's whole
+    /// frame sequence and their "What's new" (masthead included) come out the same. A participant
+    /// gets their own question, and their own recipient's reply, closing and reopening, as content;
+    /// an organizer who doesn't take part gets nothing at all.
+    /// </summary>
+    [Theory]
+    [InlineData(Viewer.Participant)]
+    [InlineData(Viewer.Organizer)]
+    public async Task Live_frames_dont_change_when_other_peoples_recipients_do(Viewer viewer)
+    {
+        var cast = new Dictionary<string, (TestBrowser Browser, Guid Id)>();
+        foreach (var name in new[] { "Pat", "Ann", "Bob", "Carol", "Dave", "Org" })
+            cast[name] = await app.SignInAsync(new MockIdentity(name.ToLowerInvariant(), name, $"{name.ToLowerInvariant()}@example.com", true, null));
+        try
+        {
+            // Pat first, so the order of Pat's own actions among everyone's stays put.
+            string[] taking = viewer == Viewer.Participant ? ["Pat", "Ann", "Bob", "Carol", "Dave"] : ["Ann", "Bob", "Carol", "Dave", "Pat"];
+            var me = cast[viewer == Viewer.Participant ? "Pat" : "Org"];
+            var (p0, p1, p2, p3, p4) = (cast[taking[0]].Id, cast[taking[1]].Id, cast[taking[2]].Id, cast[taking[3]].Id, cast[taking[4]].Id);
+            var first = Loop(p0, p1, p2, p3, p4);
+            var second = viewer == Viewer.Organizer
+                ? Loop(p4, p3, p2, p1, p0)
+                : new Dictionary<Guid, Guid> { [p0] = p1, [p1] = p4, [p2] = p0, [p3] = p2, [p4] = p3 };
+
+            async Task<(List<string> Frames, string WhatsNew)> RunAsync(Dictionary<Guid, Guid> pairs)
+            {
+                var ev = await app.EventAsync("Gifts", EventStatus.Open, [cast["Org"].Id], [.. taking.Select(n => cast[n].Id)]);
+                await app.SealAsync(ev, pairs);
+                var page = $"/events/{ev}";
+                using var live = await me.Browser.OpenLiveAsync();
+                await app.Live.SettleAsync();
+                live.Clear();
+
+                foreach (var name in taking)
+                    await cast[name].Browser.SubmitOnAsync(page, $"{page}/ask", Form(("body", "A question")));
+                foreach (var name in taking)
+                {
+                    var browser = cast[name].Browser;
+                    await browser.SubmitOnAsync($"{page}/questions", $"{page}/questions/reply", Form(("body", "A reply")));
+                    await browser.SubmitOnAsync($"{page}/questions", $"{page}/questions/close");
+                    await browser.SubmitOnAsync($"{page}/questions", $"{page}/questions/reopen");
+                }
+                await app.Live.SettleAsync();
+
+                var frames = live.Script(ev);
+                var whatsNew = Regex.Replace(Token().Replace(await (await me.Browser.GetAsync("/whats-new")).Content.ReadAsStringAsync(), ""),
+                    "<time datetime=\"[^\"]*\"[^>]*>[^<]*</time>", "<time/>").Replace(ev.ToString(), "{event}");
+                // Gone before the next run, so home holds only this run's event.
+                await app.WithDbAsync(async db => { db.Events.Remove(await db.Events.SingleAsync(e => e.Id == ev)); await db.SaveChangesAsync(); });
+                return (frames, whatsNew);
+            }
+
+            var before = await RunAsync(first);
+            var after = await RunAsync(second);
+
+            Assert.Equal(before.Frames, after.Frames);
+            Assert.Equal(before.WhatsNew, after.WhatsNew);
+            var contents = before.Frames.Where(f => f.StartsWith("content ")).Select(f => f.Split('\n')[0]).ToList();
+            if (viewer == Viewer.Participant)
+                Assert.Equal(["content Question", "content Reply", "content ConversationClosed", "content ConversationReopened"], contents);
+            else
+                Assert.Empty(before.Frames);
+        }
+        finally
+        {
+            foreach (var (browser, _) in cast.Values)
+                browser.Dispose();
+        }
+    }
 }

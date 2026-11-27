@@ -8,7 +8,8 @@ namespace Pollyanna.WhatsNew;
 /// <summary>One notification as "What's new" shows it (spec §7, §16).</summary>
 /// <param name="Line">The line, a link to <paramref name="Href"/>.</param>
 /// <param name="At">When it happened (UTC); null for the kinds with no time.</param>
-public sealed record WhatsNewRow(Guid EventId, HappeningKind Kind, string Line, string Href, string EventName, DateTime? At);
+/// <param name="Upto">For a question or reply, the message the row is shown for: its dismiss form reads up to it and no further.</param>
+public sealed record WhatsNewRow(Guid EventId, HappeningKind Kind, string Line, string Href, string EventName, DateTime? At, int? Upto = null);
 
 /// <summary>
 /// A person's "What's new" (spec §16): what's in it, in order, dismissing a row and seeing the
@@ -37,14 +38,14 @@ public sealed class WhatsNewList(PollyannaDb db, SealedHat hat)
     /// moves the marker seeing it would (spec §16), so home's matching waiting line goes too.
     /// False if there was none.
     /// </summary>
-    public async Task<bool> DismissAsync(Guid me, Guid eventId, HappeningKind kind)
+    public async Task<bool> DismissAsync(Guid me, Guid eventId, HappeningKind kind, int? upto = null)
     {
         if (WorkedOutKinds.MarkerOf(kind) is not { } marker)
             return await db.InAppNotifications.Where(n => n.PersonId == me && n.EventId == eventId && n.Kind == kind).ExecuteDeleteAsync() > 0;
         // Only where the rows show: a participant of a drawn event (a revealed event's threads are read-only).
         if (!await DrawnFor(me).AnyAsync(e => e.Id == eventId))
             return false;
-        return await hat.DismissAsync(eventId, me, marker);
+        return await hat.DismissAsync(eventId, me, marker, upto);
     }
 
     /// <summary>The drawn events the person takes part in: where the worked-out kinds come from.</summary>

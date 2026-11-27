@@ -11,9 +11,14 @@
     filled; otherwise there is no cloth, and the reply box sits in a bar under the conversation.
     Day lines and times are in UTC on the page ("about 4 PM UTC"); site.js redoes them in the
     viewer's own time zone (conversations()).
+
+    Live (spec §16): everything under the page head is one region, and the conversation another
+    inside it, so with a reply being written (which keeps the outer one as it is) a new question
+    still arrives. The page's shape is the event's status.
 *@
 @{
     ViewData["Title"] = "Questions for you";
+    Pollyanna.Live.LiveShape.Mark(ViewData, "questions", Model.Event);
     var thread = Model.Thread;
 }
 
@@ -22,6 +27,7 @@
 @{
     void Conversation(QuestionThread t)
     {
+        <div class="live-slot" id="thread" data-live data-thread>
         <ol class="conversation" data-conversation>
             @{ DateOnly? day = null; }
             @foreach (var note in t.Notes)
@@ -42,6 +48,7 @@
                 </li>
             }
         </ol>
+        </div>
     }
 
     async Task Reply(bool fill)
@@ -64,6 +71,7 @@
     }
 }
 
+<div class="live-slot" id="questions" data-live>
 @if (thread is not { Notes.Count: > 0 })
 {
     <div class="column below">
@@ -108,3 +116,4 @@ else
         await Close();
     }
 }
+</div>

@@ -67,6 +67,9 @@ public sealed class LiveConnections
                 connection.Send(frame);
     }
 
+    /// <summary>Everyone with a connection open now: whom a giver-recipient happening's content could go to, worked out when it's sent.</summary>
+    public IReadOnlyCollection<Guid> People => open.Keys.Select(c => c.Person).ToHashSet();
+
     /// <summary>Ends the streams a session opened, at sign-out.</summary>
     public void EndSession(string session)
     {

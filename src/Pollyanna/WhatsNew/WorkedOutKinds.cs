@@ -39,9 +39,9 @@ public static class WorkedOutKinds
     {
         var page = $"/events/{ev.Id}";
         if (news.Question is { } asked)
-            yield return new(ev.Id, HappeningKind.Question, "Your giver asked you something", $"{page}/questions", ev.Name, asked);
+            yield return new(ev.Id, HappeningKind.Question, "Your giver asked you something", $"{page}/questions", ev.Name, asked, news.QuestionUpto);
         if (news.Reply is { } replied)
-            yield return new(ev.Id, HappeningKind.Reply, "Your recipient replied", page, ev.Name, replied);
+            yield return new(ev.Id, HappeningKind.Reply, "Your recipient replied", page, ev.Name, replied, news.ReplyUpto);
         if (news.ThreadChanged)
             yield return news.Closed
                 ? new(ev.Id, HappeningKind.ConversationClosed, "Your recipient closed the conversation", page, ev.Name, null)

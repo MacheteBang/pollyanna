@@ -17,7 +17,11 @@
 
     Live (spec §16): the recipient's notes, "Done shopping", the viewer's notes and the people
     patch in place (data-live). The gift isn't a region, so a live refetch, which always comes
-    back tied, never ties or unties it.
+    back tied, never ties or unties it. The question box is a region, and so are its thread and
+    its closed line inside it, so with a draft in the box (which keeps the box itself as it is) a
+    reply still arrives and closing still shows, and the script turns Send off; the lines before
+    and after the gift sit in always-there slots. A patch brings the whole gift in again, tied
+    (site.js, on the giver's own content frame), so an old name is never left on screen.
 *@
 @{
     var id = Model.Event.Id;
@@ -27,21 +31,25 @@
     var untie = $"/events/{id}/untie#gift";
 }
 
-@if (questions is { Unread: > 0 })
-{
-    <div class="column gift-asked">
-        <a class="asked-link" href="/events/@id/questions">Your giver asked you something</a>
-    </div>
-}
+<div class="live-slot" id="live-asked" data-live>
+    @if (questions is { Unread: > 0 })
+    {
+        <div class="column gift-asked">
+            <a class="asked-link" href="/events/@id/questions">Your giver asked you something</a>
+        </div>
+    }
+</div>
 
-@if (slip is { RecipientChanged: true })
-{
-    <div class="column"><p class="gift-again" role="status">You're giving to someone new. Someone left or joined, so who you're giving to changed.</p></div>
-}
-else if (slip is { DrawnAgain: true })
-{
-    <div class="column"><p class="gift-again">Names were drawn again, so this may be someone new.</p></div>
-}
+<div class="live-slot" id="live-gift-again" data-live>
+    @if (slip is { RecipientChanged: true })
+    {
+        <div class="column"><p class="gift-again" role="status">You're giving to someone new. Someone left or joined, so who you're giving to changed.</p></div>
+    }
+    else if (slip is { DrawnAgain: true })
+    {
+        <div class="column"><p class="gift-again">Names were drawn again, so this may be someone new.</p></div>
+    }
+</div>
 
 @if (Model.WantsToLeave)
 {
@@ -83,9 +91,10 @@ else
                         </section>
                         @if (ask is not null)
                         {
-                            <section class="gift-group" id="ask" aria-labelledby="ask-heading">
+                            <section class="gift-group" id="ask" data-live aria-labelledby="ask-heading">
                                 <h2 id="ask-heading" class="section-title">Ask @name something</h2>
                                 <p class="small soft">@name sees "Your giver asks…", never your name.</p>
+                                <div class="live-slot" id="ask-thread" data-live data-thread>
                                 @if (ask.Notes.Count > 0)
                                 {
                                     <ol class="conversation" data-conversation>
@@ -109,12 +118,15 @@ else
                                         }
                                     </ol>
                                 }
+                                </div>
                                 <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "ask" })" />
-                                @if (ask.Closed)
-                                {
-                                    <p role="status">@name closed this conversation.</p>
-                                }
-                                else
+                                <div class="live-slot" id="ask-closed" data-live>
+                                    @if (ask.Closed)
+                                    {
+                                        <p role="status" data-closed>@name closed this conversation.</p>
+                                    }
+                                </div>
+                                @if (!ask.Closed)
                                 {
                                     <form method="post" action="/events/@id/ask" asp-antiforgery="true" class="field">
                                         <label for="ask-body" class="visually-hidden">Your question for @name</label>
@@ -158,10 +170,12 @@ else
 }
 
 <div class="column below">
-    @if (questions is not { Unread: > 0 })
-    {
-        <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
-    }
+    <div class="live-slot" id="live-questions-link" data-live>
+        @if (questions is not { Unread: > 0 })
+        {
+            <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
+        }
+    </div>
     <div class="folds">
         <details class="fold" id="your-notes" data-live>
             <summary><span>Your notes</span><span class="fold-hint">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "None yet")</span></summary>

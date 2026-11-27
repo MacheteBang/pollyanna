@@ -24,9 +24,9 @@ public enum LiveTo
     /// <summary>The person the happening is about (<see cref="Happening.About"/>), even once they're out of the event.</summary>
     About = 4,
     /// <summary>
-    /// Between a giver and a recipient: only that one person, carrying the content itself (#104).
-    /// Never a hint, since a hint and the fetch it sets off from one giver would pair them in the
-    /// proxy log; until those frames exist, only whoever acted hears of it.
+    /// Between a giver and a recipient: only that one person, carrying the content itself
+    /// (<see cref="LiveContent"/>). Never a hint, since a hint and the fetch it sets off from one
+    /// giver would pair them in the proxy log. Whoever acted gets the hint on their other tabs.
     /// </summary>
     Pair = 8,
 }
@@ -36,7 +36,7 @@ public enum LiveTo
 /// database as committed. Hints name the event and an area (the happening's kind), never a
 /// person. Connections are known by person only; an event's members are looked up here.
 /// </summary>
-public sealed class LiveSignals(PollyannaDb db, LiveConnections connections)
+public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, SealedHat hat, LiveContent content)
 {
     /// <summary>The request header a page's own background post names its live connection in ("not this tab").</summary>
     public const string TabHeader = "Pollyanna-Tab";
@@ -56,6 +56,32 @@ public sealed class LiveSignals(PollyannaDb db, LiveConnections connections)
         if (happening.Actor is { } actor)
             people.Add(actor);
         connections.Send(people, LiveFrame.Hint(happening.EventId, happening.Kind.ToString()));
+        if (to.HasFlag(LiveTo.Pair))
+            foreach (var person in await PairTargetsAsync(happening))
+                connections.Send([person], await content.FrameAsync(person, happening.EventId, happening.Kind.ToString()));
+    }
+
+    /// <summary>
+    /// Who a giver-recipient happening's content goes to, among the people connected now, worked
+    /// out in memory as <see cref="SealedHat"/> finds a giver and never kept (spec §16): a question's
+    /// recipient; the giver of whoever replied, closed or reopened; the givers a patch changed.
+    /// </summary>
+    async Task<IReadOnlyList<Guid>> PairTargetsAsync(Happening happening)
+    {
+        var online = connections.People.Where(p => p != happening.Actor).ToList();
+        if (online.Count == 0)
+            return [];
+        switch (happening.Kind)
+        {
+            case HappeningKind.Question:
+                return happening.About is { } recipient && online.Contains(recipient) ? [recipient] : [];
+            case HappeningKind.Reply or HappeningKind.ConversationClosed or HappeningKind.ConversationReopened:
+                return happening.Actor is { } actor && await hat.GiverAmongAsync(happening.EventId, actor, online) is { } giver ? [giver] : [];
+            case HappeningKind.Patched:
+                return await hat.PatchedAmongAsync(happening.EventId, online);
+            default:
+                return [];
+        }
     }
 
     /// <summary>
