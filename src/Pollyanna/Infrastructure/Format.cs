@@ -10,6 +10,17 @@ public static class Format
 
     public static string Stamp(EventStatus status) => status.ToString().ToUpperInvariant();
 
+    /// <summary>An event's status as the small line under its date says it (spec §12 Statuses).</summary>
+    public static string StatusLine(EventStatus status) => status switch
+    {
+        EventStatus.Draft => "draft, only organizers can see it",
+        EventStatus.Open => "names not drawn yet",
+        EventStatus.Drawn => "names drawn",
+        EventStatus.Revealed => "everyone's been revealed",
+        EventStatus.Archived => "over",
+        _ => "",
+    };
+
     /// <summary>The date as <c>&lt;time datetime&gt;</c> wants it.</summary>
     public static string IsoDate(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 

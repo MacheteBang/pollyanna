@@ -143,8 +143,26 @@ function counters() {
     }
 }
 
+// Empty home: a "Copy" button beside the viewer's address. Without the script (or a
+// clipboard) the button stays hidden and the address can be selected by hand.
+function copyButtons() {
+    if (!navigator.clipboard) return;
+    for (const button of document.querySelectorAll("[data-copy]")) {
+        button.hidden = false;
+        button.addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(button.dataset.copy);
+                button.textContent = "Copied";
+            } catch {
+                // Clipboard refused: the address is still there to select.
+            }
+        });
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     countdowns();
+    copyButtons();
     previousEventPicker();
     addPeople();
     revealCards();
