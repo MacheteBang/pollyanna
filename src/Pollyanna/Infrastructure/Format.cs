@@ -8,6 +8,9 @@ public static class Format
 {
     public static string Date(DateOnly date) => date.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
 
+    /// <summary>"December 2025", naming an earlier event beside its name.</summary>
+    public static string MonthYear(DateOnly date) => date.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+
     public static string Stamp(EventStatus status) => status.ToString().ToUpperInvariant();
 
     /// <summary>An event's status as the small line under its date says it (spec §12 Statuses).</summary>

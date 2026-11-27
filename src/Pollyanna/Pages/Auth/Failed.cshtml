@@ -2,6 +2,7 @@
 @model Pollyanna.Pages.Auth.FailedModel
 @using Pollyanna.Auth
 @{
+    Layout = "_Tablecloth";
     var refusal = Model.Refusal;
     var address = refusal?.Address ?? "this address";
     ViewData["Title"] = refusal?.Reason switch
@@ -13,41 +14,34 @@
     };
 }
 
-@if (refusal is not null)
-{
-    <div class="empty">
-        <h1>@ViewData["Title"]</h1>
-        @switch (refusal.Reason)
-        {
-            case RefusalReason.EmailNotVerified:
-                <p>@Model.ProviderLabel says it hasn't verified <strong class="break">@address</strong>, so Pollyanna can't use it to let you in. Confirm it with @Model.ProviderLabel, or sign in another way.</p>
-                break;
-            case RefusalReason.Ambiguous:
-                <p>More than one person in Pollyanna uses <strong class="break">@address</strong>. Ask whoever organizes your family's exchange to sort it out, or sign in another way.</p>
-                break;
-            default:
-                <p>Pollyanna doesn't know <strong class="break">@address</strong> yet. Ask whoever organizes your family's exchange to invite that address, or sign in another way.</p>
-                break;
-        }
-    </div>
+@* A sign-in failure page (spec §3, §7, §12): the girl large, the heading and words of §3, then
+   every provider's button again. No cloth. *@
+<div class="column lone">
+    <partial name="_TableclothGirl" model="130" />
+    <h1 class="page-title">@ViewData["Title"]</h1>
+    @switch (refusal?.Reason)
+    {
+        case RefusalReason.EmailNotVerified:
+            <p>@Model.ProviderLabel says it hasn't verified <strong class="break">@address</strong>, so Pollyanna can't use it to let you in. Confirm it with @Model.ProviderLabel, or sign in another way.</p>
+            break;
+        case RefusalReason.Ambiguous:
+            <p>More than one person in Pollyanna uses <strong class="break">@address</strong>. Ask whoever organizes your family's exchange to sort it out, or sign in another way.</p>
+            break;
+        case RefusalReason.NoInvitationOrPerson:
+            <p>Pollyanna doesn't know <strong class="break">@address</strong> yet. Ask whoever organizes your family's exchange to invite that address, or sign in another way.</p>
+            break;
+        default:
+            <p>Your sign-in provider didn't let you in, or the sign-in took too long. Nothing was changed.</p>
+            if (Model.ProviderProblem)
+            {
+                <p>The sign-in service turned Pollyanna away. Whoever runs this site needs to check its settings.</p>
+            }
+            break;
+    }
     <div class="actions">
         @foreach (var choice in Model.Choices)
         {
             <partial name="_ProviderButton" model="choice" />
         }
     </div>
-}
-else
-{
-    <div class="empty">
-        <h1>Sign-in didn't work</h1>
-        <p>Your sign-in provider didn't let you in, or the sign-in took too long. Nothing was changed.</p>
-        @if (Model.ProviderProblem)
-        {
-            <p>The sign-in service turned Pollyanna away. Whoever runs this site needs to check its settings.</p>
-        }
-    </div>
-    <div class="actions">
-        <a class="button" href="/auth/login">Try again</a>
-    </div>
-}
+</div>

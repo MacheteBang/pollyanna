@@ -40,7 +40,8 @@ public sealed class AccountDeletionTests : IAsyncLifetime
         await app.DisposeAsync();
     }
 
-    Task<HttpResponseMessage> DeleteAsync() => browser.PostWithTokenAsync("/account/delete", "/account/delete");
+    // The form token comes from /account: a blocked confirmation has no form of its own.
+    Task<HttpResponseMessage> DeleteAsync() => browser.PostWithTokenAsync("/account", "/account/delete");
 
     Task<bool> HasLoginsAsync() => app.WithDbAsync(db => db.Logins.AnyAsync(l => l.PersonId == me));
 
