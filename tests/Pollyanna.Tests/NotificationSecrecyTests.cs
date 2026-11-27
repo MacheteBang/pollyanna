@@ -31,7 +31,9 @@ public sealed class NotificationSecrecyTests
         await app.SendMailAsync();
         var sent = new List<string>();
         while (app.Mail.Sent.TryDequeue(out var m))
-            sent.Add($"To: {m.To}\nSubject: {m.Subject}\n{m.Body}\n{m.Html}".Replace(ev.ToString(), "{event}"));
+            // The whole email, its inline bow included (spec §9, §15).
+            sent.Add(($"To: {m.To}\nSubject: {m.Subject}\n{m.Body}\n{m.Html}\n"
+                + $"{m.Image.ContentId} {m.Image.FileName} {Convert.ToBase64String(m.Image.Png)}").Replace(ev.ToString(), "{event}"));
         return [.. sent.Order(StringComparer.Ordinal)];
     }
 

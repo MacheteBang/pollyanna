@@ -240,6 +240,30 @@ public sealed class HtmlEmailTests
         }
     }
 
+    [Fact]
+    public async Task The_draw_and_added_emails_say_who_youre_giving_to_and_no_email_says_slip()
+    {
+        await using var app = await TestApp.StartAsync(mail: true, providers: NotificationSecrecyTests.OpenProvider);
+        var run = await NotificationSecrecyTests.EveryKindAsync(app);
+
+        // The three phrases reworded on #60 (spec §15 "Content"), in both parts.
+        (string Step, string Text)[] reworded =
+        [
+            ("drawn", "Names are drawn in \"Gifts 2026\" on Pollyanna, and you can see who you're giving to. Open the event to see who you're giving to."),
+            ("drawn again", "Names were drawn again, take another look at who you're giving to in \"Gifts 2026\" on Pollyanna, and it may not be the one you saw before."),
+            ("late joiner", "You've been added to \"Gifts 2026\" on Pollyanna. Open it to see who you're giving to and write your notes."),
+        ];
+        foreach (var (step, text) in reworded)
+        {
+            var mail = run.Mail.First(s => s.Step == step && s.Mail.Body.StartsWith(text[..20], StringComparison.Ordinal)).Mail;
+            Assert.StartsWith(text + "\n\n", mail.Body);
+            Assert.Contains(text, Normalize(Parse(mail.Html).Body!.TextContent));
+        }
+        foreach (var (step, mail) in run.Mail)
+            Assert.False((mail.Subject + mail.Body + mail.Html).Contains("slip", StringComparison.OrdinalIgnoreCase),
+                $"The {step} email to {mail.To} says slip:\n{mail.Body}");
+    }
+
     /// <summary>The button's label, by where the kind links to (spec §15).</summary>
     static string ButtonLabel(NotificationKind kind) => kind switch
     {

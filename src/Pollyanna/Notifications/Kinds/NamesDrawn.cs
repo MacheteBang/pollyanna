@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Pollyanna.Notifications.Kinds;
 
 /// <summary>
-/// "Names are drawn" (spec §15): every participant, after a draw. It never says whose slip it is
-/// (ADR-0001). After a redraw's new draw it says the names were drawn again. A redraw deletes
+/// "Names are drawn" (spec §15): every participant, after a draw. It never says who anyone is
+/// giving to (ADR-0001). After a redraw's new draw it says the names were drawn again. A redraw deletes
 /// any still waiting, so nobody is told about a slip that is gone.
 /// </summary>
 sealed class NamesDrawn : NotificationKindDefinition<NamesDrawn.Cause>
@@ -26,12 +26,12 @@ sealed class NamesDrawn : NotificationKindDefinition<NamesDrawn.Cause>
     public override NotificationContent Compose(NotificationContext context) => context.Event.Redrawn
         ? new(
             $"{context.Event.Name}: names were drawn again",
-            $"Names were drawn again, take another look: your slip in \"{context.Event.Name}\" on Pollyanna "
-            + "is ready, and it may not be the one you saw before.",
+            $"Names were drawn again, take another look at who you're giving to in \"{context.Event.Name}\" "
+            + "on Pollyanna, and it may not be the one you saw before.",
             context.EventUrl)
         : new(
             $"{context.Event.Name}: names are drawn",
-            $"Names are drawn in \"{context.Event.Name}\" on Pollyanna, and your slip is ready. "
+            $"Names are drawn in \"{context.Event.Name}\" on Pollyanna, and you can see who you're giving to. "
             + "Open the event to see who you're giving to.",
             context.EventUrl);
 }

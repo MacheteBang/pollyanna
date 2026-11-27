@@ -7,6 +7,8 @@ The bow in `src/Pollyanna/wwwroot/favicon.svg`, `src/Pollyanna/wwwroot/apple-tou
 `docs/assets/banner.svg` is adapted from
 the "Ribbon" emoji (Flat style) in [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji).
 It has been recoloured to the Pollyanna palette, and the favicon leaves out the inner folds.
+The bow in every HTML email, `src/Pollyanna/Notifications/bow.png`, is the same bow with its
+folds and a white edge.
 
 ```
 MIT License

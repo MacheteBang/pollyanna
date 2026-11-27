@@ -48,7 +48,7 @@ public sealed class DrawNotificationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_draw_tells_every_participant_their_slip_is_ready_but_not_the_organizer_who_drew()
+    public async Task A_draw_tells_every_participant_they_can_see_who_theyre_giving_to_but_not_the_organizer_who_drew()
     {
         var ev = await app.EventAsync("Stockings 2026", EventStatus.Open, [me], [me, ann, bob, cy]);
 
@@ -61,7 +61,7 @@ public sealed class DrawNotificationTests : IAsyncLifetime
         {
             Assert.Contains("Stockings 2026", mail.Subject);
             Assert.Contains("names are drawn", mail.Subject, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("your slip is ready", mail.Body, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("you can see who you're giving to", mail.Body, StringComparison.OrdinalIgnoreCase);
             Assert.Contains($"{TestApp.PublicUrl}/events/{ev}", mail.Body);
             // Never whose slip it is.
             foreach (var name in new[] { "Pat", "Ann", "Bob", "Cy" })
