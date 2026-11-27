@@ -353,6 +353,39 @@ button, a { -webkit-tap-highlight-color: transparent }
 .f-rest > * { margin: 0; padding: 13px 0; border-top: 2px solid var(--wash) }
 .f-rest span { color: var(--muted) }
 .f-rest .leave { font-size: .85rem; color: var(--muted) }
+
+/* ===== Round 3: D applied across more screens, with a gingham on/off toggle ===== */
+.plaincloth .gingham { background-image: none; background-color: #DCE7EE }
+.toggle { align-self: flex-start; font: inherit; font-weight: 700; color: var(--fg); background: var(--panel); border: 2px solid var(--fg); border-radius: 8px; padding: 8px 14px; cursor: pointer }
+.d-cloth.tight { padding: 22px 16px; display: flex; flex-direction: column; gap: 14px }
+.d-set h2 { margin: 0; font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15 }
+.d-set p { margin: 0 }
+.d-set textarea { width: 100%; font: inherit; border: 2px solid var(--ink); border-radius: 10px; padding: 10px 12px; background: #fff; color: inherit; resize: vertical; margin-top: 6px }
+.d-set label { font-weight: 800; font-size: .95rem; margin-top: 8px }
+.d-set button.d-do { font: inherit; font-weight: 800; font-size: 1.05rem; border: 0; width: 100%; cursor: pointer }
+.d-do.alt { background: #fff; color: var(--ink) !important; border: 2px solid var(--ink) !important; margin-top: 8px }
+.d-head { padding: 2px 16px 16px }
+.d-head h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin: 12px 0 4px }
+.d-seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; font-weight: 700; font-size: .92rem }
+.d-seg span { padding: 6px 14px } .d-seg .on { background: var(--ink); color: #fff }
+.d-body { padding: 4px 16px 22px }
+.d-body h3 { font-size: 1.05rem; font-weight: 800; margin: 14px 0 0 }
+.d-body .d-rest { margin-top: 8px }
+.d-mail { background: #fff; color: #1E1A16; font: 16px/1.5 Figtree, system-ui, sans-serif; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; color-scheme: light }
+.d-mail .from { padding: 10px 16px; font-size: .82rem; color: #5B5650; border-bottom: 1px solid #DDD }
+.d-mail .band { padding: 14px 20px; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.2rem }
+.d-mail .msg { padding: 20px; display: flex; flex-direction: column; gap: 12px }
+.d-mail h2 { margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em }
+.d-mail p { margin: 0 } .d-mail small { color: #5B5650; word-break: break-all }
+.d-mail .d-do { margin: 4px 0 0; align-self: flex-start; padding: 13px 22px }
+.d-mail .foot { border-top: 2px solid #DCE7EE; padding: 14px 20px; font-size: .82rem; color: #5B5650 }
+.d-small { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; color-scheme: light }
+.d-touch { width: 120px; height: 120px; border-radius: 26px; display: flex; align-items: center; justify-content: center }
+.d-touch svg { width: 84px; height: 84px }
+.d-og { width: 100%; aspect-ratio: 1200 / 630; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-family: Figtree, sans-serif; color: #1E1A16 }
+.d-og div { background: #fff; border-radius: 10px; padding: 14px 22px; display: flex; align-items: center; gap: 10px }
+.d-og b { font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; display: block; line-height: 1.1 }
+.d-og span { font-size: .85rem }
 </style>
 
 <!-- Marks. Rough stand-ins drawn as plain SVG so each direction can be judged; not the final bow or girl. -->
@@ -371,9 +404,87 @@ button, a { -webkit-tap-highlight-color: transparent }
 
 <div class="board">
   <header>
-    <h1>Directions for Pollyanna's new look, round 2</h1>
-    <p>D, E and F are new and follow your notes on round 1: the bow and girl you have now are kept as drawn, home is built for someone in one event, nothing imitates paper, any handwriting stays easy to read, and the masthead has a place for notifications. A, B and C from round 1 follow them for comparison. Tap a reveal to untie it; switch with the bar below or the arrow keys.</p>
+    <h1>Directions for Pollyanna's new look, round 3</h1>
+    <p>The first view applies D to more screens, with a switch to see it without the gingham. D, E and F follow, built on your notes on round 1: the bow and girl you have now are kept as drawn, home is built for someone in one event, nothing imitates paper, any handwriting stays easy to read, and the masthead has a place for notifications. A, B and C from round 1 follow them for comparison. Tap a reveal to untie it; switch with the bar below or the arrow keys.</p>
   </header>
+
+  <!-- ================= D applied ================= -->
+  <section class="dir" id="dir-cloth" data-name="D applied · more screens">
+    <div class="row">
+      <div class="brief">
+        <h2>D · Tablecloth, applied</h2>
+        <p>How far the gingham goes. The rule tried here: the cloth appears once per screen, under the one thing that is yours to do, and around the gift. Nowhere else.</p>
+        <p>The button below swaps the gingham for a plain pale blue, so you can judge the same layouts without the pattern.</p>
+        <button class="toggle" type="button" id="clothtoggle" aria-pressed="false">Show without gingham</button>
+        <dl>
+          <dt>Where it holds</dt><dd>Home, the notes step, the organizer's next step, sign-in, the touch icon and the social preview.</dd>
+          <dt>Where it can't go</dt><dd>Email. Mail clients drop patterns made in code and often block images, so the email carries a plain pale-blue band either way.</dd>
+          <dt>Kept from today</dt><dd>The bow and the girl as drawn, ribbon blue and ink. Kraft, red stamps, torn edges and the typewriter face are gone.</dd>
+        </dl>
+      </div>
+      <figure class="screen"><figcaption>Home, in two events</figcaption>
+        <div class="phone dd"><div class="d-mast"><a class="d-brand" href="#"><svg width="40" height="40"><use href="#girl"/></svg>pollyanna</a><span class="mast-r"><a class="bell" href="#" aria-label="Notifications"><svg><use href="#bell"/></svg></a><a class="d-acct" href="#">Sam</a></span></div>
+          <div class="d-cloth tight gingham">
+            <div class="d-set"><h2>Office Pollyanna</h2><p class="d-count">14 days to go</p><p class="d-sub">Friday, December 11 · $25 budget · open</p><a class="d-do" href="#">Write your notes</a></div>
+            <div class="d-set"><h2>Cousins' gift swap</h2><p class="d-count">22 days to go</p><p class="d-sub">Saturday, December 19 · $40 budget · names drawn</p><a class="d-do" href="#">See who you got</a></div>
+          </div>
+          <div class="d-quiet"><a href="#">Past events</a><a href="#">Start an event</a></div>
+        </div>
+      </figure>
+      <figure class="screen"><figcaption>Event page, before names are drawn</figcaption>
+        <div class="phone dd"><div class="d-mast"><a class="d-brand" href="#"><svg width="40" height="40"><use href="#girl"/></svg>pollyanna</a><span class="mast-r"><a class="bell" href="#" aria-label="Notifications"><svg><use href="#bell"/></svg></a><a class="d-acct" href="#">Sam</a></span></div>
+          <div class="d-head"><a class="d-back" href="#">Home</a><h1>Office Pollyanna</h1><p class="d-count">14 days to go</p><p class="d-sub">Friday, December 11 · $25 budget</p></div>
+          <div class="d-cloth tight gingham"><div class="d-set">
+            <p>Names get drawn once everyone is in. Until then, tell your giver what you'd like.</p>
+            <label for="g-notes">Your notes</label>
+            <textarea id="g-notes" rows="4">Shoe size 9. I'd love a cookbook or good coffee. Please no mugs, I have plenty.</textarea>
+            <button class="d-do" type="button">Save notes</button>
+          </div></div>
+          <div class="d-body"><div class="d-rest"><p><a href="#">6 people taking part</a></p><p class="leave"><a href="#">Leave this event</a></p></div></div>
+        </div>
+      </figure>
+    </div>
+    <div class="row">
+      <figure class="screen"><figcaption>Organizing an event</figcaption>
+        <div class="phone dd"><div class="d-mast"><a class="d-brand" href="#"><svg width="40" height="40"><use href="#girl"/></svg>pollyanna</a><span class="mast-r"><a class="bell" href="#" aria-label="Notifications"><svg><use href="#bell"/></svg></a><a class="d-acct" href="#">Sam</a></span></div>
+          <div class="d-head"><span class="d-seg"><span>My page</span><span class="on">Organizing</span></span><h1>Book club swap</h1><p class="d-sub">Saturday, January 9 · $20 budget · open</p></div>
+          <div class="d-cloth tight gingham"><div class="d-set">
+            <p>All 7 people are in and 5 have written notes. Draw the names whenever you're ready.</p>
+            <button class="d-do" type="button">Draw names</button>
+          </div></div>
+          <div class="d-body">
+            <h3>People</h3>
+            <div class="d-rest"><p><b>Ana</b><span>no notes yet</span></p><p><b>Lena</b><span>no notes yet</span></p><p><b>Raj, Dee, Kofi, Mel and you</b></p><p><a href="#">Add people</a></p></div>
+            <div class="d-rest"><p><a href="#">Who can't draw whom</a><span>2 households</span></p><p><a href="#">Details and organizers</a></p><p><a href="#">Dropouts, late joiners, cancel</a></p></div>
+          </div>
+        </div>
+      </figure>
+      <figure class="screen"><figcaption>Signed out</figcaption>
+        <div class="phone dd">
+          <div class="d-mast"><a class="d-brand" href="#"><svg width="40" height="40"><use href="#girl"/></svg>pollyanna</a></div>
+          <div class="d-cloth gingham"><div class="d-set">
+            <h2>A gift exchange for your family and friends</h2>
+            <p>Everyone writes a few notes about what they'd like. Names are drawn in secret, and you find out who you're giving to.</p>
+            <a class="d-do" href="#">Continue with Google</a>
+            <a class="d-do alt" href="#">Continue with Example ID</a>
+          </div></div>
+        </div>
+      </figure>
+      <figure class="screen"><figcaption>Email (placeholder words; the real ones are fixed in the spec)</figcaption>
+        <div class="d-mail">
+          <div class="from">Pollyanna &lt;gifts@pollyanna.example&gt;</div>
+          <div class="band" style="background:#DCE7EE"><svg width="28" height="28"><use href="#bow"/></svg>pollyanna</div>
+          <div class="msg"><h2>Cousins' gift swap</h2><p>The names have been drawn. Come see who you're giving to.</p><a class="d-do" href="#" style="background:#1E1A16;color:#fff;text-decoration:none;border-radius:10px;font-weight:800">See who you got</a><small>https://pollyanna.example/events/cousins-gift-swap</small></div>
+          <div class="foot">You're getting this because you're taking part in Cousins' gift swap.</div>
+        </div>
+      </figure>
+    </div>
+    <div class="strip">
+      <div><h3>Favicon, as today</h3><div class="d-small"><svg width="16" height="16"><use href="#bow"/></svg><svg width="32" height="32"><use href="#bow"/></svg></div></div>
+      <div><h3>Touch icon</h3><div class="d-small"><div class="d-touch gingham"><svg><use href="#bow"/></svg></div></div></div>
+      <div style="flex:1 1 300px;max-width:420px"><h3>Social preview and README banner</h3><div class="d-og gingham"><div><svg width="64" height="64" style="--g-shirt:#DCE7EE"><use href="#girl"/></svg><p style="margin:0"><b>pollyanna</b><span>A gift exchange for family and friends</span></p></div></div></div>
+    </div>
+  </section>
 
   <!-- ================= D ================= -->
   <section class="dir" id="dir-table" data-name="D · Tablecloth">
@@ -824,7 +935,7 @@ button, a { -webkit-tap-highlight-color: transparent }
 
 <script>
 (function () {
-  var keys = ['table', 'circle', 'plain', 'ribbon', 'ink', 'shapes'];
+  var keys = ['cloth', 'table', 'circle', 'plain', 'ribbon', 'ink', 'shapes'];
   function current() { var k = location.hash.slice(1); return keys.indexOf(k) < 0 ? 0 : keys.indexOf(k); }
   function show() {
     var i = current();
@@ -846,6 +957,8 @@ button, a { -webkit-tap-highlight-color: transparent }
     p.querySelector('.cover').addEventListener('click', function () { p.classList.add('untied'); });
     p.parentNode.querySelector('.replay').addEventListener('click', function () { p.classList.remove('untied'); });
   });
+  var ct = document.getElementById('clothtoggle');
+  ct.onclick = function () { var on = document.getElementById('dir-cloth').classList.toggle('plaincloth'); ct.setAttribute('aria-pressed', on); ct.textContent = on ? 'Show with gingham' : 'Show without gingham'; };
   show();
 })();
 </script>
