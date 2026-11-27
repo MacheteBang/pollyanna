@@ -372,3 +372,111 @@ strong, b { font-weight: 800; }
     line-height: 1.1;
     overflow-wrap: anywhere;
 }
+
+/* ---------- Questions for you: the conversation (spec §7, §12) ---------- */
+
+/* Read by screen readers, not shown. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Oldest at the top. The giver on the left, the viewer on the right. */
+.conversation {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.day-line {
+    align-self: center;
+    padding-top: var(--space-3);
+    font: var(--type-small);
+    color: var(--soft-ink);
+}
+
+.day-line:first-child { padding-top: 0; }
+
+.message {
+    max-width: 84%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.message-theirs { align-self: flex-start; align-items: flex-start; }
+.message-mine { align-self: flex-end; align-items: flex-end; }
+
+/* A bubble has the one corner, except the bottom corner nearest its speaker: the one exception. */
+.bubble {
+    padding: 10px 14px;
+    border-radius: var(--corner);
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+}
+
+.message-theirs .bubble { background: var(--pale); color: var(--ink); border-bottom-left-radius: 2px; }
+.message-mine .bubble { background: var(--ink); color: var(--white); border-bottom-right-radius: 2px; }
+
+.message-meta {
+    font: var(--type-small);
+    color: var(--soft-ink);
+    margin-bottom: var(--space-1);
+}
+
+.message-new { color: var(--ink); }
+
+.conversation-panel { gap: var(--space-5); }
+
+.conversation-quiet {
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-5);
+}
+
+/* The one-line reply box with "Send" beside it. */
+.composer {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-end;
+}
+
+.composer textarea {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    background: var(--white);
+    color: var(--ink);
+    font: var(--type-body);
+    resize: none;
+}
+
+.composer textarea::placeholder { color: var(--soft-ink); }
+
+.composer .button { flex: none; font: var(--type-body); font-weight: 800; padding-inline: var(--space-4); }
+
+/* With nothing new: the reply box in a bar under the conversation. */
+.reply-bar {
+    border-top: var(--line) solid var(--pale);
+    padding-block: var(--space-3);
+}
+
+.conversation-closed {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.conversation-closed h2 { font: var(--type-body); font-weight: 800; }
+
+.conversation-foot { padding-block: var(--space-1) var(--space-5); }
+.cloth + .conversation-foot { padding-top: var(--space-2); }

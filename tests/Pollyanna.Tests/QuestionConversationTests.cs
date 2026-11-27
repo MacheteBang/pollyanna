@@ -51,10 +51,18 @@ public sealed class QuestionConversationTests : IAsyncLifetime
         return app.MessageAsync(ev, patId, sender, body);
     }
 
+    /// <summary>Moves the clock to "today" and signs Ann in again there, since her first session is weeks old by then.</summary>
+    async Task TodayAsync()
+    {
+        app.Clock.SetUtcNow(Now);
+        ann.Dispose();
+        (ann, _) = await app.SignInAsync(new MockIdentity("ann", "Ann", "ann@example.com", true, null));
+    }
+
     static List<string> Lines(IElement conversation) =>
         [.. conversation.Children.Select(li => li.ClassList.Contains("day-line")
             ? $"-- {li.TextContent.Trim()} --"
-            : $"{(li.ClassList.Contains("message-mine") ? "me" : "giver")}: {li.QuerySelector(".bubble")!.TextContent.Trim()}")];
+            : $"{(li.ClassList.Contains("message-mine") ? "me" : "giver")}: {li.QuerySelector(".bubble-body")!.TextContent.Trim()}")];
 
     [Fact]
     public async Task The_page_head_names_the_page_and_says_the_giver_stays_secret()
@@ -86,7 +94,7 @@ public sealed class QuestionConversationTests : IAsyncLifetime
         await SayAsync(MessageSender.Recipient, "Yes, a small one that folds away.", new(2030, 12, 1, 8, 15, 0, TimeSpan.Zero));
         await SayAsync(MessageSender.Giver, "What's your favorite kind of tea?", new(2030, 12, 3, 9, 14, 0, TimeSpan.Zero));
         await SayAsync(MessageSender.Recipient, "Earl Grey,\nor anything smoky.", new(2030, 12, 3, 9, 40, 0, TimeSpan.Zero));
-        app.Clock.SetUtcNow(Now);
+        await TodayAsync();
 
         var page = await ann.GetPageAsync(Questions);
 
@@ -114,7 +122,7 @@ public sealed class QuestionConversationTests : IAsyncLifetime
         await SayAsync(MessageSender.Recipient, "Yes, a small one.", new(2030, 12, 2, 8, 0, 0, TimeSpan.Zero));
         await SayAsync(MessageSender.Giver, "What's your favorite kind of tea?", new(2030, 12, 3, 9, 0, 0, TimeSpan.Zero));
         await SayAsync(MessageSender.Giver, "Loose or bags?", new(2030, 12, 3, 9, 0, 0, TimeSpan.Zero));
-        app.Clock.SetUtcNow(Now);
+        await TodayAsync();
 
         // Twice: opening the page reads the thread, but the question is new until it's answered.
         foreach (var _ in new[] { 1, 2 })
@@ -151,7 +159,7 @@ public sealed class QuestionConversationTests : IAsyncLifetime
     {
         await SayAsync(MessageSender.Giver, "What's your favorite kind of tea?", new(2030, 12, 3, 9, 0, 0, TimeSpan.Zero));
         await SayAsync(MessageSender.Recipient, "Earl Grey.", new(2030, 12, 3, 10, 0, 0, TimeSpan.Zero));
-        app.Clock.SetUtcNow(Now);
+        await TodayAsync();
 
         var page = await ann.GetPageAsync(Questions);
 
@@ -171,7 +179,7 @@ public sealed class QuestionConversationTests : IAsyncLifetime
     public async Task A_closed_conversation_has_no_cloth_and_offers_to_reopen()
     {
         await SayAsync(MessageSender.Giver, "What's your favorite kind of tea?", new(2030, 12, 3, 9, 0, 0, TimeSpan.Zero));
-        app.Clock.SetUtcNow(Now);
+        await TodayAsync();
         await ann.SubmitOnAsync(Questions, $"{Questions}/close");
 
         var page = await ann.GetPageAsync(Questions);
@@ -186,7 +194,7 @@ public sealed class QuestionConversationTests : IAsyncLifetime
     public async Task The_page_is_tablecloth_light_only_and_uses_only_the_six_colors()
     {
         await SayAsync(MessageSender.Giver, "What's your favorite kind of tea?", new(2030, 12, 3, 9, 0, 0, TimeSpan.Zero));
-        app.Clock.SetUtcNow(Now);
+        await TodayAsync();
 
         var page = await ann.GetPageAsync(Questions);
 
