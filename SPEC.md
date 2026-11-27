@@ -1739,6 +1739,33 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     comparing the viewer's whole frame sequence (`PairingSecrecyTests`
     adds a run of its own); the browser side is still to be checked by
     hand (§16 Testing).
+  - Review fixes (November 27, 2026), with the owner's decisions from the
+    review: a refetch a hint set off leaves the pair parts out
+    (`Pollyanna-Live: hint`, named in the hint frame; each part keeps its
+    place as `data-live-withheld` and the script keeps what it shows), so
+    a notes edit in a drawn event is also content for that recipient's
+    giver; the questions page's refetch after the reveal follows the
+    redirect to "Everyone's been revealed." with "Show". Content goes to
+    whom the happening's own content column finds as it is announced
+    (`PairContent`; a patch's giver from `SealedHat.TakePatchedGivers`,
+    never every giver with `RecipientChanged`), held in memory until the
+    commit; a save retried after a `Seq` collision still sends what was
+    held. The table gains content and worked-out columns in place of the
+    kind switches; `ThreadClosed`/`ThreadReopened`, `Outbox.AddAsync` and
+    its event-open, invitation and withdrawal methods, and
+    `StoredNotifications` for who gets a stored row and for account
+    deletion follow GLOSSARY.md and CODING_STANDARDS.md. `LiveShape`
+    gives the script each live page's path, where a refetch is sent on
+    and the words it shows (`data-live-words`); one partial renders
+    "What's new"'s rows for the panel and the page. Also from the owner:
+    the bell's red dot, the question box as the reply box's composer
+    with Enter sending in both, each conversation in its own scrolling
+    box that new messages are added to, and the questions page always on
+    the cloth. Content frames still carry the three whole pages (trimming
+    them needs an HTML parser in the server). Tests: the hint-refetch run
+    in `PairingSecrecyTests`, `LivePagesTests`, `LiveRoutingTests` (the
+    refetch value), `LiveContentTests` (the collision, the patch's one
+    giver), `QuestionTests`, `QuestionConversationTests`, `WhatsNewTests`.
 
 ### Done: the "Tablecloth" identity
 
