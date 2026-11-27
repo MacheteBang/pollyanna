@@ -120,6 +120,11 @@ public sealed class LiveOnHappening(PollyannaDb db, LiveAfterCommit afterCommit)
 /// Sends held happenings once they're in the database: after a <c>SaveChanges</c> outside a
 /// transaction, or when the transaction they were announced in (or the next one, for one announced
 /// before it began) commits. Held per context; one instance for the app.
+/// <para>
+/// A save that fails outside a transaction keeps them: the changes they came with are still
+/// pending in the context, and go with the save that retries them (a message posted under a
+/// number someone else just took, spec §6). A context given up on takes them with it.
+/// </para>
 /// </summary>
 public sealed class LiveAfterCommit(IServiceScopeFactory scopes) : ISaveChangesInterceptor, IDbTransactionInterceptor
 {
@@ -139,13 +144,6 @@ public sealed class LiveAfterCommit(IServiceScopeFactory scopes) : ISaveChangesI
             // Anything held for a transaction is from one that's gone without committing.
             await SendAsync(db, h => h.Transaction is null, drop: h => true);
         return result;
-    }
-
-    public Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
-    {
-        if (eventData.Context is { } db && db.Database.CurrentTransaction is null)
-            Take(db, _ => true);
-        return Task.CompletedTask;
     }
 
     public async Task TransactionCommittedAsync(System.Data.Common.DbTransaction transaction, TransactionEndEventData eventData,
