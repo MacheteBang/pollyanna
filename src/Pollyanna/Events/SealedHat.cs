@@ -26,7 +26,10 @@ public sealed record GiverSlipUpdates(bool Viewed, bool RecipientChanged, int No
 /// <param name="NotesUpdated">Their recipient's notes changed since they last opened the card.</param>
 /// <param name="ThreadChanged">Their recipient closed or reopened the thread since they last looked.</param>
 /// <param name="Closed">Whether that thread is closed now.</param>
-public sealed record SlipNews(DateTime? Question, DateTime? Reply, bool Patched, bool NotesUpdated, bool ThreadChanged, bool Closed)
+/// <param name="QuestionUpto">The <c>Seq</c> of that newest unread question: what dismissing its row reads up to.</param>
+/// <param name="ReplyUpto">The <c>Seq</c> of that newest unread reply: what dismissing its row reads up to.</param>
+public sealed record SlipNews(DateTime? Question, DateTime? Reply, bool Patched, bool NotesUpdated, bool ThreadChanged, bool Closed,
+    int QuestionUpto = 0, int ReplyUpto = 0)
 {
     public static readonly SlipNews None = new(null, null, false, false, false, false);
 }
@@ -340,9 +343,15 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
     /// <summary>What "What's new" works out for <paramref name="me"/> in a drawn event, from their two rows' markers.</summary>
     public async Task<SlipNews> NewsAsync(Guid eventId, Guid me)
     {
+        // Two plain subqueries each, for the time and the number (SQLite has no APPLY for one with both).
         var question = await db.Assignments.Where(a => a.EventId == eventId && a.RecipientId == me)
-            .Select(a => db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Giver && m.Seq > a.RecipientReadUpto)
-                .OrderByDescending(m => m.Seq).Select(m => (DateTime?)m.CreatedAt).FirstOrDefault())
+            .Select(a => new
+            {
+                CreatedAt = db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Giver && m.Seq > a.RecipientReadUpto)
+                    .OrderByDescending(m => m.Seq).Select(m => (DateTime?)m.CreatedAt).FirstOrDefault(),
+                Seq = db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Giver && m.Seq > a.RecipientReadUpto)
+                    .Max(m => (int?)m.Seq),
+            })
             .FirstOrDefaultAsync();
         var tag = key.GiverTag(eventId, me);
         var giver = await db.Assignments.Where(a => a.EventId == eventId && a.GiverTag == tag)
@@ -350,6 +359,8 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
             {
                 Reply = db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Recipient && m.Seq > a.GiverReadUpto)
                     .OrderByDescending(m => m.Seq).Select(m => (DateTime?)m.CreatedAt).FirstOrDefault(),
+                ReplySeq = db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Recipient && m.Seq > a.GiverReadUpto)
+                    .Max(m => (int?)m.Seq),
                 a.RecipientChanged,
                 a.Viewed,
                 a.NotesVersionSeen,
@@ -359,17 +370,20 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
             })
             .SingleOrDefaultAsync();
         return giver is null
-            ? SlipNews.None with { Question = question }
+            ? SlipNews.None with { Question = question?.CreatedAt, QuestionUpto = question?.Seq ?? 0 }
             // Notes updated only once the card has been opened, as home's waiting line (spec §7).
-            : new SlipNews(question, giver.Reply, giver.RecipientChanged, giver.Viewed && giver.NotesVersion != giver.NotesVersionSeen,
-                giver.ThreadChangeUnseen, giver.ThreadClosed);
+            : new SlipNews(question?.CreatedAt, giver.Reply, giver.RecipientChanged, giver.Viewed && giver.NotesVersion != giver.NotesVersionSeen,
+                giver.ThreadChangeUnseen, giver.ThreadClosed, question?.Seq ?? 0, giver.ReplySeq ?? 0);
     }
 
     /// <summary>
     /// <paramref name="me"/> dismissed one of "What's new"'s lines on purpose: the marker seeing it
-    /// would move moves, on their own row on that side only. False if they have no such row.
+    /// would move moves, on their own row on that side only. A question or reply is read up to
+    /// <paramref name="upto"/>, the message the row was shown for (spec §6: a marker holds what was
+    /// seen, so one that arrived since stays unread), or to the last one without it. False if they
+    /// have no such row.
     /// </summary>
-    public async Task<bool> DismissAsync(Guid eventId, Guid me, SlipMarker marker)
+    public async Task<bool> DismissAsync(Guid eventId, Guid me, SlipMarker marker, int? upto = null)
     {
         var row = await FindAsync(eventId, me, marker == SlipMarker.Question ? MessageSender.Recipient : MessageSender.Giver);
         if (row is null)
@@ -378,6 +392,8 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
         {
             case SlipMarker.Question or SlipMarker.Reply:
                 var last = await db.Messages.Where(x => x.AssignmentId == row.Id).MaxAsync(x => (int?)x.Seq) ?? 0;
+                if (upto is { } shown)
+                    last = Math.Min(last, shown);
                 if (marker == SlipMarker.Question)
                     row.RecipientReadUpto = Math.Max(row.RecipientReadUpto, last);
                 else
@@ -396,6 +412,32 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
         }
         await db.SaveChangesAsync();
         return true;
+    }
+
+    // ---------- Live (spec §16) ----------
+
+    /// <summary>
+    /// Which of <paramref name="people"/> gives to <paramref name="recipient"/>, matched by tag in
+    /// memory, so a reply, closing or reopening reaches that giver's open page; null if none of them.
+    /// Nothing is written or kept.
+    /// </summary>
+    public async Task<Guid?> GiverAmongAsync(Guid eventId, Guid recipient, IEnumerable<Guid> people)
+    {
+        var tag = await db.Assignments.AsNoTracking().Where(a => a.EventId == eventId && a.RecipientId == recipient)
+            .Select(a => a.GiverTag).SingleOrDefaultAsync();
+        return tag is not null && GiversByTag(eventId, people).TryGetValue(tag, out var giver) ? giver : null;
+    }
+
+    /// <summary>
+    /// Which of <paramref name="people"/> a patch has given a recipient they haven't looked at yet
+    /// (<c>RecipientChanged</c>), matched by tag in memory: whom a patch's content goes to.
+    /// </summary>
+    public async Task<IReadOnlyList<Guid>> PatchedAmongAsync(Guid eventId, IEnumerable<Guid> people)
+    {
+        var tags = await db.Assignments.AsNoTracking().Where(a => a.EventId == eventId && a.RecipientChanged)
+            .Select(a => a.GiverTag).ToListAsync();
+        var givers = GiversByTag(eventId, people);
+        return [.. tags.Where(givers.ContainsKey).Select(t => givers[t])];
     }
 
     // ---------- Across events ----------

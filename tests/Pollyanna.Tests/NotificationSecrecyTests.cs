@@ -102,11 +102,16 @@ public sealed partial class NotificationSecrecyTests
         var stages = new List<object>();
         // Each run starts with nothing in anyone's "What's new".
         await app.WithDbAsync(db => db.InAppNotifications.ExecuteDeleteAsync());
+        // Pat, whose own recipient stays the same, has the event open throughout (spec §16).
+        using var patLive = await pat.Browser.OpenLiveAsync();
 
         // What was queued, then what went out an hour later (questions are held to the hour),
-        // and what everyone's "What's new" shows.
-        async Task StageAsync()
+        // and what everyone's "What's new" shows, and every frame Pat's open page got.
+        async Task StageAsync(bool contentToo = true)
         {
+            await app.Live.SettleAsync();
+            stages.Add(contentToo ? patLive.Script(ev) : patLive.Script(ev).Where(f => !f.StartsWith("content ")).ToList());
+            patLive.Clear();
             stages.Add(await WhatsNewAsync(people, ev));
             stages.Add(await RowsAsync(app));
             app.Clock.Advance(TimeSpan.FromHours(1));
@@ -117,7 +122,7 @@ public sealed partial class NotificationSecrecyTests
         foreach (var (name, (browser, asker)) in people.Where(p => p.Key != "Eve"))
         {
             var waiting = await RowsAsync(app);
-            await browser.SubmitOnAsync(page, $"{page}/ask", Form(("body", $"A question from {name}")));
+            await browser.SubmitOnAsync(page, $"{page}/ask", Form(("body", "A question")));
             Assert.Equal([new Row(NotificationKind.Question, pairs[asker], null, null)], (await RowsAsync(app)).Except(waiting));
         }
         await StageAsync();
@@ -125,7 +130,7 @@ public sealed partial class NotificationSecrecyTests
         foreach (var (name, (browser, _)) in people.Where(p => p.Key != "Eve"))
         {
             await browser.GetPageAsync(questions);
-            await browser.SubmitOnAsync(questions, $"{questions}/reply", Form(("body", $"A reply from {name}")));
+            await browser.SubmitOnAsync(questions, $"{questions}/reply", Form(("body", "A reply")));
             await browser.SubmitOnAsync(questions, $"{questions}/close");
             await browser.SubmitOnAsync(questions, $"{questions}/reopen");
             await browser.SubmitOnAsync(page, $"{page}/notes", Form(("notes", $"Notes by {name}")));
@@ -144,7 +149,11 @@ public sealed partial class NotificationSecrecyTests
         // patched line itself, with the viewer's own pairing fixed.)
         foreach (var (browser, _) in new[] { pat, ann, bob, carol, eve })
             await browser.PostWithTokenAsync("/account", $"{page}/seen", Form(("upto", "1000")));
-        await StageAsync();
+        // Which giver the late joiner's patch changes is a random pick, which may be Pat: a patch's
+        // own content is compared in LiveContentTests and PairingSecrecyTests, not here.
+        await StageAsync(contentToo: false);
+        // Gone before the next run, so Pat's home there holds only that run's event.
+        await app.WithDbAsync(async db => { db.Events.Remove(await db.Events.SingleAsync(e => e.Id == ev)); await db.SaveChangesAsync(); });
         return stages;
     }
 
@@ -170,26 +179,31 @@ public sealed partial class NotificationSecrecyTests
 
             // And it isn't equal because nothing happens: each recipient hears about their
             // question, and the late joiner that they're in.
-            var (questionRows, questionMail) = ((List<Row>)before[1], (List<string>)before[2]);
+            var (questionRows, questionMail) = ((List<Row>)before[2], (List<string>)before[3]);
+            // Pat's open page got the question as content, and the reply, closing and reopening of
+            // Pat's own recipient, Ann, each as content (spec §16).
+            Assert.Single((List<string>)before[0], f => f.StartsWith("content Question\n"));
+            Assert.Equal(["content Reply", "content ConversationClosed", "content ConversationReopened"],
+                ((List<string>)before[4]).Where(f => f.StartsWith("content ")).Select(f => f.Split('\n')[0]));
             Assert.Equal(5, questionRows.Count);
             Assert.All(questionRows, r => Assert.Equal(NotificationKind.Question, r.Kind));
             Assert.Equal(5, questionMail.Count);
-            Assert.All(((List<string>)before[0]).Where(p => !p.StartsWith("Eve\n")), p => Assert.Contains("Your giver asked you something", p));
+            Assert.All(((List<string>)before[1]).Where(p => !p.StartsWith("Eve\n")), p => Assert.Contains("Your giver asked you something", p));
             // Replies, closing, reopening and note edits reach no giver, or anyone, by email; in
             // "What's new" every giver hears of the reply and the reopening, worked out.
-            Assert.Empty((List<Row>)before[4]);
-            Assert.Empty((List<string>)before[5]);
-            Assert.All(((List<string>)before[3]).Where(p => !p.StartsWith("Eve\n")), p =>
+            Assert.Empty((List<Row>)before[6]);
+            Assert.Empty((List<string>)before[7]);
+            Assert.All(((List<string>)before[5]).Where(p => !p.StartsWith("Eve\n")), p =>
             {
                 Assert.Contains("Your recipient replied", p);
                 Assert.Contains("Your recipient reopened the conversation", p);
                 Assert.Contains("What&#x27;s new, 2 notifications", p);
             });
             // The patches tell no giver by email that their recipient changed; only the new participant hears.
-            Assert.Equal([new Row(NotificationKind.AddedToEvent, people["Eve"].Id, null, null)], (List<Row>)before[7]);
-            Assert.StartsWith("To: eve@example.com\n", Assert.Single((List<string>)before[8]));
+            Assert.Equal([new Row(NotificationKind.AddedToEvent, people["Eve"].Id, null, null)], (List<Row>)before[10]);
+            Assert.StartsWith("To: eve@example.com\n", Assert.Single((List<string>)before[11]));
             // In "What's new" too, only the late joiner hears anything.
-            var lastWhatsNew = (List<string>)before[6];
+            var lastWhatsNew = (List<string>)before[9];
             Assert.Contains("You&#x27;re taking part.", Assert.Single(lastWhatsNew, p => p.StartsWith("Eve\n")));
             Assert.All(lastWhatsNew.Where(p => !p.StartsWith("Eve\n")), p => Assert.Contains("Nothing new right now.", p));
             // No stored row is ever tied to an assignment (docs/adr/0008).

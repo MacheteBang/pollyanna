@@ -1689,6 +1689,34 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     `LiveRoutingTests` (notes, details, leaving, taken out, done
     shopping); the browser side is still to be checked by hand on a
     phone, tied and untied (§16 Testing).
+  - Live questions between a giver and a recipient (#104): a question,
+    reply, closing, reopening or patch sends no hint but a `content` frame
+    down only its person's connections (`LiveContent` in
+    `src/Pollyanna/Live/`): home, the event page and the questions page as
+    they would see them, rendered in the server by running those Razor
+    pages in memory with the live refetch header (so read-only, exactly as
+    a reload, and nothing on the wire), form tokens left for the page to
+    fill in. The person is worked out in memory when it's sent, among the
+    people connected (`SealedHat.GiverAmongAsync`, `PatchedAmongAsync`):
+    the question's recipient, the giver of whoever replied, closed or
+    reopened, the givers with `RecipientChanged`. "Your recipient updated
+    their notes" needs nothing more: notes edited is already a hint to the
+    whole event. The event page's question box (`#ask`, with `#ask-thread`
+    and `#ask-closed` inside it), "Your giver asked you something", the
+    patch line and "Questions from your giver" are regions now, and the
+    questions page is live (shape "questions-<status>", `#questions` with
+    `#thread` inside). In `site.js`, the matching page patches as a
+    refetch would (any other takes the masthead's rows); a patch brings
+    the gift in again, tied, with its new name; a thread at the bottom
+    stays there, otherwise shows "New message below", and new messages are
+    said politely; while closed, Send is off with the draft kept. A
+    question or reply row's dismiss form carries `upto`, the message it
+    was shown for, so a message that arrived since stays unread (§6).
+    Tests: `LiveContentTests`, `LiveRoutingTests` (all five kinds),
+    `LivePagesTests`, `WhatsNewAssignmentTests`, and both secrecy suites
+    comparing the viewer's whole frame sequence (`PairingSecrecyTests`
+    adds a run of its own); the browser side is still to be checked by
+    hand (§16 Testing).
 
 ### Done: the "Tablecloth" identity
 

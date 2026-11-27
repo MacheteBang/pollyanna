@@ -32,6 +32,10 @@
                     <form method="post" action="/whats-new/dismiss" asp-antiforgery="true">
                         <input type="hidden" name="event" value="@row.EventId">
                         <input type="hidden" name="kind" value="@row.Kind">
+                        @if (row.Upto is { } upto)
+                        {
+                            <input type="hidden" name="upto" value="@upto">
+                        }
                         <button type="submit" class="link-button small" aria-label="Dismiss: @row.Line">Dismiss</button>
                     </form>
                 </li>

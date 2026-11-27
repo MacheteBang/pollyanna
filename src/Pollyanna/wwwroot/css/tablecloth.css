@@ -417,6 +417,22 @@ summary::-webkit-details-marker { display: none; }
    "Names have been drawn." with "Show". A notice, never a flash. */
 .live-line a { margin-inline-start: var(--space-2); }
 
+/* "New message below" (spec §16 Threads): a quiet link, held at the bottom of the view while the
+   thread is on screen and the new message isn't. No motion. */
+.new-below {
+    position: sticky;
+    bottom: var(--space-2);
+    margin: var(--space-2) 0 0;
+    text-align: center;
+}
+.new-below a {
+    display: inline-block;
+    padding: var(--space-2) var(--space-3);
+    background: var(--white);
+    border: var(--line) solid var(--pale);
+    border-radius: var(--corner);
+}
+
 .notice {
     margin-block: var(--space-3);
     padding: var(--space-3) var(--space-4);

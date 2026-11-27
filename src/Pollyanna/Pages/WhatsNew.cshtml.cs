@@ -27,9 +27,9 @@ public sealed class WhatsNewModel(WhatsNewList whatsNew, TimeProvider clock, Liv
     /// §16, your own action); the panel's background post names its own tab in
     /// <see cref="LiveSignals.TabHeader"/> to be left out.
     /// </summary>
-    public async Task<IActionResult> OnPostDismissAsync(Guid @event, HappeningKind kind)
+    public async Task<IActionResult> OnPostDismissAsync(Guid @event, HappeningKind kind, int? upto)
     {
-        await whatsNew.DismissAsync(User.PersonId(), @event, kind);
+        await whatsNew.DismissAsync(User.PersonId(), @event, kind, upto);
         live.OwnAction(User.PersonId(), @event, "Dismissed", Request.Headers[LiveSignals.TabHeader].FirstOrDefault());
         return Redirect("/whats-new");
     }

@@ -42,7 +42,9 @@ public sealed class LiveRoutingTests : IAsyncLifetime
 
     /// <summary>One case: the event's state, what is done and by whom, and whoever else it's about.</summary>
     /// <param name="Joins">Someone the happening brings into the event (or its organizers), so they're in its audience after it.</param>
-    public sealed record Case(string Name, HappeningKind? Kind, EventStatus Status, bool Sealed, string? Actor, string? About, string? Joins);
+    /// <param name="Content">Who a giver-recipient happening's content goes to, inside their own connection (#104).</param>
+    public sealed record Case(string Name, HappeningKind? Kind, EventStatus Status, bool Sealed, string? Actor, string? About, string? Joins,
+        string? Content = null);
 
     public static TheoryData<string> Cases => [.. All.Select(c => c.Name)];
 
@@ -55,8 +57,11 @@ public sealed class LiveRoutingTests : IAsyncLifetime
         new("accept", HappeningKind.InvitationAccepted, EventStatus.Open, false, null, "Nia", "Nia"),
         new("organizer", HappeningKind.MadeOrganizer, EventStatus.Open, false, "Olga", "Nia", "Nia"),
         new("leave", HappeningKind.RedrawNeeded, EventStatus.Open, true, "Bea", null, null),
-        new("question", HappeningKind.Question, EventStatus.Open, true, "Gus", "Rae", null),
-        new("reply", HappeningKind.Reply, EventStatus.Open, true, "Rae", null, null),
+        new("question", HappeningKind.Question, EventStatus.Open, true, "Gus", "Rae", null, Content: "Rae"),
+        new("reply", HappeningKind.Reply, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
+        new("patched", HappeningKind.Patched, EventStatus.Open, true, "Olga", null, null, Content: "Rae"),
+        new("closed", HappeningKind.ConversationClosed, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
+        new("reopened", HappeningKind.ConversationReopened, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
         new("dismiss", null, EventStatus.Open, false, "Gus", null, null),
         // The event page's own parts (spec §16 "What each page does live").
         new("notes", HappeningKind.NotesEdited, EventStatus.Open, false, "Bea", null, null),
@@ -81,13 +86,17 @@ public sealed class LiveRoutingTests : IAsyncLifetime
     public async Task A_signal_reaches_only_who_the_table_says_as_a_hint_naming_no_person(string name)
     {
         var c = All.Single(x => x.Name == name);
-        var ev = await app.EventAsync("Stockings", c.Status, [Id("Olga")], [Id("Gus"), Id("Rae"), Id("Bea")]);
+        // A patch needs four taking part, so one can go: Bea's giver, Rae, then gives to Olga.
+        Guid[] taking = c.Name == "patched" ? [Id("Gus"), Id("Rae"), Id("Bea"), Id("Olga")] : [Id("Gus"), Id("Rae"), Id("Bea")];
+        var ev = await app.EventAsync("Stockings", c.Status, [Id("Olga")], taking);
         if (c.Sealed)
-            await app.SealAsync(ev, Loop(Id("Gus"), Id("Rae"), Id("Bea")));
+            await app.SealAsync(ev, Loop(taking));
         if (c.Name == "dismiss")
             await Manage("Olga", ev, "draw");
-        if (c.Name == "reply")
+        if (c.Name is "reply" or "closed" or "reopened")
             await app.MessageAsync(ev, Id("Gus"), MessageSender.Giver, "Socks?");
+        if (c.Name == "reopened")
+            await app.UpdateAssignmentAsync(ev, Id("Gus"), a => a.ThreadClosed = true);
 
         var tabs = new Dictionary<string, LiveReader>();
         foreach (var person in Names)
@@ -106,11 +115,17 @@ public sealed class LiveRoutingTests : IAsyncLifetime
         {
             var area = c.Kind?.ToString() ?? "Dismissed";
             Assert.True(expected.Contains(who) == tab.Hints.Contains(new LiveHintData(ev, area)), $"{who}: {string.Join(", ", tab.Hints)} / " + string.Join("; ", tabs.Select(t => t.Key + "=" + string.Join(",", t.Value.Frames))));
-            Assert.All(tab.Hints, h => Assert.Equal(new LiveHintData(ev, area), h));
+            // Taking someone out to patch is public to the event as well, as its own hint.
+            Assert.All(tab.Hints.Where(h => !(c.Name == "patched" && h.Area == nameof(HappeningKind.TakenOut))),
+                h => Assert.Equal(new LiveHintData(ev, area), h));
             Assert.DoesNotContain(tab.Hints, h => h.Event == other);
-            foreach (var frame in tab.Frames)
+            foreach (var frame in tab.Frames.Where(f => f.Type == "hint"))
                 foreach (var person in Names)
                     Assert.False(frame.Data.Contains(Id(person).ToString()) || frame.Data.Contains(person), $"{who} got {frame.Data}");
+            // Content only for the one person a giver-recipient happening is for, and only as content.
+            Assert.Equal(who == c.Content ? [new LiveHintData(ev, c.Kind.ToString()!)] : [],
+                tab.Contents.Select(x => new LiveHintData(x.Event, x.Area)));
+            Assert.All(tab.Frames, f => Assert.Contains(f.Type, new[] { "hint", "content" }));
         }
         foreach (var tab in tabs.Values)
             tab.Dispose();
@@ -167,6 +182,15 @@ public sealed class LiveRoutingTests : IAsyncLifetime
                 break;
             case "reply":
                 await Browser("Rae").SubmitOnAsync($"/events/{ev}/questions", $"/events/{ev}/questions/reply", Form(("body", "Blue.")));
+                break;
+            case "patched":
+                await Manage("Olga", ev, "removeperson", ("personId", Id("Bea").ToString()), ("change", "patch"));
+                break;
+            case "closed":
+                await Browser("Rae").SubmitOnAsync($"/events/{ev}/questions", $"/events/{ev}/questions/close");
+                break;
+            case "reopened":
+                await Browser("Rae").SubmitOnAsync($"/events/{ev}/questions", $"/events/{ev}/questions/reopen");
                 break;
             case "notes":
             case "notes drawn":

@@ -281,6 +281,11 @@ function whatsNewPanel() {
             const x = kept.querySelector(".bell-x");
             const label = li.querySelector(".bell-x")?.getAttribute("aria-label");
             if (x && label) x.setAttribute("aria-label", label);
+            // A question or reply row reads up to the message it now stands for, and no further.
+            const form = kept.querySelector("form[data-bell-dismiss]");
+            form?.querySelector('input[name="upto"]')?.remove();
+            const upto = li.querySelector('input[name="upto"]');
+            if (form && upto) form.prepend(document.importNode(upto, true));
             return kept;
         });
         let lostFocus = false;
@@ -325,6 +330,11 @@ const live = { tab: "", posting: false, onRefetch: [] };
 // Being edited: a form with focus or unsaved changes, or an open "Bigger changes" confirmation.
 // The event page's gift is never a region, so its tied or untied state stays as the viewer left it
 // while the parts under the name (their notes, "Done shopping") patch inside it.
+// A giver's or recipient's own content frame (liveConnection) brings this page as they'd see it,
+// patched the same way, and three things more: a patch brings the whole gift in again, tied, with
+// the new name in it (never left on screen); a thread with new messages stays at the bottom if
+// the view was there, or shows a quiet "New message below", and says them politely; and the
+// question box's Send is off while the conversation is closed, with any draft kept.
 // Open folds stay open and focus stays where it was. A state change swaps the page body when
 // nothing is being edited, and says the line politely; otherwise the line shows, with "Show",
 // and the page stays as it is. A refetch that comes back not found means the event was canceled
@@ -431,6 +441,69 @@ function livePage() {
         say.replaceChildren(p);
     };
 
+    // The gift, again and tied, from a patch: the name in it changed (spec §16).
+    const retie = page => {
+        const gift = main.querySelector("#gift[data-gift]");
+        const fresh = page.getElementById("gift");
+        if (!gift || !fresh) return;
+        const now = document.importNode(fresh, true);
+        now.classList.remove("untied", "still");
+        gift.replaceWith(now);
+        keep(now);
+        pageParts(now);
+    };
+
+    // Threads (the questions page and the giver's question box): what's new after a patch, kept
+    // in view if the view was at the bottom, otherwise pointed to, and said politely.
+    const lastMessage = thread => [...thread.querySelectorAll(".message")].at(-1);
+    const atBottom = thread => {
+        const last = lastMessage(thread);
+        return !last || last.getBoundingClientRect().bottom <= window.innerHeight + 48;
+    };
+    // A thread inside a tied gift isn't on screen: nothing scrolls to it or reads it out.
+    const shown = thread => !thread.closest("[data-gift]:not(.untied)");
+    const below = thread => {
+        if (thread.querySelector(".new-below")) return;
+        const p = document.createElement("p");
+        p.className = "new-below";
+        const a = document.createElement("a");
+        a.href = `#${thread.id}`;
+        a.textContent = "New message below";
+        a.addEventListener("click", event => {
+            event.preventDefault();
+            lastMessage(thread)?.scrollIntoView({ block: "end" });
+            p.remove();
+        });
+        p.append(a);
+        thread.append(p);
+        const gone = () => {
+            if (!p.isConnected || atBottom(thread)) { p.remove(); window.removeEventListener("scroll", gone); }
+        };
+        window.addEventListener("scroll", gone, { passive: true });
+    };
+    const watchThreads = () => {
+        const before = new Map(all(main, "[data-thread][id]").map(t => [t.id, { count: t.querySelectorAll(".message").length, bottom: atBottom(t) }]));
+        return () => {
+            const said = [];
+            for (const [id, was] of before) {
+                const thread = document.getElementById(id);
+                if (!thread || !shown(thread)) continue;
+                const messages = [...thread.querySelectorAll(".message")];
+                if (messages.length <= was.count) continue;
+                if (was.bottom) messages.at(-1).scrollIntoView({ block: "end" });
+                else below(thread);
+                for (const m of messages.slice(was.count))
+                    said.push(`New message: ${m.querySelector(".bubble-body")?.textContent.trim() ?? ""}`);
+            }
+            if (said.length > 0) line(said.join(" "));
+        };
+    };
+    // Closed: Send is off, and a draft stays in the box; reopened, it's on again.
+    const sendState = () => {
+        const closed = main.querySelector("#ask-closed [data-closed]") !== null;
+        for (const button of main.querySelectorAll('#ask form button[type="submit"]')) button.disabled = closed;
+    };
+
     let stale = false; // the line is up: this page is no longer what the server would send
     const body = (page, fresh) => {
         const was = [...main.querySelectorAll("details[id]")].map(d => [d.id, d.open]);
@@ -464,10 +537,19 @@ function livePage() {
             stale = true;
             return;
         }
+        // Content for another page (liveConnection): only the masthead's rows were for this one.
+        if (hint.elsewhere) return;
         const fresh = page.querySelector("main[data-live-shape]");
         if (!fresh?.dataset.liveShape) return;
         if (fresh.dataset.liveShape === main.dataset.liveShape) {
-            if (!stale) { lists(page); regions(page); }
+            if (!stale) {
+                if (hint.areas.has("Patched")) retie(page);
+                const threads = watchThreads();
+                lists(page);
+                regions(page);
+                threads();
+                sendState();
+            }
             return;
         }
         const text = fresh.dataset.liveLine ?? "";
@@ -502,6 +584,30 @@ function liveConnection() {
         refetch();
     };
 
+    // A giver-recipient happening (spec §16) comes as content: the pages it touches, as this person
+    // sees them, by path, so nothing is fetched after it (a fetch would pair them in the proxy log).
+    // The page that matches this one is handed on as a refetch would be; any other page takes only
+    // the masthead's rows from it. Its form tokens come empty (the server can't make one for this
+    // browser's cookie), so this page's own goes in. Ignored while a post is in flight, like hints.
+    const content = event => {
+        if (live.posting) return;
+        let frame;
+        try {
+            frame = JSON.parse(event.data);
+        } catch {
+            return;
+        }
+        const pages = frame?.pages ?? {};
+        const path = location.pathname.replace(/\/untie$/, "");
+        const html = pages[path] ?? pages["/"] ?? Object.values(pages)[0];
+        if (typeof html !== "string") return;
+        const page = new DOMParser().parseFromString(html, "text/html");
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? "";
+        for (const input of page.querySelectorAll('input[name="__RequestVerificationToken"]')) input.setAttribute("value", token);
+        const hint = { areas: new Set(typeof frame.area === "string" ? [frame.area] : []), gone: false, elsewhere: !(path in pages) };
+        for (const listener of live.onRefetch) listener(page, hint);
+    };
+
     const refetch = async () => {
         if (live.posting || document.hidden) return;
         if (fetching) { again = true; return; }
@@ -532,6 +638,7 @@ function liveConnection() {
         source = new EventSource("/live");
         source.addEventListener("hello", event => { live.tab = event.data; });
         source.addEventListener("hint", hinted);
+        source.addEventListener("content", content);
         // The first open is the page load itself; any later one (shown again, reconnected) catches up.
         source.addEventListener("open", () => {
             if (opened) refetch();

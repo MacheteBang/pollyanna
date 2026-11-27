@@ -35,6 +35,7 @@ Tests are integration tests against the real app through `tests/Pollyanna.Tests/
 
 - `await browser.OpenLiveAsync()` opens `/live` as one tab of that browser would and returns a `LiveReader` once the stream's opening frame is in. Call it twice for two tabs. `reader.Tab` is that connection's id, which a post names in the `Pollyanna-Tab` header to be left out of "your other tabs".
 - `await app.Live.SettleAsync()` sends a marker down every open connection and waits until each reader has it. After it, `reader.Frames` (type and data) and `reader.Hints` (event and area) hold everything that arrived, so a test proves nothing else did, without a timeout. `reader.Clear()` forgets the setup's.
+- A giver-recipient happening reaches its one person as a `content` frame: `reader.Contents` holds each one's event, area and pages (home, the event page and the questions page, by path, as that person would see them). `reader.Script(eventId)` turns every frame into a string with the event's ID and the times taken out, for the secrecy runs to compare.
 - `reader.EndedAsync()` waits for the server to end the stream (sign-out, account deletion, expiry).
 - The keep-alive is a comment, which `SseParser` skips: read the raw lines to see it, and move `app.Clock` 15 seconds.
 - Browser behavior (sleep and wake, hidden tabs, reconnects, drafts, focus, screen readers, the proxies) has no test tooling. It is checked by hand from the list in SPEC.md §16, "Testing".

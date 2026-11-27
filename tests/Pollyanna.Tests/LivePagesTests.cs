@@ -166,7 +166,10 @@ public sealed class LivePagesTests : IAsyncLifetime
         // Before the draw: the details, your own notes (saved in another tab), "Taking part".
         { EventStatus.Open, ["event-head", "your-notes", "taking-part"] },
         // After it: the recipient's notes under "You're giving to", "Done shopping", your notes and the people.
-        { EventStatus.Drawn, ["event-head", "their-notes", "shopping", "your-notes", "taking-part"] },
+        // The lines over the gift and the question box (with its thread and closed line) too, for
+        // what a giver's or recipient's own content frame brings (#104).
+        { EventStatus.Drawn, ["event-head", "live-asked", "live-gift-again", "their-notes", "ask", "ask-thread", "ask-closed",
+            "shopping", "live-questions-link", "your-notes", "taking-part"] },
         // Over: state changes only (the head is the same part in every state, though nothing in it changes now).
         { EventStatus.Revealed, ["event-head"] },
         { EventStatus.Archived, ["event-head"] },
@@ -194,7 +197,22 @@ public sealed class LivePagesTests : IAsyncLifetime
 
         Assert.Null(gift.Closest("[data-live]"));
         // Only the parts under the name patch, inside it.
-        Assert.Equal(["their-notes", "shopping"], gift.QuerySelectorAll("[data-live]").Select(r => r.Id ?? "").ToList());
+        Assert.Equal(["their-notes", "ask", "ask-thread", "ask-closed", "shopping"], gift.QuerySelectorAll("[data-live]").Select(r => r.Id ?? "").ToList());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task The_questions_page_is_live_with_its_conversation_a_region_inside_the_rest(bool asked)
+    {
+        var ev = await EventInAsync(EventStatus.Drawn);
+        if (asked)
+            await app.MessageAsync(ev, bob, MessageSender.Giver, "Socks?");
+
+        var page = await pat.GetPageAsync($"/events/{ev}/questions");
+
+        Assert.Equal("questions-drawn", page.QuerySelector("main")!.GetAttribute("data-live-shape"));
+        Assert.Equal(asked ? ["questions", "thread"] : ["questions"], Regions(page));
     }
 
     [Fact]

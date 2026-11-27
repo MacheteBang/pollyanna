@@ -279,6 +279,24 @@ public sealed class WhatsNewAssignmentTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Dismissing_reads_only_up_to_the_message_the_row_was_shown_for()
+    {
+        // Ann's panel shows the question; another arrives (live) before she taps "×" on that row.
+        await AskAsync("Size?");
+        var shown = await ann.GetPageAsync("/");
+        await AskAsync("Colour?");
+        static bool Question(AngleSharp.Html.Dom.IHtmlFormElement f) =>
+            f.HasAttribute("data-bell-dismiss") && f.QuerySelector("input[name='kind']")?.GetAttribute("value") == "Question";
+
+        // The row's own form, as the panel posts it.
+        await ann.SubmitAsync(shown, "/whats-new/dismiss", match: Question);
+
+        Assert.Equal(1, (await app.AssignmentOfAsync(ev, me)).RecipientReadUpto);
+        Assert.Equal(["Your giver asked you something"], await LinesAsync(ann));
+        Assert.Equal("Your giver asked you something", await HomeLineAsync(ann));
+    }
+
+    [Fact]
     public async Task Dismissing_closed_or_reopened_clears_the_flag()
     {
         await AskAsync();

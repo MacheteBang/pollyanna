@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.ServerSentEvents;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Pollyanna.Live;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,6 +13,13 @@ public sealed record LiveFrame(string Type, string Data);
 
 /// <summary>A hint frame's data (spec §16): the event and the area, never a person.</summary>
 public sealed record LiveHintData(Guid Event, string Area);
+
+/// <summary>
+/// A content frame's data (spec §16, giver-recipient happenings): the event, the area (the
+/// happening's kind) and the pages it touches as that one person would see them, by path, so
+/// their open page patches itself with no follow-up request.
+/// </summary>
+public sealed record LiveContentData(Guid Event, string Area, Dictionary<string, string> Pages);
 
 /// <summary>
 /// <c>app.Live</c>: every live stream the test opened, and <see cref="SettleAsync"/>, which sends a
@@ -80,6 +88,23 @@ public sealed class LiveReader : IDisposable
 
     public IReadOnlyList<LiveHintData> Hints =>
         [.. Frames.Where(f => f.Type == "hint").Select(f => JsonSerializer.Deserialize<LiveHintData>(f.Data, JsonSerializerOptions.Web)!)];
+
+    public IReadOnlyList<LiveContentData> Contents =>
+        [.. Frames.Where(f => f.Type == "content").Select(f => JsonSerializer.Deserialize<LiveContentData>(f.Data, JsonSerializerOptions.Web)!)];
+
+    /// <summary>
+    /// Every frame as one string each, for the secrecy runs to compare: the event's ID and the
+    /// times taken out (each run starts later on the clock), content frames' pages laid out by path.
+    /// </summary>
+    public List<string> Script(Guid eventId)
+    {
+        string Plain(string s) => Regex.Replace(s, "<time datetime=\"[^\"]*\"[^>]*>[^<]*</time>", "<time/>").Replace(eventId.ToString(), "{event}");
+        return [.. Frames.Select(f => f.Type == "content"
+            ? Plain(string.Join("\n", JsonSerializer.Deserialize<LiveContentData>(f.Data, JsonSerializerOptions.Web)! is var c
+                ? new[] { $"content {c.Area}" }.Concat(c.Pages.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => $"{p.Key}\n{p.Value}"))
+                : []))
+            : Plain($"{f.Type} {f.Data}"))];
+    }
 
     /// <summary>Forgets the frames received so far, e.g. after setting up.</summary>
     public void Clear() { lock (frames) frames.Clear(); }
