@@ -198,6 +198,11 @@ public sealed class Assignment
     public bool RecipientChanged { get; set; }
     /// <summary>The recipient closed the question thread (spec §6): nobody can post until they reopen it.</summary>
     public bool ThreadClosed { get; set; }
+    /// <summary>
+    /// The recipient closed or reopened the thread since the giver last opened the card or
+    /// dismissed "What's new"'s line about it (spec §16): a yes/no, never a time.
+    /// </summary>
+    public bool ThreadChangeUnseen { get; set; }
     /// <summary>The <see cref="Message.Seq"/> of the last message the giver has seen.</summary>
     public int GiverReadUpto { get; set; }
     /// <summary>The <see cref="Message.Seq"/> of the last message the recipient has seen.</summary>

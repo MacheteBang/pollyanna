@@ -1,6 +1,7 @@
 using Pollyanna.Data;
 using Pollyanna.Events;
 using Pollyanna.Infrastructure;
+using Pollyanna.Live;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Pollyanna.Pages.Events;
@@ -35,7 +36,8 @@ public sealed class QuestionsModel(PollyannaDb db, EventManager events, TimeProv
             return NotFound();
         if (!Membership.IsLive)
             return Redirect($"/events/{id}");
-        Thread = await events.RecipientThreadAsync(Membership, Me, markRead: true);
+        // Loading the page reads the questions; a live refetch doesn't (spec §6, §16).
+        Thread = await events.RecipientThreadAsync(Membership, Me, markRead: !Request.IsLiveRefetch());
         Today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         return Page();
     }

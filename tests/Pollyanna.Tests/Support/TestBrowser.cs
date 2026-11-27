@@ -1,6 +1,7 @@
 using System.Net;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
+using Pollyanna.Live;
 using Pollyanna.MockIssuer;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -10,7 +11,7 @@ namespace Pollyanna.Tests.Support;
 /// A tiny browser: keeps Pollyanna's cookies, follows redirects by hand across Pollyanna and the
 /// mock issuers (keyed by issuer URL), and fills in an issuer's sign-in form.
 /// </summary>
-public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, HttpClient> issuers, TestLive live) : IDisposable
+public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, HttpClient> issuers, TestLive liveStreams) : IDisposable
 {
     public HttpClient App => app;
 
@@ -18,7 +19,7 @@ public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, Http
     /// Opens a live stream as a page of this browser would (spec §16): one per tab, so call it
     /// twice for two tabs. Returns once the stream's opening frame is in.
     /// </summary>
-    public Task<LiveReader> OpenLiveAsync() => LiveReader.OpenAsync(app, live);
+    public Task<LiveReader> OpenLiveAsync() => LiveReader.OpenAsync(app, liveStreams);
 
     /// <summary>The redirect Pollyanna sent to the issuer during the last sign-in.</summary>
     public Uri? LastAuthorizeRequest { get; private set; }
@@ -34,9 +35,17 @@ public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, Http
         return response;
     }
 
-    public async Task<IHtmlDocument> GetPageAsync(string path)
+    /// <summary>
+    /// Loads <paramref name="path"/> and parses it. With <paramref name="live"/>, it is a live
+    /// refetch, as the page's script makes on a hint: the same URL, marked with
+    /// <see cref="LiveRefetch.Header"/>, which counts as no visit (spec §16).
+    /// </summary>
+    public async Task<IHtmlDocument> GetPageAsync(string path, bool live = false)
     {
-        var response = await app.GetAsync(path);
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (live)
+            request.Headers.Add(LiveRefetch.Header, LiveRefetch.Value);
+        var response = await app.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return await ParseAsync(response);
     }

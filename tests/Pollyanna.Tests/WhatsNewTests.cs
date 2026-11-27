@@ -130,7 +130,8 @@ public sealed class WhatsNewTests : IAsyncLifetime
         Assert.Equal(
             [("You're taking part. See who you're giving to", $"/events/{drawn}"), ("You're taking part. Write your notes", $"/events/{open}")],
             rows.Select(r => (r.Line, r.Href)).OrderBy(r => r.Line));
-        Assert.Empty(await RowsAsync(pat));
+        // The patch may have made Pat the giver to someone new, which is a row of its own (#98).
+        Assert.DoesNotContain(await LinesAsync(pat), l => l.StartsWith("You're taking part"));
     }
 
     [Fact]

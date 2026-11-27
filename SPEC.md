@@ -1595,6 +1595,20 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     shows the times in UTC ("Today, 7:42 PM UTC"). Tests: `WhatsNewTests`,
     plus `/whats-new` in `PairingSecrecyTests` and
     `NotificationSecrecyTests`.
+  - "What's new" for the five assignment kinds (#98): worked out on each
+    request by `SealedHat.NewsAsync` from the person's two sealed rows in
+    each drawn event they take part in, never stored (`WorkedOutKinds`
+    holds the lines, links and order). A new yes/no column,
+    `Assignments.ThreadChangeUnseen` (migration `ThreadChangeUnseen`), is
+    set when the recipient closes or reopens (only if that changes it),
+    cleared by opening the card, and reset with the thread by a patch or a
+    redraw. Dismissing one moves the marker seeing it would
+    (`SealedHat.DismissAsync`, on the person's own row on that side only),
+    so home's matching waiting line goes too; only while drawn. Notes
+    updated shows only once the card has been opened, as home's line. The
+    bell counts these rows too. Tests: `WhatsNewAssignmentTests`, with all
+    five kinds in `PairingSecrecyTests` and the question, reply and
+    reopened rows in `NotificationSecrecyTests`.
   - The bell's panel (#99): every signed-in masthead renders the bell's
     link, its button (hidden) and the "What's new" panel (hidden) with the
     same rows as `/whats-new` (`_WhatsNewPanel`, `WhatsNewPanelView`), each
@@ -1608,6 +1622,16 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     motion. Tests: `WhatsNewTests` (the panel on every signed-in page, its
     rows, the empty state, dismissing through it); the hand checks of §16
     are still to do.
+  - A live refetch isn't a visit (#101): a GET carrying the request header
+    `Pollyanna-Live` (`LiveRefetch.Header` in `src/Pollyanna/Live/`) is a
+    read-only view, at the page's own URL. The event page (and `/untie`)
+    and organizing page then delete no stored row, and the questions page
+    moves no `recipient_read_upto`; home and the event page's GET moved no
+    sealed marker already (the card's markers move only on the "seen"
+    post). Tests: `LiveRefetchTests` (home, the event page in each status,
+    `/untie`, questions, organizing in each status: a live fetch leaves
+    every marker and stored row as it was, a plain visit then clears them),
+    through `TestBrowser.GetPageAsync(path, live: true)`.
   - The live connection and a bell that updates itself (#100): `GET /live`
     (`src/Pollyanna/Live/`) is written by hand as server-sent events, since
     `TypedResults.ServerSentEvents` can't write a comment: headers at once
@@ -1625,13 +1649,12 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     person's other tabs, leaving out the one named in `Pollyanna-Tab`. In
     `site.js`, `liveConnection` holds the `EventSource`, closes it when the
     page is hidden or on `pagehide`, reopens it when shown and refetches the
-    page's own URL once (header `Pollyanna-Live: refetch`, not read by the
-    server until #101), as after a reconnect; it ignores hints while a form
+    page's own URL once (the #101 header `Pollyanna-Live`), as after a
+    reconnect; it ignores hints while a form
     post is in flight. The panel merges the refetched rows in place and says
     new ones through a polite live region. DEPLOYMENT.md §4 and §9 have the
     `/live` notes. Tests: `LiveTests`, `LiveRoutingTests`; the seam is in
-    `docs/agents/testing.md`. Until #101, a live refetch still counts as a
-    visit.
+    `docs/agents/testing.md`.
 
 ### Done: the "Tablecloth" identity
 

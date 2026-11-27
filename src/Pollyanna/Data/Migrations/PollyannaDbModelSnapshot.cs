@@ -15,7 +15,7 @@ partial class PollyannaDbModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261127200720_StoredWhatsNewRows";
+    public override string LastMigrationId => "20261127201450_ThreadChangeUnseen";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -48,6 +48,9 @@ partial class PollyannaDbModelSnapshot : ModelSnapshot
                     .HasColumnType("TEXT");
 
                 b.Property<int>("RecipientReadUpto")
+                    .HasColumnType("INTEGER");
+
+                b.Property<bool>("ThreadChangeUnseen")
                     .HasColumnType("INTEGER");
 
                 b.Property<bool>("ThreadClosed")

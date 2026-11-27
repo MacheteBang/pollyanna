@@ -301,9 +301,10 @@ function whatsNewPanel() {
 }
 
 // The live connection (spec §16): every signed-in page holds one EventSource on /live. A hint
-// makes the page do one live refetch of its own URL, marked by the Pollyanna-Live header, and
-// hands the fetched page to whoever listens (live.onRefetch: the bell's panel here; the pages
-// with live regions add their own). Hints are ignored while a form post is in flight, since its
+// makes the page do one live refetch of its own URL, marked by the Pollyanna-Live header
+// (LiveRefetch.Header: the server treats it as a read-only view, not a visit), and hands the
+// fetched page to whoever listens (live.onRefetch: the bell's panel here; the pages with live
+// regions add their own). Hints are ignored while a form post is in flight, since its
 // response is a fresh page anyway. A hidden page closes its connection (and on pagehide), opens it
 // again when shown and then refetches once; so does EventSource's own reconnect after a drop.
 // Nothing is replayed. A refused connection (signed out, account deleted, session expired) stays
@@ -324,7 +325,7 @@ function liveConnection() {
         fetching = true;
         try {
             const response = await fetch(location.href, {
-                headers: { "Pollyanna-Live": "refetch" }, redirect: "manual", credentials: "same-origin", cache: "no-store",
+                headers: { "Pollyanna-Live": "1" }, redirect: "manual", credentials: "same-origin", cache: "no-store",
             });
             if (response.ok && !live.posting) {
                 const page = new DOMParser().parseFromString(await response.text(), "text/html");

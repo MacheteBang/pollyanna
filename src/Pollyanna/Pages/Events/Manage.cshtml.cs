@@ -1,6 +1,7 @@
 using Pollyanna.Infrastructure;
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.Live;
 using Pollyanna.WhatsNew;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -134,8 +135,9 @@ public sealed class ManageModel(PollyannaDb db, EventManager events, WhatsNewLis
     {
         if (!await LoadAsOrganizerAsync(id))
             return NotFound();
-        // Seeing the page clears what pointed here, in this same request (spec §16).
-        await whatsNew.SeenAsync(Me, id, $"/events/{id}/manage");
+        // Seeing the page clears what pointed here, in this same request; a live refetch isn't seeing it (spec §16).
+        if (!Request.IsLiveRefetch())
+            await whatsNew.SeenAsync(Me, id, $"/events/{id}/manage");
         Name = Event.Name;
         BudgetText = Event.BudgetText;
         ExchangeDate = Event.ExchangeDate;
