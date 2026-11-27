@@ -375,24 +375,41 @@ strong, b { font-weight: 800; }
 
 /* ---------- The row of steps on the organizing page (spec §12 Statuses) ---------- */
 
+/* A trail, in order, joined by chevrons in the 2px line: done steps in ink with ribbon-blue
+   chevrons after them, the current one in ink at 800 over a ribbon-blue line, later steps soft
+   with pale-blue chevrons. One line on a 390px phone; it wraps rather than overflow. */
 .steps {
     align-self: stretch;
-    display: grid;
-    grid-template-columns: repeat(4, auto);
-    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: var(--space-1);
+    margin-top: var(--space-2);
     padding: 0;
     list-style: none;
     font: var(--type-small);
     color: var(--soft-ink);
 }
 
-.steps li {
-    padding: 0 var(--space-2) var(--space-2) 0;
-    border-bottom: var(--line) solid var(--pale);
+.steps li { display: flex; align-items: center; }
+
+.steps li > span { padding-block: var(--space-1); border-bottom: var(--line) solid transparent; }
+
+.steps li + li::before {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-inline: var(--space-2) var(--space-3);
+    border-top: var(--line) solid var(--ribbon);
+    border-right: var(--line) solid var(--ribbon);
+    transform: rotate(45deg);
 }
 
-.steps .step-done { border-color: var(--ribbon); }
-.steps .step-now { border-color: var(--ribbon); color: var(--ink); font-weight: 800; }
+.steps .step-done { color: var(--ink); font-weight: 600; }
+.steps .step-now { color: var(--ink); font-weight: 800; }
+.steps .step-now > span { border-bottom-color: var(--ribbon); }
+.steps .step-later::before { border-color: var(--pale); }
 
 /* ---------- Questions for you: the conversation (spec §7, §12) ---------- */
 

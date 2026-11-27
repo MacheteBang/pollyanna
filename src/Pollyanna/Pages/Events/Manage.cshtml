@@ -9,7 +9,8 @@
     var drawn = m.IsLive;
     string Household(Guid? id) => Model.Households.FirstOrDefault(h => h.Id == id)?.Name ?? "no household";
     var lateJoiner = new Pollyanna.Pages.Shared.PickOneView("late", Model.Known, "Who's joining", "they're added");
-    // The row of steps (spec §12 Statuses): the current one in ink; an archived event has passed them all.
+    // The row of steps (spec §12 Statuses), read as a trail: done, the current one, then later ones;
+    // an archived event has passed them all.
     string[] Steps = ["Draft", "Open", "Names drawn", "Revealed"];
     var step = Model.Event.Status switch
     {
@@ -38,7 +39,7 @@
     <ol class="steps" aria-label="Where this event stands">
         @for (var i = 0; i < Steps.Length; i++)
         {
-            <li class="@(i < step ? "step-done" : i == step ? "step-now" : null)" aria-current="@(i == step ? "step" : null)">@Steps[i]</li>
+            <li class="@(i < step ? "step-done" : i == step ? "step-now" : "step-later")" aria-current="@(i == step ? "step" : null)"><span>@Steps[i]</span></li>
         }
     </ol>
 </div>
