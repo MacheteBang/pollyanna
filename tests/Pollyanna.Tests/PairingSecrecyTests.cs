@@ -152,5 +152,11 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         Assert.DoesNotContain("class=\"pairings\"", string.Concat(before));
         if (archived)
             Assert.Contains("Gifts", before.Single(p => p.StartsWith("/past ")));
+
+        // Home's waiting lines are covered: the unread question while drawn, the organizer's line for the draft.
+        var home = before.Single(p => p.StartsWith("/ "));
+        Assert.Contains("Ready to open", home);
+        if (viewer != Viewer.Organizer && !archived)
+            Assert.Contains("Your giver asked you something", home);
     }
 }

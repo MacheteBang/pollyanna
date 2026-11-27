@@ -360,12 +360,12 @@ public sealed class RevealArchiveTests : IAsyncLifetime
 
         var home = await browser.GetPageAsync("/");
         Assert.Null(home.QuerySelector($"a[href='/events/{ev}']"));
-        Assert.Equal("Past events (2)", home.QuerySelector("a[href='/past']")!.TextContent);
+        Assert.Equal("Past events", home.QuerySelector("a[href='/past']")!.TextContent);
 
         var past = await browser.GetPageAsync("/past");
-        var links = past.QuerySelectorAll(".slips a").Select(a => a.GetAttribute("href")).ToList();
+        var links = past.QuerySelectorAll("main li a").Select(a => a.GetAttribute("href")).ToList();
         Assert.Equal([$"/events/{ev}", $"/events/{organizedOnly}"], links);
         Assert.DoesNotContain($"/events/{notMine}", past.Source.Text);
-        Assert.Contains("You organized", past.QuerySelectorAll(".slips li")[1].TextContent);
+        Assert.Contains("You organized", past.QuerySelectorAll("main li")[1].TextContent);
     }
 }

@@ -43,12 +43,12 @@ public sealed class PageTests : IAsyncLifetime
         var page = await browser.GetPageAsync("/");
         var text = page.Body!.TextContent;
 
-        Assert.Contains("Nothing to unwrap yet", text);
-        Assert.Contains("Ask the organizer to invite this email", text);
-        Assert.Equal("sam.r@example.com", page.QuerySelector(".email-box")!.TextContent);
+        Assert.Contains("No events yet", text);
+        Assert.Contains("Give the organizer this address so they can add you", text);
+        Assert.Equal("sam.r@example.com", page.QuerySelector(".email-address")!.TextContent);
         Assert.NotNull(page.QuerySelector("a[href='/events/new']"));
-        Assert.Null(page.QuerySelector("a[href='/past']"));
-        Assert.Equal("Sam", page.QuerySelector(".whoami a[href='/account']")!.TextContent);
+        Assert.NotNull(page.QuerySelector("a[href='/past']"));
+        Assert.Equal("Sam", page.QuerySelector(".masthead-account")!.TextContent);
     }
 
     [Fact]
@@ -58,7 +58,8 @@ public sealed class PageTests : IAsyncLifetime
         using var _b = browser;
         var page = await browser.GetPageAsync("/");
         Assert.Contains("has no email address", page.Body!.TextContent);
-        Assert.Null(page.QuerySelector(".email-box"));
+        Assert.Null(page.QuerySelector(".email-address"));
+        Assert.Null(page.QuerySelector("[data-copy]"));
     }
 
     [Fact]
@@ -86,15 +87,15 @@ public sealed class PageTests : IAsyncLifetime
         await SeedEventAsync("Archived I organized", EventStatus.Archived, me, [me], []);
 
         var page = await browser.GetPageAsync("/");
-        var titles = page.QuerySelectorAll(".slip-title").Select(e => e.TextContent).Order().ToArray();
+        var titles = page.QuerySelectorAll(".cloth .panel-title").Select(e => e.TextContent).Order().ToArray();
 
         Assert.Equal(["Draft I organize", "Drawn I organize and am in", "Open I'm in"], titles);
-        Assert.Equal("Past events (2)", page.QuerySelector("a[href='/past']")!.TextContent.Trim());
-        Assert.DoesNotContain("Nothing to unwrap yet", page.Body!.TextContent);
+        Assert.Equal("Past events", page.QuerySelector("a[href='/past']")!.TextContent.Trim());
+        Assert.DoesNotContain("No events yet", page.Body!.TextContent);
     }
 
     [Fact]
-    public async Task Event_slip_shows_stamp_budget_date_and_organizer_line()
+    public async Task Event_panel_shows_status_budget_date_and_organizer_line()
     {
         var (browser, me) = await SignInAsync(new("me", "Me", "me@example.com", true, null));
         using var _b = browser;
@@ -102,18 +103,17 @@ public sealed class PageTests : IAsyncLifetime
         await SeedEventAsync("Cousins' Swap", EventStatus.Draft, me, [me], [me, other], budget: "$15");
 
         var page = await browser.GetPageAsync("/");
-        var slip = page.QuerySelector("a.slip")!;
-        Assert.StartsWith("/events/", slip.GetAttribute("href"));
-        Assert.Equal("DRAFT", slip.QuerySelector(".stamp")!.TextContent);
-        Assert.Contains("stamp-ink", slip.QuerySelector(".stamp")!.ClassList);
-        Assert.Contains("$15 · Dec 24, 2026", slip.TextContent);
-        Assert.Contains("You organize · 2 people", slip.TextContent);
+        var panel = page.QuerySelector(".cloth .panel")!;
+        Assert.StartsWith("/events/", panel.QuerySelector(".panel-title a")!.GetAttribute("href"));
+        Assert.Contains("draft, only organizers can see it · $15", panel.TextContent);
+        Assert.Contains("Dec 24, 2026", panel.TextContent);
+        Assert.Contains("You organize · 2 people", panel.TextContent);
     }
 
-    const string AboutLine = "Every family has a version of this: names on folded slips, a hat going round the table, someone squinting at the handwriting. Around Philadelphia they call it a Pollyanna. This is the hat, minus the squinting.";
+    const string AboutLine = "Every family has a version of this: names on folded slips, a hat going round the table, someone squinting at the handwriting. Around Philadelphia they call it a Pollyanna. This is that, minus the squinting.";
 
     [Fact]
-    public async Task Home_says_what_Pollyanna_is_with_and_without_events()
+    public async Task Home_says_what_Pollyanna_is_only_without_events()
     {
         var (browser, me) = await SignInAsync(new("me", "Me", "me@example.com", true, null));
         using var _b = browser;
@@ -124,8 +124,8 @@ public sealed class PageTests : IAsyncLifetime
         var other = await SeedPersonAsync("Other");
         await SeedEventAsync("Open I'm in", EventStatus.Open, other, [other], [me, other]);
         var listed = await browser.GetPageAsync("/");
-        Assert.NotNull(listed.QuerySelector(".slip-title"));
-        Assert.Equal(AboutLine, listed.QuerySelector(".about")!.TextContent.Trim());
+        Assert.NotNull(listed.QuerySelector(".cloth .panel-title"));
+        Assert.Null(listed.QuerySelector(".about"));
     }
 
     [Fact]

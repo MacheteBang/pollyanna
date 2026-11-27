@@ -351,9 +351,9 @@ public sealed class EventCreationTests : IAsyncLifetime
         await browser.SubmitOnAsync("/events/new", "/events/new", Fields(name: "Cousins' Swap", budget: "$15", date: "2026-12-20"));
 
         var home = await browser.GetPageAsync("/");
-        var slip = home.QuerySelector("a.slip")!;
-        Assert.Equal("Cousins' Swap", slip.QuerySelector(".slip-title")!.TextContent);
-        Assert.Equal("DRAFT", slip.QuerySelector(".stamp")!.TextContent);
+        var slip = home.QuerySelector(".cloth .panel")!;
+        Assert.Equal("Cousins' Swap", slip.QuerySelector(".panel-title")!.TextContent);
+        Assert.Contains("draft, only organizers can see it", slip.TextContent);
         Assert.Equal("2026-12-20", slip.QuerySelector("time")!.GetAttribute("datetime"));
         Assert.Equal("Dec 20, 2026", slip.QuerySelector("time")!.TextContent);
         var countdown = slip.QuerySelector("[data-countdown]")!;

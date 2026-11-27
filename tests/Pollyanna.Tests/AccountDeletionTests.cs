@@ -231,7 +231,7 @@ public sealed class AccountDeletionTests : IAsyncLifetime
         Assert.NotEqual(me, newId);
         Assert.False(await HasLoginsAsync());
         Assert.Equal(HttpStatusCode.NotFound, (await again.GetAsync($"/events/{ev}")).StatusCode);
-        Assert.Contains("Nothing to unwrap yet", (await again.GetPageAsync("/")).QuerySelector("h1")!.TextContent);
+        Assert.Contains("No events yet", (await again.GetPageAsync("/")).QuerySelector("h1")!.TextContent);
     }
 
     [Fact]
