@@ -1537,6 +1537,14 @@ words, and are left as written.
   Not yet done: walking every screen on a real phone against the mockups,
   with and without "reduce motion" and the script, and the #51 checklist
   on states the mockups didn't cover.
+- **Review fixes (2026-11-27).** The event's name now comes before the
+  switch on the event and organizing pages; the steps row is a chevron
+  trail; "Add people", "Add a household", "Add a rule", "Edit details" and
+  "Add an organizer" are fold rows, not buttons, and a link to a fold
+  (`a[data-opens]`, `site.js foldLinks()`) opens it; a draw refused over
+  households or rules offers "Change who can't draw whom"; "Questions from
+  your giver" shows before the first question too. `tablecloth.css` keeps
+  to the §12 spacing steps, and `PageHeadView` takes one `BackLink`.
 - **README, banner, screenshots and social preview (#80).**
   `docs/assets/banner.svg` is redrawn as §12 says (the girl from
   `_TableclothGirl` and the wordmark as Figtree 800 outlines on a 680 × 200
