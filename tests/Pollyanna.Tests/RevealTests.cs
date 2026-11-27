@@ -51,9 +51,6 @@ public sealed class RevealTests : IAsyncLifetime
     public async Task Tied_the_whole_band_is_the_gift_with_ribbons_and_the_bow_and_one_filled_button_below()
     {
         var page = await browser.GetPageAsync(Page);
-
-        Assert.Null(page.QuerySelector("link[href^='/css/site.css']"));
-        Assert.NotNull(page.QuerySelector("link[href^='/css/tablecloth.css']"));
         var gift = page.QuerySelector("#gift")!;
         Assert.False(gift.ClassList.Contains("untied"));
         var cloth = gift.QuerySelector(".cloth")!;

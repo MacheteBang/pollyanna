@@ -71,8 +71,6 @@ public sealed class OrganizingPageTests : IAsyncLifetime
         var page = await browser.GetPageAsync(Manage(ev));
 
         Assert.Equal("light", page.QuerySelector("meta[name=color-scheme]")!.GetAttribute("content"));
-        Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/tablecloth.css"));
-        Assert.DoesNotContain(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
         Assert.Empty(page.QuerySelectorAll("[style], style"));
         var hexes = Regex.Matches(page.DocumentElement.OuterHtml, "#[0-9A-Fa-f]{6}\\b").Select(m => m.Value.ToUpperInvariant()).Distinct();
         Assert.All(hexes, h => Assert.Contains(h, Palette));

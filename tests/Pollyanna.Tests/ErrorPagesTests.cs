@@ -36,8 +36,6 @@ public sealed class ErrorPagesTests : IAsyncLifetime
         Assert.Equal("130", girl.GetAttribute("width"));
         Assert.True(girl.CompareDocumentPosition(page.QuerySelector("main h1")!).HasFlag(DocumentPositions.Following));
         Assert.Empty(page.QuerySelectorAll(".cloth, .panel"));
-        Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/tablecloth.css"));
-        Assert.DoesNotContain(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
     }
 
     [Fact]

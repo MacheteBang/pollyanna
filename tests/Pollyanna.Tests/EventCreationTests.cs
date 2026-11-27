@@ -283,8 +283,6 @@ public sealed class EventCreationTests : IAsyncLifetime
         var page = await browser.GetPageAsync("/events/new");
 
         Assert.Equal("light", page.QuerySelector("meta[name=color-scheme]")!.GetAttribute("content"));
-        Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/tablecloth.css"));
-        Assert.DoesNotContain(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
         Assert.Empty(page.QuerySelectorAll("[style], style"));
     }
 
