@@ -372,3 +372,28 @@ strong, b { font-weight: 800; }
     line-height: 1.1;
     overflow-wrap: anywhere;
 }
+
+/* ---------- Error and sign-in failure pages: the girl large, no cloth (spec §7, §12) ---------- */
+
+/* One block in the column: the girl at about 130px, the title, one or two sentences, one way out. */
+.lone {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding-top: var(--space-5);
+    padding-bottom: var(--space-6);
+}
+
+/* The girl's drawing has air on its left; pull her back so she lines up with the text. */
+.lone > .girl { margin: var(--space-2) 0 var(--space-1) -14px; }
+
+/* The provider buttons run the full column width. */
+.lone > .actions { align-self: stretch; }
+
+/* "Back to your events": a plain link with a full tap target. */
+.lone-way-out {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+}
