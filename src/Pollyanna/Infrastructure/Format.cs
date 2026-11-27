@@ -1,5 +1,6 @@
 using System.Globalization;
 using Pollyanna.Data;
+using Pollyanna.Events;
 
 namespace Pollyanna.Infrastructure;
 
@@ -25,8 +26,22 @@ public static class Format
     /// <summary>The date as <c>&lt;time datetime&gt;</c> wants it.</summary>
     public static string IsoDate(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-    /// <summary>A message time (UTC, on the hour) as <c>&lt;time datetime&gt;</c> wants it.</summary>
-    public static string IsoHour(DateTime utc) => utc.ToString("yyyy-MM-dd'T'HH':00:00Z'", CultureInfo.InvariantCulture);
+    /// <summary>A message time (UTC) to the minute, as <c>&lt;time datetime&gt;</c> wants it.</summary>
+    public static string IsoMinute(DateTime utc) => utc.ToString("yyyy-MM-dd'T'HH':'mm'Z'", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// A message's time in UTC, for the page without the script: "7:42 PM UTC", or "about 7 PM
+    /// UTC" for one stored to the hour before times were exact (spec §6).
+    /// </summary>
+    public static string Said(Note message)
+    {
+        var at = message.CreatedAt;
+        var hour = at.Hour % 12 == 0 ? 12 : at.Hour % 12;
+        var half = at.Hour < 12 ? "AM" : "PM";
+        if (!message.OnTheHour)
+            return $"{hour}:{at.Minute:00} {half} UTC";
+        return "about " + (at.Hour == 0 ? "midnight" : at.Hour == 12 ? "noon" : $"{hour} {half}") + " UTC";
+    }
 
     public static string People(int count) => count == 1 ? "1 person" : $"{count} people";
 

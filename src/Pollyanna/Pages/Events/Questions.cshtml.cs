@@ -36,10 +36,6 @@ public sealed class QuestionsModel(PollyannaDb db, EventManager events, TimeProv
             : day.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
     }
 
-    /// <summary>A message's time, held to the hour (spec §6): "about 7 PM".</summary>
-    public static string About(int hour) =>
-        "about " + (hour == 0 ? "midnight" : hour == 12 ? "noon" : $"{hour % 12} {(hour < 12 ? "AM" : "PM")}");
-
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         if (!await LoadMembershipAsync(id) || !Membership.CanView || !Membership.IsParticipant)

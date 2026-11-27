@@ -6,8 +6,8 @@ namespace Pollyanna.Notifications.Kinds;
 
 /// <summary>
 /// "A question for you" (spec §15): the recipient of a thread whose giver asked something, held to
-/// the next full hour (docs/adr/0004). The row holds the event and the recipient only, which the
-/// assignment row already pairs; never the giver, the thread or the message.
+/// the next full hour as batching (docs/adr/0007). The row holds the event and the recipient
+/// only, which the assignment row already pairs; never the giver, the thread or the message.
 /// </summary>
 sealed class Question : NotificationKindDefinition<Question.Cause>
 {
@@ -20,7 +20,7 @@ sealed class Question : NotificationKindDefinition<Question.Cause>
     public override Task<IReadOnlyList<Recipient>> RecipientsAsync(Cause cause, PollyannaDb db) =>
         Task.FromResult<IReadOnlyList<Recipient>>([Recipient.Person(cause.RecipientId)]);
 
-    /// <summary>The next full hour (docs/adr/0004).</summary>
+    /// <summary>The next full hour, as batching (spec §15).</summary>
     public override DateTime HoldUntil(DateTime now) => NextFullHour(now);
 
     /// <summary>One still waiting covers this question too (spec §15).</summary>
@@ -48,6 +48,7 @@ sealed class Question : NotificationKindDefinition<Question.Cause>
         $"{context.EventUrl}/questions");
 
     /// <summary>The top of the next full hour after <paramref name="now"/> (UTC): when a question asked now is emailed.</summary>
-    /// <remarks>The hour after the one the question is stored under (spec §15).</remarks>
-    public static DateTime NextFullHour(DateTime now) => Message.HourOf(now).AddHours(1);
+    /// <remarks>Batching only since message times are exact (spec §15, docs/adr/0007).</remarks>
+    public static DateTime NextFullHour(DateTime now) =>
+        new(now.Ticks - now.Ticks % TimeSpan.TicksPerHour + TimeSpan.TicksPerHour, DateTimeKind.Utc);
 }

@@ -104,12 +104,12 @@ public sealed class QuestionConversationTests : IAsyncLifetime
             "-- Sunday --", "me: Yes, a small one that folds away.",
             "-- Today --", "giver: What's your favorite kind of tea?", "me: Earl Grey,\nor anything smoky.",
         ], Lines(conversation));
-        // Each message carries its hour, rounded, in machine form for the script and in words.
+        // Each message carries its time to the minute, in machine form for the script and in words.
         var times = conversation.QuerySelectorAll(".message time").ToList();
-        Assert.Equal("2030-11-20T16:00:00Z", times[0].GetAttribute("datetime"));
-        Assert.Contains("about 4 PM", times[0].TextContent);
-        Assert.Contains("about 8 AM", times[1].TextContent);
-        Assert.Contains("about 9 AM", times[3].TextContent);
+        Assert.Equal("2030-11-20T16:02Z", times[0].GetAttribute("datetime"));
+        Assert.Contains("4:02 PM", times[0].TextContent);
+        Assert.Contains("8:15 AM", times[1].TextContent);
+        Assert.Contains("9:40 AM", times[3].TextContent);
         // A screen reader hears who said what.
         Assert.StartsWith("Your giver:", conversation.QuerySelector(".message-theirs .bubble")!.TextContent.Trim());
         Assert.StartsWith("You:", conversation.QuerySelector(".message-mine .bubble")!.TextContent.Trim());

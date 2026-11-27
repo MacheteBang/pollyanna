@@ -118,13 +118,16 @@ public static class Seed
         return app.WithDbAsync(db => db.Assignments.AsNoTracking().SingleAsync(a => a.EventId == eventId && a.GiverTag == tag));
     }
 
-    /// <summary>Adds a message to the thread of <paramref name="giver"/>'s assignment, next in line, on the hour.</summary>
-    public static Task MessageAsync(this TestApp app, Guid eventId, Guid giver, MessageSender sender, string body) =>
+    /// <summary>
+    /// Adds a message to the thread of <paramref name="giver"/>'s assignment, next in line, at the
+    /// clock's time or at <paramref name="at"/> (UTC; on the hour for a message stored before exact times).
+    /// </summary>
+    public static Task MessageAsync(this TestApp app, Guid eventId, Guid giver, MessageSender sender, string body, DateTime? at = null) =>
         app.WithHatAsync(async (db, hat) =>
         {
             var thread = await hat.ThreadStateAsync(eventId, giver, MessageSender.Giver)
                 ?? throw new InvalidOperationException("No slip for that giver.");
-            if (!await hat.AddMessageAsync(thread, sender, body, Message.HourOf(app.Clock.GetUtcNow().UtcDateTime)))
+            if (!await hat.AddMessageAsync(thread, sender, body, at ?? app.Clock.GetUtcNow().UtcDateTime))
                 throw new InvalidOperationException("That giver's thread is gone.");
         });
 
