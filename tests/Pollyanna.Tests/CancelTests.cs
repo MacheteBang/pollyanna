@@ -82,7 +82,7 @@ public sealed class CancelTests : IAsyncLifetime
         deeBrowser.Dispose();
 
         // Irreversible: nothing more can be done to it.
-        Assert.Equal(HttpStatusCode.NotFound, (await browser.PostWithTokenAsync("/", $"{Manage(ev)}/open")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await browser.PostWithTokenAsync("/account", $"{Manage(ev)}/open")).StatusCode);
     }
 
     [Fact]

@@ -219,6 +219,6 @@ public sealed class InvitationTests : IAsyncLifetime
         var (sue, _) = await app.SignInAsync(new("sue", "Sue", "sue@example.com", true, null));
         using var _s = sue;
         var home = await sue.GetPageAsync("/");
-        Assert.Contains("Stockings", home.QuerySelector(".slip-title")!.TextContent);
+        Assert.Contains("Stockings", home.QuerySelector(".cloth .panel-title")!.TextContent);
     }
 }

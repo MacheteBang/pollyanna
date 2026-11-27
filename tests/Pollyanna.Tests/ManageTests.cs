@@ -340,7 +340,7 @@ public sealed class ManageTests : IAsyncLifetime
 
         Assert.Equal(EventStatus.Open, await app.WithDbAsync(db => db.Events.Where(e => e.Id == ev).Select(e => e.Status).SingleAsync()));
         Assert.Equal(HttpStatusCode.OK, (await carolBrowser.GetAsync($"/events/{ev}")).StatusCode);
-        Assert.Contains("OPEN", (await carolBrowser.GetPageAsync("/")).QuerySelector(".stamp")!.TextContent);
+        Assert.Contains("names not drawn yet", (await carolBrowser.GetPageAsync("/")).QuerySelector(".cloth .panel")!.TextContent);
         Assert.Null((await browser.GetPageAsync(Manage(ev))).QuerySelector($"form[action='{Manage(ev)}/open']"));
     }
 }

@@ -117,10 +117,12 @@ public sealed partial class EventManager
         return null;
     }
 
-    public async Task<DrawCheck> CheckDrawAsync(Membership m)
+    public Task<DrawCheck> CheckDrawAsync(Membership m) => CheckDrawAsync(m.Event.Id);
+
+    async Task<DrawCheck> CheckDrawAsync(Guid eventId)
     {
-        var (rules, incomplete) = await RulesWithNoRepeatAsync(m.Event.Id);
-        if (await BlockerAsync(m.Event.Id, rules) is { } blocker)
+        var (rules, incomplete) = await RulesWithNoRepeatAsync(eventId);
+        if (await BlockerAsync(eventId, rules) is { } blocker)
             return new DrawCheck(blocker, null, false);
         if (Draw.Problem(rules) is { } problem)
             return new DrawCheck(null, "Can't draw: " + problem, false, incomplete);
@@ -394,37 +396,6 @@ public sealed partial class EventManager
         participant.DoneShopping = done;
         await db.SaveChangesAsync();
         return Outcome.Done(done ? "Marked as done shopping." : "Marked as still shopping.");
-    }
-
-    /// <summary>
-    /// What the home page marks with a dot, per drawn event (spec §5.2, §6): the giver's recipient
-    /// changed or updated their notes, the recipient replied, or the viewer's own giver
-    /// wrote. Each line names nobody: the home page isn't behind "Tap to reveal".
-    /// </summary>
-    public async Task<Dictionary<Guid, List<string>>> SlipUpdatesAsync(Guid me, IEnumerable<Guid> drawnEvents)
-    {
-        var updates = new Dictionary<Guid, List<string>>();
-        foreach (var eventId in drawnEvents)
-        {
-            var lines = new List<string>();
-            var row = await hat.GiverSlipUpdatesAsync(eventId, me);
-            if (row is not null)
-            {
-                if (row.RecipientChanged)
-                    lines.Add("Your recipient has changed");
-                else if (row.Viewed && row.RecipientNotesVersion != row.NotesVersionSeen)
-                    lines.Add("Your recipient updated their notes");
-                if (row.Replies)
-                    lines.Add("Your recipient replied");
-            }
-
-            if (await hat.HasUnreadQuestionAsync(eventId, me))
-                lines.Add("Your giver asked you something");
-
-            if (lines.Count > 0)
-                updates[eventId] = lines;
-        }
-        return updates;
     }
 
     // ---------- What organizers see ----------

@@ -219,7 +219,7 @@ public sealed class DrawFlowTests : IAsyncLifetime
         // Before I've ever looked, there's nothing to mark as updated.
         await CarolEditsAsync();
         Assert.Null((await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".reveal .stamp"));
-        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".slip-update"));
+        Assert.Equal("See who you're giving to", (await browser.GetPageAsync("/")).QuerySelector(".waiting")!.TextContent.Trim());
 
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/seen");
         await CarolEditsAsync();
@@ -228,15 +228,14 @@ public sealed class DrawFlowTests : IAsyncLifetime
         Assert.Equal("UPDATED", page.QuerySelector(".reveal .stamp")!.TextContent);
         Assert.Contains("Notes updated since you last looked", page.QuerySelector(".reveal")!.TextContent);
         var home = await browser.GetPageAsync("/");
-        var update = home.QuerySelector(".slip-update")!;
-        Assert.NotNull(update.QuerySelector(".dot"));
+        var update = home.QuerySelector(".waiting")!;
         Assert.Equal("Your recipient updated their notes", update.TextContent.Trim());
         // The home page never names the recipient: it isn't behind "Tap to reveal".
         Assert.DoesNotContain("Carol", home.Body!.TextContent);
 
         await browser.SubmitAsync(page, $"/events/{ev}/seen");
         Assert.Null((await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".reveal .stamp"));
-        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".slip-update"));
+        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".waiting"));
     }
 
     [Fact]

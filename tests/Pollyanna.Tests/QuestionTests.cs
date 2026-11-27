@@ -66,7 +66,7 @@ public sealed class QuestionTests : IAsyncLifetime
     }
 
     static async Task<List<string>> HomeLinesAsync(TestBrowser browser) =>
-        [.. (await browser.GetPageAsync("/")).QuerySelectorAll(".slip-update").Select(e => e.TextContent.Trim())];
+        [.. (await browser.GetPageAsync("/")).QuerySelectorAll(".waiting").Select(e => e.TextContent.Trim())];
 
     [Fact]
     public async Task The_giver_asks_and_the_recipient_sees_it_without_their_name()
@@ -82,7 +82,7 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.Contains("You asked", mine.TextContent);
         Assert.Contains("What's your shoe size?", mine.TextContent);
 
-        // Ann: a dot on the home page and a note pinned on the event page, naming nobody.
+        // Ann: the waiting line on home and a note pinned on the event page, naming nobody.
         Assert.Equal(["Your giver asked you something"], await HomeLinesAsync(ann));
         var link = (await ann.GetPageAsync(Page)).QuerySelector(".passed-link")!;
         Assert.Equal(Questions, link.GetAttribute("href"));
@@ -90,15 +90,15 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.Contains("1 NEW", link.TextContent);
 
         var questions = await ann.GetPageAsync(Questions);
-        var note = questions.QuerySelector(".passed-theirs")!;
-        Assert.StartsWith("Giver ·", note.QuerySelector(".passed-label")!.TextContent);
+        var note = questions.QuerySelector(".message-theirs")!;
+        Assert.StartsWith("Your giver:", note.QuerySelector(".bubble")!.TextContent.Trim());
         Assert.Contains("What's your shoe size?", note.TextContent);
-        Assert.NotNull(note.QuerySelector(".passed-new"));
+        Assert.NotNull(note.QuerySelector(".message-new"));
         Assert.DoesNotContain("Pat", questions.Body!.TextContent);
 
-        // Opening the page read it.
-        Assert.Null((await ann.GetPageAsync(Questions)).QuerySelector(".passed-new"));
-        Assert.Empty(await HomeLinesAsync(ann));
+        // Opening the page read it, though it stays "new" on the page until it's answered.
+        Assert.NotNull((await ann.GetPageAsync(Questions)).QuerySelector(".message-new"));
+        Assert.DoesNotContain("Your giver asked you something", await HomeLinesAsync(ann));
         Assert.Contains("Questions from your giver", (await ann.GetPageAsync(Page)).QuerySelector(".passed-link")!.TextContent);
     }
 
@@ -108,12 +108,13 @@ public sealed class QuestionTests : IAsyncLifetime
         await AskAsync("Dark or milk chocolate?");
         await ReplyAsync("Dark, the darker the better!");
         Assert.Contains("Reply sent", await ThreadNoticeAsync(ann, Questions));
-        var mine = (await ann.GetPageAsync(Questions)).QuerySelectorAll(".passed-note").Last();
-        Assert.Contains("passed-mine", mine.ClassName);
-        Assert.Contains("You replied", mine.TextContent);
+        var mine = (await ann.GetPageAsync(Questions)).QuerySelectorAll(".message").Last();
+        Assert.Contains("message-mine", mine.ClassName);
+        Assert.StartsWith("You:", mine.QuerySelector(".bubble")!.TextContent.Trim());
+        Assert.Null((await ann.GetPageAsync(Questions)).QuerySelector(".message-new"));
 
-        // Pat: a dot, a hint on the folded card, and the reply inside it.
-        Assert.Equal(["Your recipient replied"], await HomeLinesAsync(pat));
+        // Pat: a hint on the folded card and the reply inside it. Home has no line for a reply (spec §7).
+        Assert.Equal(["See who you're giving to"], await HomeLinesAsync(pat));
         var page = await pat.GetPageAsync(Page);
         Assert.Contains("A NEW REPLY INSIDE", page.QuerySelector(".reveal-cover")!.TextContent);
         var reply = page.QuerySelector("#ask .passed-theirs")!;
@@ -138,7 +139,7 @@ public sealed class QuestionTests : IAsyncLifetime
         await ReplyAsync("Actually, a scarf.");
 
         await pat.SubmitAsync(page, $"{Page}/seen");
-        Assert.Equal(["Your recipient replied"], await HomeLinesAsync(pat));
+        Assert.Empty(await HomeLinesAsync(pat));
         var notes = (await pat.GetPageAsync(Page)).QuerySelectorAll("#ask .passed-note").ToList();
         Assert.Equal(3, notes.Count);
         Assert.Null(notes[1].QuerySelector(".passed-new"));
@@ -153,7 +154,7 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.Empty(questions.QuerySelectorAll("textarea"));
         Assert.Null((await ann.GetPageAsync(Page)).QuerySelector(".passed-link"));
 
-        await ann.PostWithTokenAsync(Questions, $"{Questions}/reply", Form(("body", "Hello!")));
+        await ann.PostWithTokenAsync(Page, $"{Questions}/reply", Form(("body", "Hello!")));
         Assert.Contains("Your giver writes first", await NoticeAsync(ann, Questions));
         Assert.Equal(0, await app.WithDbAsync(db => db.Messages.CountAsync()));
 
@@ -224,11 +225,12 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.All(thread.Take(3), m => Assert.Equal(Tomorrow.At(10), m.CreatedAt));
         Assert.Equal(Tomorrow.At(11), thread[3].CreatedAt);
 
-        var notes = (await ann.GetPageAsync(Questions)).QuerySelectorAll(".passed-note").ToList();
-        Assert.Equal(["one", "two", "three", "four"], notes.Select(n => n.QuerySelector(".passed-body")!.TextContent));
-        // The script turns the hour into e.g. "MON, ABOUT 10 AM"; the page itself carries only the hour.
-        Assert.Equal(Tomorrow.At(10).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture), notes[0].QuerySelector("time[data-hour]")!.GetAttribute("datetime"));
-        Assert.Equal(Tomorrow.At(10).ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture), notes[0].QuerySelector("time")!.TextContent);
+        var notes = (await ann.GetPageAsync(Questions)).QuerySelectorAll(".message").ToList();
+        Assert.Equal(["one", "two", "three", "four"], notes.Select(n => n.QuerySelector(".bubble-body")!.TextContent));
+        // The page carries the hour (in UTC, "about 10 AM UTC"); the script puts it in the viewer's time zone.
+        Assert.Equal(Tomorrow.At(10).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture), notes[0].QuerySelector("time[data-said]")!.GetAttribute("datetime"));
+        Assert.Equal("about 10 AM UTC", notes[0].QuerySelector("time")!.TextContent);
+        Assert.Equal("about 11 AM UTC", notes[3].QuerySelector("time")!.TextContent);
 
         // Another thread counts from 1 on its own.
         await app.MessageAsync(ev, carol, MessageSender.Giver, "Hat size?");
@@ -275,11 +277,11 @@ public sealed class QuestionTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync(Questions)).StatusCode);
             foreach (var action in new[] { $"{Questions}/reply", $"{Questions}/close", $"{Questions}/reopen" })
-                Assert.Equal(HttpStatusCode.NotFound, (await browser.PostWithTokenAsync("/", action, Form(("body", "hi")))).StatusCode);
+                Assert.Equal(HttpStatusCode.NotFound, (await browser.PostWithTokenAsync("/account", action, Form(("body", "hi")))).StatusCode);
         }
-        Assert.Equal(HttpStatusCode.NotFound, (await outsider.PostWithTokenAsync("/", $"{Page}/ask", Form(("body", "hi")))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await outsider.PostWithTokenAsync("/account", $"{Page}/ask", Form(("body", "hi")))).StatusCode);
         // The organizer can see the event, so asking is refused like their other event-page posts.
-        await organizer.PostWithTokenAsync("/", $"{Page}/ask", Form(("body", "hi")));
+        await organizer.PostWithTokenAsync("/account", $"{Page}/ask", Form(("body", "hi")));
         Assert.Contains("You aren't in this event", await NoticeAsync(organizer, $"{Page}/manage"));
         Assert.Equal(0, await app.WithDbAsync(db => db.Messages.CountAsync()));
         Assert.False((await app.AssignmentOfAsync(ev, patId)).ThreadClosed);
