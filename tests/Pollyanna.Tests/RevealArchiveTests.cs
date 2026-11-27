@@ -61,15 +61,7 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         return (page.QuerySelector(".notice-error") ?? page.QuerySelector(".notice"))?.TextContent;
     }
 
-    /// <summary>The revealed list as "Giver → Recipient" lines; a person's name is the last thing beside their avatar.</summary>
-    static List<string> Lines(AngleSharp.Html.Dom.IHtmlDocument page) =>
-        [.. page.QuerySelectorAll("li.pairing").Select(li =>
-        {
-            var people = li.QuerySelectorAll(".pairing-person").Select(p => (p.Children.LastOrDefault() ?? p).TextContent.Trim()).ToList();
-            return $"{people[0]} → {people[1]}";
-        })];
-
-    /// <summary>The event page's "Who drew whom" rows as their words ("Ann gave to Bob"), without the picture.</summary>
+    /// <summary>The "Who drew whom" rows (event page or organizing page) as their words ("Ann gave to Bob"), without the picture.</summary>
     static List<string> Pairs(AngleSharp.Html.Dom.IHtmlDocument page) =>
         [.. page.QuerySelectorAll(".who-drew-whom > li").Select(li => li.Children.Last().TextContent.Trim())];
 
@@ -158,8 +150,7 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         // An organizer who isn't in the hat sees it on the manage page.
         var oliveEvent = await oliveBrowser.GetFollowingAsync($"/events/{ev}");
         var manage = await TestBrowser.ParseAsync(oliveEvent);
-        Assert.Equal(4, Lines(manage).Count);
-        Assert.Contains("Pat → Ann", Lines(manage));
+        Assert.Equal(["Ann gave to Bob", "Bob gave to Carol", "Carol gave to Pat", "Pat gave to Ann"], Pairs(manage).Order());
 
         Assert.Equal(HttpStatusCode.NotFound, (await outsiderBrowser.GetAsync($"/events/{ev}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await outsiderBrowser.GetAsync(Manage(ev))).StatusCode);
@@ -258,7 +249,7 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         Assert.Null(page.QuerySelector(".who-drew-whom"));
         Assert.Null(page.QuerySelector(".bubble"));
         Assert.Null(page.QuerySelector("#your-notes textarea"));
-        Assert.Null((await browser.GetPageAsync(Manage(ev))).QuerySelector(".pairings"));
+        Assert.Null((await browser.GetPageAsync(Manage(ev))).QuerySelector(".who-drew-whom"));
     }
 
     [Fact]

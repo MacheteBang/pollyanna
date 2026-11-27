@@ -7,8 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Pollyanna.Pages.Events;
 
 /// <summary>
-/// The organizer's page (spec §7): status, people and invitations, households and extra rules,
-/// organizers, details. Anyone who isn't an organizer of the event gets "not found" (spec §8).
+/// The organizing page (spec §7): the next step, people and invitations (or who drew whom once
+/// revealed), the folds for households, rules, details and organizers, then "Bigger changes".
+/// Anyone who isn't an organizer of the event gets "not found" (spec §8).
 /// Every action posts, checks the organizer role, and comes back here with what happened.
 /// Organizers see who has viewed their assignment and who is done shopping, never who drew whom
 /// until the pairings are revealed.
@@ -93,6 +94,22 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
         EventStatus.Drawn when !Viewed.Contains(p.Id) => "hasn't looked yet",
         _ => null,
     };
+
+    /// <summary>The summary on the right of "Who can't draw whom" (spec §7): "2 households, 1 rule", or "None".</summary>
+    public string RulesSummary
+    {
+        get
+        {
+            string[] parts = [
+                .. Households.Count == 0 ? [] : new[] { Households.Count == 1 ? "1 household" : $"{Households.Count} households" },
+                .. Exclusions.Count == 0 ? [] : new[] { Exclusions.Count == 1 ? "1 rule" : $"{Exclusions.Count} rules" },
+            ];
+            return parts.Length == 0 ? "None" : string.Join(", ", parts);
+        }
+    }
+
+    /// <summary>The summary on the right of "Details and organizers" (spec §7): "2 organizers".</summary>
+    public string OrganizersSummary => Organizers.Count == 1 ? "1 organizer" : $"{Organizers.Count} organizers";
 
     // The details form, re-shown with what was typed when it doesn't save.
     [BindProperty] public string? Name { get; set; }

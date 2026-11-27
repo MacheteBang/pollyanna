@@ -238,4 +238,156 @@ public sealed class OrganizingChangesTests : IAsyncLifetime
         Assert.Contains("Everyone's assignments go, and any question-box messages are deleted.", text);
         Assert.DoesNotMatch(@"\bslips?\b", text);
     }
+
+    // ---------- Folds ----------
+
+    /// <summary>A closed fold-open row: its title, and the summary on its right.</summary>
+    static (string Title, string Hint) Fold(IElement fold)
+    {
+        Assert.Equal("DETAILS", fold.TagName);
+        Assert.Contains("fold", fold.ClassList);
+        Assert.False(fold.HasAttribute("open"));
+        var summary = fold.QuerySelector("summary")!;
+        return (Squash(summary.FirstElementChild!.TextContent), Squash(summary.QuerySelector(".fold-hint")!.TextContent));
+    }
+
+    [Fact]
+    public async Task Who_cant_draw_whom_and_details_are_closed_rows_with_a_summary()
+    {
+        var (ann, bob, cy, dee) = await FourOthersAsync();
+        var olive = await app.PersonAsync("Olive");
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me, olive], [me, ann, bob, cy, dee]);
+        await app.WithDbAsync(async db =>
+        {
+            var okafors = new Household { EventId = ev, Name = "The Okafors" };
+            var lees = new Household { EventId = ev, Name = "The Lees" };
+            db.Households.AddRange(okafors, lees);
+            await db.SaveChangesAsync();
+            (await db.Participants.SingleAsync(p => p.EventId == ev && p.PersonId == ann)).HouseholdId = okafors.Id;
+            (await db.Participants.SingleAsync(p => p.EventId == ev && p.PersonId == bob)).HouseholdId = lees.Id;
+            db.Exclusions.Add(Exclusion.Between(ev, cy, dee));
+            await db.SaveChangesAsync();
+        });
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.Equal(("Who can't draw whom", "2 households, 1 rule"), Fold(page.QuerySelector("#rules")!));
+        var settings = page.QuerySelector("#settings")!;
+        Assert.Equal(("Details and organizers", "2 organizers"), Fold(settings));
+        Assert.Contains("Organizers manage the event but don't see who drew whom. Being one doesn't make them a participant.",
+            Squash(settings.TextContent));
+        // Both sit after the people and before "Bigger changes".
+        var order = page.QuerySelectorAll("#people, #rules, #settings, #changes").Select(e => e.Id);
+        Assert.Equal(["people", "rules", "settings", "changes"], order);
+    }
+
+    [Theory]
+    [InlineData(0, 0, "None")]
+    [InlineData(1, 0, "1 household")]
+    [InlineData(0, 2, "2 rules")]
+    public async Task The_summaries_count_what_is_there(int households, int rules, string rulesHint)
+    {
+        var (ann, bob, cy, dee) = await FourOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy, dee]);
+        await app.WithDbAsync(async db =>
+        {
+            for (var i = 0; i < households; i++)
+                db.Households.Add(new Household { EventId = ev, Name = $"House {i}" });
+            if (rules > 0) db.Exclusions.Add(Exclusion.Between(ev, ann, bob));
+            if (rules > 1) db.Exclusions.Add(Exclusion.Between(ev, cy, dee));
+            await db.SaveChangesAsync();
+        });
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.Equal(rulesHint, Fold(page.QuerySelector("#rules")!).Hint);
+        Assert.Equal("1 organizer", Fold(page.QuerySelector("#settings")!).Hint);
+    }
+
+    [Fact]
+    public async Task Everything_the_folds_hold_still_works()
+    {
+        var (ann, bob, cy, _) = await FourOthersAsync();
+        var olive = await app.PersonAsync("Olive");
+        await app.EventAsync("Last year", EventStatus.Archived, [me], [me, olive]);
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy]);
+
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/savehousehold",
+            [new("householdName", "The Okafors"), new("members", ann.ToString()), new("members", bob.ToString())]);
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/addrule", Form(("personA", bob.ToString()), ("personB", cy.ToString())));
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/addorganizer", Form(("personId", olive.ToString())));
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/details",
+            Form(("Name", "Stockings 2027"), ("BudgetText", "$30"), ("ExchangeDate", "2027-01-06"), ("PreviousEventId", ""), ("NoRepeatDepth", "1")));
+
+        var page = await browser.GetPageAsync(Manage(ev));
+        Assert.Equal("2 organizers", Fold(page.QuerySelector("#settings")!).Hint);
+        Assert.Equal("1 household, 1 rule", Fold(page.QuerySelector("#rules")!).Hint);
+        var rules = Squash(page.QuerySelector("#rules")!.TextContent);
+        Assert.Contains("The Okafors", rules);
+        Assert.Contains("Ann, Bob", rules);
+        var settings = Squash(page.QuerySelector("#settings")!.TextContent);
+        Assert.Contains("Stockings 2027", settings);
+        Assert.Contains("$30", settings);
+        Assert.Contains("Olive", settings);
+    }
+
+    [Fact]
+    public async Task Details_that_dont_save_come_back_with_the_fold_open()
+    {
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me]);
+
+        var response = await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/details",
+            Form(("Name", ""), ("BudgetText", "$99"), ("ExchangeDate", "2027-01-06"), ("PreviousEventId", ""), ("NoRepeatDepth", "1")));
+
+        var page = await TestBrowser.ParseAsync(response);
+        Assert.True(page.QuerySelector("#settings")!.HasAttribute("open"));
+        Assert.True(page.QuerySelector("#settings #details details")!.HasAttribute("open"));
+        Assert.Contains("Give the event a name.", page.QuerySelector("#details")!.TextContent);
+    }
+
+    // ---------- Once revealed ----------
+
+    [Fact]
+    public async Task Once_revealed_who_drew_whom_takes_the_place_of_the_people()
+    {
+        var (ann, bob, _, _) = await FourOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me, ann, bob]);
+        await app.SealAsync(ev, Loop(me, ann, bob));
+        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/reveal", Form(("confirmed", "true")));
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.Null(page.QuerySelector("#people"));
+        var list = page.QuerySelector("#pairings")!;
+        Assert.Equal("Who drew whom", Squash(list.QuerySelector("h2")!.TextContent));
+        Assert.Equal(["Ann gave to Bob", "Bob gave to you", "You gave to Ann"],
+            list.QuerySelectorAll(".who-drew-whom > li").Select(li => Squash(li.Children.Last().TextContent)).Order());
+    }
+
+    [Theory]
+    [InlineData(EventStatus.Draft)]
+    [InlineData(EventStatus.Open)]
+    [InlineData(EventStatus.Drawn)]
+    [InlineData(EventStatus.Revealed)]
+    [InlineData(EventStatus.Archived)]
+    public async Task No_string_on_the_page_says_hat_or_slip(EventStatus status)
+    {
+        var (ann, bob, cy, _) = await FourOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me, ann, bob, cy]);
+        await app.WithDbAsync(async db =>
+        {
+            db.Households.Add(new Household { EventId = ev, Name = "The Okafors" });
+            db.Exclusions.Add(Exclusion.Between(ev, ann, bob));
+            await db.SaveChangesAsync();
+        });
+        if (status >= EventStatus.Drawn)
+            await app.SealAsync(ev, Loop(me, ann, bob, cy));
+        await app.WithDbAsync(db => db.Events.Where(e => e.Id == ev).ExecuteUpdateAsync(s => s.SetProperty(e => e.Status, status)));
+        await app.WithDbAsync(db => db.Participants.Where(p => p.EventId == ev && p.PersonId == ann)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, status == EventStatus.Drawn)));
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.DoesNotMatch(@"\b(hat|slips?|stamp)\b", page.QuerySelector("main")!.TextContent.ToLowerInvariant());
+    }
 }
