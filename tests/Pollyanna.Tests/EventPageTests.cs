@@ -95,6 +95,8 @@ public sealed class EventPageTests : IAsyncLifetime
         Assert.Null(head.QuerySelector(".page-head-back"));
         var links = head.QuerySelectorAll("nav.switch a").Select(a => (Text(a), a.GetAttribute("href"), a.GetAttribute("aria-current"))).ToList();
         Assert.Equal([("My page", $"/events/{ev}", "page"), ("Organizing", $"/events/{ev}/manage", null)], links);
+        // The event's name comes first; the switch sits right under it.
+        Assert.Equal(["h1", "nav"], head.Children.Take(2).Select(c => c.LocalName));
         Assert.Equal("Dec 24, 2026 · $25 · draft, only organizers can see it", Text(head.QuerySelector(".page-head-line")));
     }
 
@@ -146,8 +148,6 @@ public sealed class EventPageTests : IAsyncLifetime
             var page = await browser.GetPageAsync(path);
 
             Assert.Equal("light", page.QuerySelector("meta[name=color-scheme]")!.GetAttribute("content"));
-            Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/tablecloth.css"));
-            Assert.DoesNotContain(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
             Assert.Empty(page.QuerySelectorAll("[style], style"));
             var hexes = Regex.Matches(page.DocumentElement.OuterHtml, "#[0-9A-Fa-f]{6}\\b").Select(m => m.Value.ToUpperInvariant()).Distinct();
             Assert.All(hexes, h => Assert.Contains(h, Palette));

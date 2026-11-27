@@ -307,10 +307,10 @@ public sealed class OrganizingChangesTests : IAsyncLifetime
     [Fact]
     public async Task Everything_the_folds_hold_still_works()
     {
-        var (ann, bob, cy, _) = await FourOthersAsync();
+        var (ann, bob, cy, dee) = await FourOthersAsync();
         var olive = await app.PersonAsync("Olive");
         await app.EventAsync("Last year", EventStatus.Archived, [me], [me, olive]);
-        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy]);
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy, dee]);
 
         await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/savehousehold",
             [new("householdName", "The Okafors"), new("members", ann.ToString()), new("members", bob.ToString())]);

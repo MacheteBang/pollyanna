@@ -5,7 +5,7 @@
    cloth. Once names are drawn there is a second step, saying someone else's assignment changes. *@
 @{
     ViewData["Title"] = "Leave " + Model.Event.Name;
-    var head = new Pollyanna.Pages.Shared.PageHeadView("Leave this event?", BackText: Model.Event.Name, BackHref: $"/events/{Model.Event.Id}");
+    var head = new Pollyanna.Pages.Shared.PageHeadView("Leave this event?", Back: new(Model.Event.Name, $"/events/{Model.Event.Id}"));
 }
 <partial name="_PageHead" model="head" />
 <div class="column below confirm">

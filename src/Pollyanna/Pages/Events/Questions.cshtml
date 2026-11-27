@@ -17,7 +17,7 @@
     var thread = Model.Thread;
 }
 
-<partial name="_PageHead" model="@(new PageHeadView("Questions for you", "Your giver asks, you answer. Their name stays a secret.", Model.Event.Name, $"/events/{Model.Event.Id}"))" />
+<partial name="_PageHead" model="@(new PageHeadView("Questions for you", "Your giver asks, you answer. Their name stays a secret.", new Pollyanna.Pages.Shared.BackLink(Model.Event.Name, $"/events/{Model.Event.Id}")))" />
 
 @{
     void Conversation(QuestionThread t)

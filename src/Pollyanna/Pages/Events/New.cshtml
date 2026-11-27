@@ -5,7 +5,7 @@
 @using Pollyanna.Pages.Shared
 @{
     ViewData["Title"] = "New event";
-    var head = new PageHeadView("New event", BackText: "Home", BackHref: "/");
+    var head = new PageHeadView("New event", Back: new("Home", "/"));
 }
 
 <partial name="_PageHead" model="head" />

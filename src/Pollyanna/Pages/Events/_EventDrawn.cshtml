@@ -154,7 +154,7 @@ else
 }
 
 <div class="column below">
-    @if (questions is { Unread: 0 })
+    @if (questions is not { Unread: > 0 })
     {
         <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
     }

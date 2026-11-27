@@ -8,7 +8,7 @@
 @* A confirmation (spec §7): no cloth. The question is the title, what it costs follows as plain
    text, then the red button and the way out as a link. Blocked, only what to do first. *@
 
-<partial name="_PageHead" model='new Pollyanna.Pages.Shared.PageHeadView("Delete your account?", null, "Your account", "/account")' />
+<partial name="_PageHead" model='new Pollyanna.Pages.Shared.PageHeadView("Delete your account?", Back: new("Your account", "/account"))' />
 
 <div class="column groups">
     @if (check.OnlyOrganizerOf.Count > 0)

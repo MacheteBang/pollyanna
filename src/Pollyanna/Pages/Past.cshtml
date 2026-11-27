@@ -8,7 +8,7 @@
 
 @* Past events (spec §7): a plain list with no cloth. Each row is one link: the name; date and
    budget; the viewer's part in it. No status word: everything here is over. *@
-<partial name="_PageHead" model="@(new PageHeadView("Past events", BackText: "Home", BackHref: "/"))" />
+<partial name="_PageHead" model="@(new PageHeadView("Past events", Back: new("Home", "/")))" />
 <div class="column">
     @if (Model.Events.Count == 0)
     {

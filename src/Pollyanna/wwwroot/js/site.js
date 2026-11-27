@@ -188,6 +188,18 @@ function saveOnChange() {
     }
 }
 
+// A link to a fold on the same page, such as the blocker's "Add people" on the organizing page
+// (spec §7): it opens the fold as well as moving to it. Without the script the page renders that
+// fold open, so the link alone is enough.
+function foldLinks() {
+    for (const link of document.querySelectorAll("a[data-opens]")) {
+        link.addEventListener("click", () => {
+            const fold = document.getElementById(link.hash.slice(1));
+            if (fold instanceof HTMLDetailsElement) fold.open = true;
+        });
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     countdowns();
     copyButtons();
@@ -197,4 +209,5 @@ document.addEventListener("DOMContentLoaded", () => {
     conversations();
     counters();
     saveOnChange();
+    foldLinks();
 });

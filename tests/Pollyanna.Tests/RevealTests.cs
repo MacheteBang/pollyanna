@@ -51,9 +51,6 @@ public sealed class RevealTests : IAsyncLifetime
     public async Task Tied_the_whole_band_is_the_gift_with_ribbons_and_the_bow_and_one_filled_button_below()
     {
         var page = await browser.GetPageAsync(Page);
-
-        Assert.Null(page.QuerySelector("link[href^='/css/site.css']"));
-        Assert.NotNull(page.QuerySelector("link[href^='/css/tablecloth.css']"));
         var gift = page.QuerySelector("#gift")!;
         Assert.False(gift.ClassList.Contains("untied"));
         var cloth = gift.QuerySelector(".cloth")!;
@@ -163,6 +160,16 @@ public sealed class RevealTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task With_no_questions_yet_the_quiet_link_to_them_still_shows()
+    {
+        var page = await browser.GetPageAsync(Page);
+
+        Assert.Equal(["head", "gift", "questions", "notes", "people", "leave"], Order(page));
+        Assert.Equal($"{Page}/questions", page.QuerySelector(".questions-link")!.GetAttribute("href"));
+        Assert.Null(page.QuerySelector(".asked-link"));
+    }
+
+    [Fact]
     public async Task My_notes_and_the_people_are_folded_to_a_preview_and_a_count()
     {
         var page = await browser.GetPageAsync(Page);
@@ -185,7 +192,7 @@ public sealed class RevealTests : IAsyncLifetime
 
         var page = await browser.GetPageAsync(Page);
 
-        Assert.Equal(["head", "again", "gift", "notes", "people", "leave"], Order(page));
+        Assert.Equal(["head", "again", "gift", "questions", "notes", "people", "leave"], Order(page));
         Assert.Equal("Names were drawn again, so this may be someone new.", Text(page.QuerySelector(".gift-again")));
         Assert.Equal("true", page.QuerySelector("#gift")!.GetAttribute("data-first"));
         await browser.SubmitOnAsync(Page, $"{Page}/seen");

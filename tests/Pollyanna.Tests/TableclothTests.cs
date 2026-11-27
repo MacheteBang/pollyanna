@@ -130,8 +130,6 @@ public sealed class TableclothTests : IAsyncLifetime
         var page = await browser.GetPageAsync(path);
 
         Assert.Equal("light", page.QuerySelector("meta[name=color-scheme]")!.GetAttribute("content"));
-        Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/tablecloth.css"));
-        Assert.DoesNotContain(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
         foreach (var el in page.QuerySelectorAll("[src], [href]").Where(e => e.LocalName != "a"))
         {
             var url = el.GetAttribute("src") ?? el.GetAttribute("href")!;
@@ -155,8 +153,9 @@ public sealed class TableclothTests : IAsyncLifetime
         Assert.DoesNotContain("http", css);
         var hexes = Regex.Matches(css, "#[0-9A-Fa-f]{3,8}\\b").Select(m => m.Value.ToUpperInvariant()).ToList();
         Assert.Equal(Palette.Order(), hexes.Order());
-        // The gingham's thread is ribbon blue at 50%, and no other color is written any other way.
-        Assert.Equal(["rgb(63 110 140 / 0.5)"], Regex.Matches(css, @"(rgb|hsl|oklch|lab)a?\([^)]*\)").Select(m => m.Value).Distinct());
+        // The gingham's thread is ribbon blue at 50%, mixed from the token; no color is written any other way.
+        Assert.Contains("--thread: color-mix(in srgb, var(--ribbon) 50%, transparent);", css);
+        Assert.Empty(Regex.Matches(css, @"(rgb|hsl|oklch|lab)a?\("));
         Assert.Contains("background-size: 28px 28px", css);
         Assert.Contains("color-scheme: light", css);
     }

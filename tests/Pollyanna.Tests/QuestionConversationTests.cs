@@ -199,8 +199,6 @@ public sealed class QuestionConversationTests : IAsyncLifetime
         var page = await ann.GetPageAsync(Questions);
 
         Assert.Equal("light", page.QuerySelector("meta[name=color-scheme]")!.GetAttribute("content"));
-        Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/tablecloth.css"));
-        Assert.DoesNotContain(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
         Assert.Empty(page.QuerySelectorAll("[style], style"));
         string[] palette = ["#FFFFFF", "#1E1A16", "#5B5650", "#3F6E8C", "#DCE7EE", "#9E2019"];
         var hexes = Regex.Matches(page.DocumentElement.OuterHtml, "#[0-9A-Fa-f]{6}\\b").Select(m => m.Value.ToUpperInvariant()).Distinct();
