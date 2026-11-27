@@ -1,0 +1,233 @@
+<title>Pollyanna Email Bow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE, throwaway. Answers map ticket #63: what exactly is the bow image the email carries?
+  Four takes on the image (as drawn, a white edge, another knot, a white tile), each shown on white and on a
+  darkened ground, in the decided email layout (A, from #61) and close up. Size, folds, alt text and the
+  dark ground are live controls. It opens on the recommended set.
+  The bow in the mock email is a real PNG, drawn by the page at 2x, so it behaves as an image does in a
+  mail client: its pixels stay put while the ground behind it changes.
+  Published as a page, so there is no doctype or body tag here. Figtree comes from Google Fonts for the
+  page around the mockups only. The email is in the system font on purpose: an email loads nothing.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&display=swap">
+<style>
+/* Layout: the ask, one row of controls, the email twice (white, darkened), then all four takes close up. */
+:root {
+  --bg: #FFFFFF; --fg: #1E1A16; --soft: #5B5650; --blue: #3F6E8C; --line: #DCE7EE; --card: #F4F8FA; --pick: #1E1A16;
+  --ui: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mail: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #16191B; --fg: #EDEBE8; --soft: #B3AEA8; --blue: #8FB6CF; --line: #2F3B44; --card: #1E2428; --pick: #EDEBE8; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #16191B; --fg: #EDEBE8; --soft: #B3AEA8; --blue: #8FB6CF; --line: #2F3B44; --card: #1E2428; --pick: #EDEBE8; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--ui) }
+.page { max-width: 880px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 32px }
+h1, h2, p, ol { margin: 0 }
+h1 { font-size: 1.8rem; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance }
+h2 { font-size: 1.45rem; line-height: 1.15; font-weight: 800; letter-spacing: -.02em; text-wrap: balance }
+.lede { max-width: 66ch }
+.sec { display: flex; flex-direction: column; gap: 14px; min-width: 0 }
+.cap { font-size: .875rem; color: var(--soft); max-width: 72ch }
+.ask { background: var(--card); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px }
+.ask ol { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; max-width: 72ch }
+.ctl { display: flex; flex-wrap: wrap; gap: 12px 16px }
+.ctl label { display: flex; flex-direction: column; gap: 4px; font-size: .875rem; font-weight: 600 }
+select { font: 16px/1.3 var(--ui); color: var(--fg); background: var(--bg); border: 2px solid var(--pick); border-radius: 10px; padding: 9px 10px; min-height: 44px; max-width: 100% }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px }
+.pair { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start }
+.pair > div { flex: 1 1 300px; min-width: 0; max-width: 400px; display: flex; flex-direction: column; gap: 6px }
+.tag { font-size: .875rem; font-weight: 800 }
+
+/* ---- the email: literal colors on purpose, it is a picture of a mail client ---- */
+.client { border: 2px solid var(--line); border-radius: 12px; overflow: hidden; color-scheme: light;
+  --m-bg: #FFFFFF; --m-ink: #1E1A16; --m-soft: #5B5650; --m-band: #DCE7EE; --m-panel: #FFFFFF; --m-btn: #1E1A16; --m-btn-t: #FFFFFF; --m-chrome: #F3F5F6; --m-chrome-t: #1E1A16 }
+.client.dark { --m-bg: var(--dk, #1C1C1C); --m-ink: #EDEBE8; --m-soft: #B3AEA8; --m-band: #2A3944; --m-panel: var(--dk, #1C1C1C); --m-btn: #EDEBE8; --m-btn-t: #1C1C1C; --m-chrome: #0A0A0A; --m-chrome-t: #EDEBE8 }
+.chrome { background: var(--m-chrome); color: var(--m-chrome-t); padding: 12px 16px; font: 14px/1.4 var(--mail); display: flex; flex-direction: column; gap: 2px }
+.chrome b { font-size: 16px }
+.chrome span { opacity: .75; overflow-wrap: anywhere }
+.mail { background: var(--m-bg); color: var(--m-ink); font: 16px/1.5 var(--mail) }
+.mail p, .mail h3 { margin: 0 }
+.mail .top { padding: 16px 24px }
+.mail .wm { font-weight: 800; font-size: 22px; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px }
+.mail .wm img { flex: none; display: block }
+.mail .blocked { flex: none; border: 1px solid var(--m-soft); font: 400 9px/1 var(--mail); letter-spacing: 0; color: var(--m-soft); overflow: hidden; display: block; padding: 1px }
+.mail .band { background: var(--m-band); padding: 24px 16px 40px }
+.mail .pan { background: var(--m-panel); border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px }
+.mail h3 { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15 }
+.mail .cta { display: block; background: var(--m-btn); color: var(--m-btn-t); font-weight: 800; font-size: 18px; line-height: 1.3; text-align: center; padding: 13px 18px; border-radius: 10px }
+.mail .url { font-size: 14px; color: var(--m-soft); overflow-wrap: anywhere }
+.mail .under { padding: 20px 24px 28px; font-size: 14px; color: var(--m-soft); display: flex; flex-direction: column; gap: 4px }
+.mail .under b { color: var(--m-ink); font-weight: 600 }
+
+/* ---- close up ---- */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+@media (min-width: 720px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)) } }
+.take { border: 2px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--fg); font: inherit; padding: 0; text-align: left; cursor: pointer }
+.take[aria-pressed="true"] { border-color: var(--pick) }
+.take .nm { padding: 10px 12px; font-size: .875rem; line-height: 1.35; display: flex; flex-direction: column; gap: 2px }
+.take .nm b { font-weight: 800 }
+.take .nm span { color: var(--soft) }
+.sw { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 18px 8px; min-height: 150px; color-scheme: light }
+.sw.w { background: #FFFFFF }
+.sw.d { background: var(--dk, #1C1C1C) }
+.sw img { display: block; flex: none }
+.facts { display: flex; flex-direction: column; gap: 4px; font-size: .9375rem; font-variant-numeric: tabular-nums; max-width: 72ch }
+.facts b { font-weight: 800 }
+</style>
+
+<div class="page">
+  <header class="sec">
+    <h1>The bow the email carries</h1>
+    <p class="lede">A mail client that darkens an email leaves the picture alone and darkens the ground behind it. Drawn as it is today, the bow's ink knot sinks into that ground and the two loops come apart. Below is the bow four ways, each on white and darkened, in the email and close up.</p>
+  </header>
+
+  <div class="ask">
+    <p><b>Four picks.</b> The page opens on what I'd choose.</p>
+    <ol>
+      <li><b>Which image.</b> A white edge (recommended): the mark stays as drawn and matches the reveal and the touch icon. Or another knot, a white tile, or the bow left as drawn.</li>
+      <li><b>Size</b> beside the wordmark: 26px recommended.</li>
+      <li><b>Folds</b> at that size: kept (recommended) or left out, as on the favicon.</li>
+      <li><b>Alt text:</b> none (recommended), since the wordmark right beside it already says the name, or "Pollyanna".</li>
+    </ol>
+  </div>
+
+  <section class="sec">
+    <h2>In the email</h2>
+    <div class="ctl">
+      <label for="f-fix">Image<select id="f-fix"><option value="edge">A white edge</option><option value="knot">Another knot</option><option value="tile">A white tile</option><option value="plain">As drawn, no fix</option></select></label>
+      <label for="f-edge">Edge width<select id="f-edge"><option value="1">1px</option><option value="1.5" selected>1.5px</option><option value="2">2px</option><option value="3">3px</option></select></label>
+      <label for="f-knot">Knot color<select id="f-knot"><option value="#DCE7EE">Pale blue</option><option value="#FFFFFF">White</option><option value="#3F6E8C">Ribbon blue</option></select></label>
+      <label for="f-corner">Tile corner<select id="f-corner"><option value="0">Square</option><option value="6" selected>Rounded</option></select></label>
+      <label for="f-size">Size<select id="f-size"><option value="20">20px</option><option value="24">24px</option><option value="26" selected>26px</option><option value="32">32px</option></select></label>
+      <label for="f-folds">Folds<select id="f-folds"><option value="on">Kept</option><option value="off">Left out</option></select></label>
+      <label for="f-alt">Alt text<select id="f-alt"><option value="">None (decoration)</option><option value="Pollyanna">"Pollyanna"</option></select></label>
+      <label for="f-show">The image<select id="f-show"><option value="on">Draws</option><option value="off">Doesn't draw</option></select></label>
+      <label for="f-dark">Darkened ground<select id="f-dark"><option value="#1C1C1C">Near black #1C1C1C</option><option value="#000000">Black #000000</option><option value="#2B2B2B">Dark gray #2B2B2B</option></select></label>
+    </div>
+    <div class="pair">
+      <div><span class="tag">As sent, on white</span><div class="client" id="c-light"></div></div>
+      <div><span class="tag">Darkened by the mail client</span><div class="client dark" id="c-dark"></div></div>
+    </div>
+    <p class="cap" id="note"></p>
+    <p class="cap">The darkened email is a simulation of what the research found: surfaces and text swap, the image doesn't. Which dark each real client uses is for the hand check that follows.</p>
+  </section>
+
+  <section class="sec">
+    <h2>All four, close up</h2>
+    <p class="cap">Each at its real size and four times larger, on white and on the darkened ground. Choose one to put it in the email above.</p>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="sec">
+    <h2>What the chosen image is</h2>
+    <div class="facts" id="facts"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var PATH = 'M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z';
+  var FOLD = 'M12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z';
+  var KNOT = '<rect x="12" y="6" width="8" height="13" rx="2.2"';
+  var NAMES = { edge: 'A white edge', knot: 'Another knot', tile: 'A white tile', plain: 'As drawn' };
+
+  function opts(fix) {
+    return { fix: fix || $('f-fix').value, edge: +$('f-edge').value, knot: $('f-knot').value, corner: +$('f-corner').value,
+      size: +$('f-size').value, folds: $('f-folds').value === 'on' };
+  }
+  /* The bow as an SVG string. o.size is the bow's size in email px; scale multiplies the output pixels. */
+  function bow(o, scale) {
+    var u = 32 / o.size, e = o.fix === 'edge' ? o.edge * u : 0;
+    var pad = o.fix === 'edge' ? Math.max(0, e - 1.6) : o.fix === 'tile' ? 4 * u : 0;
+    var box = 32 + 2 * pad, px = o.size * box / 32, w = Math.round(px * scale);
+    var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + (-pad) + ' ' + (-pad) + ' ' + box + ' ' + box + '" width="' + w + '" height="' + w + '">';
+    if (o.fix === 'tile') s += '<rect x="' + (-pad) + '" y="' + (-pad) + '" width="' + box + '" height="' + box + '" rx="' + (o.corner * u) + '" fill="#FFFFFF"/>';
+    if (o.fix === 'edge') {
+      var st = ' fill="#FFFFFF" stroke="#FFFFFF" stroke-width="' + (2 * e) + '" stroke-linejoin="round"';
+      s += '<path d="' + PATH + '"' + st + '/>' + KNOT + st + '/>';
+    }
+    s += '<path d="' + PATH + '" fill="#3F6E8C"/>';
+    if (o.folds) s += '<path d="' + FOLD + '" fill="#1E1A16" fill-opacity=".3"/><path d="' + FOLD + '" transform="translate(31.99 0) scale(-1 1)" fill="#1E1A16" fill-opacity=".3"/>';
+    s += KNOT + ' fill="' + (o.fix === 'knot' ? o.knot : '#1E1A16') + '"/></svg>';
+    return { svg: s, px: Math.round(px), uri: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s) };
+  }
+
+  function lum(hex) {
+    var c = [1, 3, 5].map(function (i) { var v = parseInt(hex.substr(i, 2), 16) / 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); });
+    return .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
+  }
+  function ratio(a, b) { var x = lum(a), y = lum(b); return ((Math.max(x, y) + .05) / (Math.min(x, y) + .05)).toFixed(1); }
+
+  var EV = 'Cousins’ Swap';
+  function mail(el, imgHtml) {
+    el.innerHTML = '<div class="chrome"><b>' + EV + ': names are drawn</b><span>Pollyanna &lt;pollyanna@pollyanna.example&gt;</span></div>' +
+      '<div class="mail"><div class="top"><div class="wm">' + imgHtml + 'pollyanna</div></div>' +
+      '<div class="band"><div class="pan"><h3>' + EV + '</h3><p>Names are drawn in “' + EV + '” on Pollyanna, and you can see who you’re giving to. Open the event to see who you’re giving to.</p>' +
+      '<span class="cta">Open the event</span><p class="url">https://pollyanna.example/events/7</p></div></div>' +
+      '<div class="under"><p>You’re getting this because you take part in “' + EV + '” on Pollyanna.</p><p>To stop Pollyanna emails, switch them off on your account page: <b>https://pollyanna.example/account</b></p></div></div>';
+  }
+
+  var run = 0;
+  function render() {
+    var o = opts(), dk = $('f-dark').value, alt = $('f-alt').value, shown = $('f-show').value === 'on';
+    document.querySelector('.page').style.setProperty('--dk', dk);
+    $('f-edge').disabled = o.fix !== 'edge'; $('f-knot').disabled = o.fix !== 'knot'; $('f-corner').disabled = o.fix !== 'tile';
+
+    var b1 = bow(o, 1), b2 = bow(o, 2), my = ++run;
+    function put(src) {
+      var html = shown
+        ? '<img src="' + src + '" width="' + b1.px + '" height="' + b1.px + '" alt="' + alt + '">'
+        : '<span class="blocked" style="width:' + b1.px + 'px;height:' + b1.px + 'px">' + alt + '</span>';
+      mail($('c-light'), html); mail($('c-dark'), html);
+    }
+    put(b2.uri);
+    /* Rasterize at 2x, so the email shows a real PNG and its size can be reported. */
+    var im = new Image();
+    im.onload = function () {
+      if (my !== run) return;
+      try {
+        var c = document.createElement('canvas'); c.width = c.height = b1.px * 2;
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        var png = c.toDataURL('image/png'), bytes = Math.round((png.length - 22) * 3 / 4);
+        put(png); facts(o, b1, bytes, dk, alt);
+      } catch (err) { facts(o, b1, 0, dk, alt); }
+    };
+    im.onerror = function () { if (my === run) facts(o, b1, 0, dk, alt); };
+    im.src = b2.uri;
+
+    $('note').textContent = {
+      edge: 'A white edge: invisible on white, so the mark is exactly as drawn. Darkened, the edge outlines the whole bow, the knot included, so it reads like the tied bow at the reveal. Below about 1.5px the edge is too thin to hold the knot.',
+      knot: 'Another knot: no edge and nothing extra on white, but the mark itself changes, in the email only. Pale blue and white knots read as a gap on white; a ribbon-blue knot leaves the folds to carry the shape.',
+      tile: 'A white tile: the bow always sits on white, so it looks the same everywhere. Darkened, the tile shows as a bright square beside the wordmark.',
+      plain: 'As drawn: on white this is the mark. Darkened, the ink knot disappears and the loops come apart.'
+    }[o.fix] + (shown ? '' : alt ? ' When the image doesn’t draw, the reader sees “Pollyanna” twice.' : ' When the image doesn’t draw, an empty box is the worst case; the wordmark still says the name.');
+
+    $('grid').innerHTML = ['edge', 'knot', 'tile', 'plain'].map(function (f) {
+      var a = bow(opts(f), 2), z = bow(opts(f), 8);
+      var cell = function (cls) { return '<span class="sw ' + cls + '"><img src="' + a.uri + '" width="' + a.px + '" height="' + a.px + '" alt=""><img src="' + z.uri + '" width="' + Math.min(a.px * 4, 110) + '" height="' + Math.min(a.px * 4, 110) + '" alt=""></span>'; };
+      var sub = f === 'edge' ? opts().edge + 'px edge' : f === 'knot' ? $('f-knot').selectedOptions[0].text.toLowerCase() + ' knot' : f === 'tile' ? $('f-corner').selectedOptions[0].text.toLowerCase() + ' tile' : 'the problem';
+      return '<button type="button" class="take" data-fix="' + f + '" aria-pressed="' + (f === o.fix) + '">' + cell('w') + cell('d') + '<span class="nm"><b>' + NAMES[f] + '</b><span>' + sub + '</span></span></button>';
+    }).join('');
+  }
+
+  function facts(o, b1, bytes, dk, alt) {
+    var knot = o.fix === 'knot' ? o.knot : '#1E1A16', onDk = o.fix === 'tile' ? '#FFFFFF' : dk;
+    var rows = [
+      '<b>' + NAMES[o.fix] + '</b>, bow ' + o.size + 'px, folds ' + (o.folds ? 'kept' : 'left out') + ', alt ' + (alt ? '“' + alt + '”' : 'empty') + '.',
+      'Image box in the email: ' + b1.px + ' × ' + b1.px + 'px' + (b1.px !== o.size ? ' (the bow plus room for the ' + (o.fix === 'tile' ? 'tile' : 'edge') + ')' : '') + '. PNG drawn at 2×: ' + b1.px * 2 + ' × ' + b1.px * 2 + 'px.',
+      bytes ? 'About ' + bytes.toLocaleString('en-US') + ' bytes as this browser writes it, about ' + Math.round(bytes * 1.37).toLocaleString('en-US') + ' in the message after base64. An optimized PNG would be smaller.' : 'File size could not be measured in this browser.',
+      'Against the darkened ground ' + dk + (o.fix === 'tile' ? ' the tile keeps the bow on white: loops ' + ratio('#3F6E8C', '#FFFFFF') + ':1, knot ' + ratio(knot, '#FFFFFF') + ':1.' : ': loops ' + ratio('#3F6E8C', dk) + ':1, knot ' + ratio(knot, dk) + ':1' + (o.fix === 'edge' ? ', white edge ' + ratio('#FFFFFF', dk) + ':1.' : '.')),
+      'Knot against the loops: ' + ratio(knot, '#3F6E8C') + ':1.'
+    ];
+    $('facts').innerHTML = rows.map(function (r) { return '<p>' + r + '</p>'; }).join('');
+  }
+
+  document.querySelectorAll('select').forEach(function (s) { s.addEventListener('change', render); });
+  $('grid').addEventListener('click', function (ev) {
+    var t = ev.target.closest('.take'); if (!t) return;
+    $('f-fix').value = t.getAttribute('data-fix'); render();
+  });
+  render();
+})();
+</script>
