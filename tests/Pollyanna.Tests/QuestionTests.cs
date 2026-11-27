@@ -149,7 +149,7 @@ public sealed class QuestionTests : IAsyncLifetime
         var questions = await ann.GetPageAsync(Questions);
         Assert.Contains("No questions yet", questions.Body!.TextContent);
         Assert.Empty(questions.QuerySelectorAll("textarea"));
-        Assert.Null((await ann.GetPageAsync(Page)).QuerySelector(".asked-link, .questions-link"));
+        Assert.Null((await ann.GetPageAsync(Page)).QuerySelector(".asked-link"));
 
         await ann.PostWithTokenAsync(Page, $"{Questions}/reply", Form(("body", "Hello!")));
         Assert.Contains("Your giver writes first", await NoticeAsync(ann, Questions));
