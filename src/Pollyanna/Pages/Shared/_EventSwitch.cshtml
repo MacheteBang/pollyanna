@@ -1,15 +1,7 @@
 @model Pollyanna.Pages.Shared.EventSwitchView
-@* The "My page" / "Organizing" switch (EventSwitchView, spec §7): the side the viewer is on is
-   marked current and isn't a link; the other side is. *@
+@* The "My page" / "Organizing" switch (EventSwitchView, spec §7). Goes first in the page head, in
+   place of the back link. Both halves are links; the current one carries aria-current. *@
 <nav class="switch" aria-label="This event">
-    @if (Model.Organizing)
-    {
-        <a href="/events/@Model.EventId">My page</a>
-        <span class="switch-on" aria-current="page">Organizing</span>
-    }
-    else
-    {
-        <span class="switch-on" aria-current="page">My page</span>
-        <a href="/events/@Model.EventId/manage">Organizing</a>
-    }
+    <a href="/events/@Model.EventId" aria-current="@(Model.Organizing ? null : "page")">My page</a>
+    <a href="/events/@Model.EventId/manage" aria-current="@(Model.Organizing ? "page" : null)">Organizing</a>
 </nav>

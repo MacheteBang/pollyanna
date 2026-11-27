@@ -89,8 +89,8 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     {
         EventStatus.Draft or EventStatus.Open => p.HasNotes ? null : "no notes yet",
         EventStatus.Drawn when p.WantsToLeave => "wants to leave",
-        EventStatus.Drawn when !Viewed.Contains(p.Id) => "hasn't looked yet",
         EventStatus.Drawn when p.DoneShopping => "done shopping",
+        EventStatus.Drawn when !Viewed.Contains(p.Id) => "hasn't looked yet",
         _ => null,
     };
 

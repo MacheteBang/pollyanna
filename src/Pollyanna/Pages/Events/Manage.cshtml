@@ -264,6 +264,25 @@
                 </form>
             </details>
         }
+        @if (Model.Leaving.Count > 0)
+        {
+            @* While someone waits to leave, the blocker stands in for the reveal; revealing anyway keeps them in. *@
+            <details class="editor" id="reveal">
+                <summary>Reveal who drew whom…</summary>
+                <p class="small">Everyone in the event, and every organizer, sees the full list of who drew whom. This can't be undone, and the question threads become read-only.</p>
+                <partial name="_LeaveRequests" model="Model.Participants" />
+                <form method="post" asp-page-handler="Reveal" class="stack">
+                    @if (Model.RevealNeedsConfirmation)
+                    {
+                        <label class="check">
+                            <input type="checkbox" name="confirmed" value="true" required>
+                            <span>The exchange isn't until @Format.Date(Model.Event.ExchangeDate). Reveal anyway.</span>
+                        </label>
+                    }
+                    <button type="submit" class="button">Reveal who drew whom</button>
+                </form>
+            </details>
+        }
         @if (Model.Event.Status == EventStatus.Drawn)
         {
             <partial name="_Archive" model="Model.Participants" />

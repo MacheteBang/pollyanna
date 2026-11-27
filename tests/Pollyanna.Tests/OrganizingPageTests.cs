@@ -289,4 +289,114 @@ public sealed class OrganizingPageTests : IAsyncLifetime
         Assert.Null(page.QuerySelector(".button-fill"));
         Assert.Empty(page.QuerySelectorAll("ol.steps [aria-current]"));
     }
+
+    // ---------- The people ----------
+
+    [Fact]
+    public async Task Before_the_draw_a_row_says_only_no_notes_yet()
+    {
+        var (ann, bob, _) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me, ann, bob]);
+        await app.WithDbAsync(async db =>
+        {
+            (await db.Participants.SingleAsync(p => p.EventId == ev && p.PersonId == ann)).Notes = "Socks";
+            await db.SaveChangesAsync();
+        });
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.Equal("Taking part (3)", Squash(page.QuerySelector("#people h2")!.TextContent));
+        Assert.Equal([("Ann", ""), ("Bob", "no notes yet"), ("Pat (you)", "no notes yet")], TakingPart(page));
+        // The three checkbox columns are gone.
+        Assert.DoesNotContain("[x]", page.Body!.TextContent);
+        Assert.DoesNotContain("[ ]", page.Body!.TextContent);
+    }
+
+    [Fact]
+    public async Task Once_drawn_a_row_says_who_wants_to_leave_hasnt_looked_or_is_done_shopping()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var dee = await app.PersonAsync("Dee");
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy, dee]);
+        await app.SealAsync(ev, Loop(ann, bob, cy, dee));
+        await app.UpdateAssignmentAsync(ev, bob, a => a.Viewed = true);
+        await app.UpdateAssignmentAsync(ev, cy, a => a.Viewed = true);
+        await app.UpdateAssignmentAsync(ev, dee, a => a.Viewed = true);
+        await app.WithDbAsync(async db =>
+        {
+            (await db.Participants.SingleAsync(p => p.EventId == ev && p.PersonId == cy)).DoneShopping = true;
+            (await db.Participants.SingleAsync(p => p.EventId == ev && p.PersonId == dee)).WantsToLeave = true;
+            await db.SaveChangesAsync();
+        });
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.Equal([("Ann", "hasn't looked yet"), ("Bob", ""), ("Cy", "done shopping"), ("Dee", "wants to leave")], TakingPart(page));
+    }
+
+    [Fact]
+    public async Task With_nobody_taking_part_the_list_says_so()
+    {
+        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], []);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.Equal("Taking part (0)", Squash(page.QuerySelector("#people h2")!.TextContent));
+        Assert.Contains("Nobody's taking part yet.", page.QuerySelector("#people")!.TextContent);
+        Assert.Empty(TakingPart(page));
+    }
+
+    [Fact]
+    public async Task Invitations_are_listed_with_take_back_then_an_outlined_add_people()
+    {
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me]);
+        await app.WithDbAsync(async db =>
+        {
+            db.Invitations.Add(new Invitation { EventId = ev, Email = "jo@pollyanna.example", EmailNormalized = "jo@pollyanna.example", InvitedBy = me });
+            await db.SaveChangesAsync();
+        });
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        var invited = page.QuerySelector("#invited")!;
+        Assert.Equal("Invited, not signed in yet (1)", Squash(invited.QuerySelector("h2")!.TextContent));
+        var row = Assert.Single(invited.QuerySelectorAll(".rows > li"));
+        Assert.Contains("jo@pollyanna.example", row.TextContent);
+        Assert.Equal("Take back", Squash(row.QuerySelector("button")!.TextContent));
+        var add = page.QuerySelector("#add-people > summary")!;
+        Assert.Equal("Add people", Squash(add.TextContent));
+        Assert.DoesNotContain("button-fill", add.ClassList);
+
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/cancelinvite");
+        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+        Assert.Null((await browser.GetPageAsync(Manage(ev))).QuerySelector("#invited"));
+    }
+
+    [Fact]
+    public async Task Once_drawn_invitations_by_email_wait()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy]);
+        await app.SealAsync(ev, Loop(ann, bob, cy));
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.Contains("Invitations by email wait until names are drawn again.", page.Body!.TextContent);
+        Assert.Null(page.QuerySelector("#add-people"));
+    }
+
+    [Fact]
+    public async Task No_string_on_the_reworked_part_says_hat_slip_or_stamp()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me, ann]);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        foreach (var part in new[] { ".page-head", "#next-step", "#people", "#add-people" })
+        {
+            var text = page.QuerySelector(part)!.TextContent;
+            Assert.DoesNotMatch(@"\b(hat|slips?|stamp)\b", text.ToLowerInvariant());
+        }
+    }
 }
