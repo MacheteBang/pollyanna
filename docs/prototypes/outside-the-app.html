@@ -1,0 +1,388 @@
+<title>Pollyanna Outside the App</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE, throwaway. Answers map ticket #61: how the tablecloth direction appears outside the
+  app: the HTML email, the touch icon, the README banner, the social preview and the README screenshots.
+  Tokens, words, order and screens are already decided (#53, #55, #57, #58, #59, #60). Each surface has
+  three structurally different takes behind a select, opening on the recommended one.
+  Published as a page, so there is no doctype or body tag here. Figtree and Playpen Sans come from
+  Google Fonts for the mockup only. The email is drawn in the system font on purpose: an email loads nothing.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&family=Playpen+Sans:wght@500&display=swap">
+<style>
+/* Layout: a column of surfaces; each is the mockup on the left with its switches and notes beside it. */
+:root {
+  --bg: #EEF1F3; --card: #FFFFFF; --fg: #1E1A16; --soft: #5B5650; --line: #C9D3DA;
+  --white: #FFFFFF; --ink: #1E1A16; --muted: #5B5650; --blue: #3F6E8C; --pale: #DCE7EE; --red: #9E2019;
+  --ui: Figtree, system-ui, sans-serif; --hand: "Playpen Sans", "Comic Sans MS", cursive;
+  --mail: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14181B; --card: #1E2428; --fg: #EEF1F3; --soft: #A9B4BB; --line: #3A444B; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #14181B; --card: #1E2428; --fg: #EEF1F3; --soft: #A9B4BB; --line: #3A444B; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--ui) }
+.page { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 80px; display: flex; flex-direction: column; gap: 28px }
+.page > header { display: flex; flex-direction: column; gap: 8px }
+.page h1 { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; text-wrap: balance }
+.page h2 { margin: 0; font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15 }
+.page p { margin: 0; max-width: 65ch }
+.softer { color: var(--soft) } .sm { font-size: .875rem }
+.jump { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .9rem; font-weight: 600 }
+.jump a { color: var(--fg) }
+.shot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding-top: 28px; border-top: 1px solid var(--line); scroll-margin-top: 12px }
+.shot.two { grid-template-columns: minmax(0, 600px) minmax(0, 1fr); gap: 32px; align-items: start }
+@media (max-width: 900px) { .shot.two { grid-template-columns: minmax(0, 1fr) } }
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0 }
+.side ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: .9rem; max-width: 62ch }
+.ctl { display: flex; flex-wrap: wrap; gap: 10px 16px }
+.ctl label { display: flex; flex-direction: column; gap: 4px; font-size: .875rem; font-weight: 600; flex: 1; min-width: 170px; max-width: 320px }
+.ctl select { font: inherit; font-weight: 400; padding: 8px 10px; border: 2px solid var(--fg); border-radius: 10px; background: var(--card); color: var(--fg); min-height: 44px }
+.ask { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px }
+.ask ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; max-width: 72ch }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px }
+.stage { min-width: 0; display: flex; flex-direction: column; gap: 10px; align-items: flex-start }
+.cap { font-size: .875rem; color: var(--soft) }
+
+/* ================= the email (system font, solid colors only) ================= */
+.client { width: 100%; max-width: 600px; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; color-scheme: light;
+  --m-bg: #FFFFFF; --m-ink: #1E1A16; --m-soft: #5B5650; --m-band: #DCE7EE; --m-panel: #FFFFFF; --m-btn: #1E1A16; --m-btn-t: #FFFFFF; --m-chrome: #F3F5F6; --m-chrome-t: #1E1A16; --m-bow: #3F6E8C; --m-knot: #1E1A16 }
+.client.phone-w { max-width: 390px }
+.client.dark { --m-bg: #1C1C1C; --m-ink: #EDEBE8; --m-soft: #B3AEA8; --m-band: #2A3944; --m-panel: #1C1C1C; --m-btn: #EDEBE8; --m-btn-t: #1C1C1C; --m-chrome: #0F0F0F; --m-chrome-t: #EDEBE8; --m-knot: #EDEBE8 }
+.client .chrome { background: var(--m-chrome); color: var(--m-chrome-t); padding: 12px 16px; font: 14px/1.4 var(--mail); display: flex; flex-direction: column; gap: 2px }
+.client .chrome b { font-size: 16px }
+.client .chrome span { opacity: .75 }
+.mail { background: var(--m-bg); color: var(--m-ink); font: 16px/1.5 var(--mail) }
+.mail p, .mail h3 { margin: 0 }
+.mail .wm { font-weight: 800; font-size: 22px; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px }
+.mail .wm svg { width: 26px; height: 26px; flex: none; --b-rb: var(--m-bow); --b-knot: var(--m-knot) }
+.mail h3 { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15 }
+.mail .txt { display: flex; flex-direction: column; gap: 10px }
+.mail .cta { display: block; background: var(--m-btn); color: var(--m-btn-t); font-weight: 800; font-size: 18px; line-height: 1.3; text-align: center; padding: 13px 18px; border-radius: 10px; text-decoration: none }
+.mail .url { font-size: 14px; color: var(--m-soft); overflow-wrap: anywhere }
+.mail .foot { font-size: 14px; color: var(--m-soft); display: flex; flex-direction: column; gap: 4px }
+.mail .foot a { color: var(--m-ink); font-weight: 600 }
+.mail .stack { display: flex; flex-direction: column; gap: 16px }
+/* A: the panel on the band */
+.mA .top { padding: 16px 24px }
+.mA .band { background: var(--m-band); padding: 24px 16px 40px }
+.mA .pan { background: var(--m-panel); border-radius: 10px; padding: 24px }
+.mA .under { padding: 20px 24px 28px }
+/* B: band across the top */
+.mB .band { background: var(--m-band); padding: 18px 24px }
+.mB .in { padding: 28px 24px 8px }
+.mB .cta { display: inline-block }
+.mB .under { padding: 16px 24px 28px; border-top: 2px solid var(--m-band); margin-top: 20px }
+/* C: a letter, no band */
+.mC .in { padding: 24px 24px 28px }
+.mC .rule { height: 2px; background: var(--m-band) }
+
+/* ================= icons ================= */
+.icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; width: 100%; max-width: 760px }
+@media (max-width: 560px) { .icons { grid-template-columns: minmax(0, 1fr) } }
+.icon-opt { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.icon-opt .sizes { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap }
+.icon-opt svg { display: block; border-radius: 22.5%; flex: none }
+.icon-opt b { font-weight: 800 }
+.homescreen { background: linear-gradient(160deg, #38536B, #1F2B38); border-radius: 12px; padding: 14px; display: inline-flex; gap: 14px; align-items: flex-start; color: #fff; font: 11px/1.2 var(--mail); text-align: center }
+.homescreen div { display: flex; flex-direction: column; gap: 5px; align-items: center; width: 64px }
+.tabs { display: flex; flex-wrap: wrap; gap: 12px }
+.tab { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px 8px 10px; border-radius: 8px 8px 0 0; font: 13px/1 var(--mail); min-width: 150px }
+.tab.l { background: #FFFFFF; color: #1E1A16; border: 1px solid #C9D3DA }
+.tab.d { background: #202124; color: #E8EAED; border: 1px solid #202124 }
+.tab svg { flex: none }
+
+/* ================= banner, social, README ================= */
+.gh { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; align-items: center; --gh-bg: #FFFFFF; --gh-fg: #1F2328; --gh-soft: #59636E; background: var(--gh-bg); color: var(--gh-fg); font: 16px/1.5 var(--mail) }
+.gh.dark { --gh-bg: #0D1117; --gh-fg: #F0F6FC; --gh-soft: #9198A1 }
+.gh svg.art { width: 100%; max-width: 820px; height: auto; display: block }
+.gh em { color: var(--gh-fg); text-align: center }
+.gh .row { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; align-items: flex-start; width: 100% }
+.gh .lbl { font-size: 13px; color: var(--gh-soft); text-align: center; margin-top: 6px }
+.card { width: 100%; max-width: 560px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card) }
+.card svg { width: 100%; height: auto; display: block }
+.card div { padding: 10px 14px; font: 14px/1.4 var(--mail); display: flex; flex-direction: column }
+.card div span { color: var(--soft) }
+
+/* ================= app screens, as the screenshots would show them (always light) ================= */
+.shrink { width: 195px; height: 400px; overflow: hidden; border: 2px solid #C9D3DA; border-radius: 14px; flex: none; background: #fff }
+.shrink.w { width: 320px; height: 400px; border-radius: 8px }
+.shrink > .screen { width: 390px; transform: scale(.5); transform-origin: 0 0 }
+.shrink.w > .screen { width: 640px }
+.screen { background: var(--white); color: var(--ink); color-scheme: light; font: 16px/1.5 var(--ui); text-align: left }
+.screen p, .screen h3, .screen h4 { margin: 0 }
+.screen a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--blue); text-decoration-thickness: 2px; text-underline-offset: 3px }
+.screen .soft { color: var(--muted) } .screen .small { font-size: 14px }
+.gingham { background-color: var(--white); background-image: linear-gradient(90deg, rgb(63 110 140 / .5) 50%, transparent 50%), linear-gradient(rgb(63 110 140 / .5) 50%, transparent 50%); background-size: 28px 28px }
+.mast { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; gap: 12px }
+.brand { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em }
+.girl-w { --g-gap: var(--white); --g-shirt: var(--pale); display: block }
+.mast-r { display: flex; align-items: center; gap: 14px; font-size: 14px }
+.mast-r svg { width: 24px; height: 24px; display: block }
+.head { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start }
+.head h3 { font-size: 29px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1 }
+.head .count { font-size: 18px; font-weight: 800; line-height: 1.3 }
+.cloth { padding: 24px 16px 56px; display: flex; flex-direction: column; gap: 16px }
+.panel { background: var(--white); border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 12px }
+.panel h4 { font-size: 23px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15 }
+.btn { font-weight: 800; font-size: 18px; line-height: 1.3; border-radius: 10px; padding: 12px 18px; min-height: 48px; border: 2px solid var(--ink); text-align: center; display: flex; align-items: center; justify-content: center }
+.btn.fill { background: var(--ink); color: var(--white) }
+.btn.line { background: var(--white); color: var(--ink); font-size: 16px; font-weight: 600; align-self: flex-start }
+.body { padding: 20px 16px 28px; display: flex; flex-direction: column; gap: 16px }
+.rows > div { display: flex; flex-direction: column; padding: 12px 0; border-top: 2px solid var(--pale) }
+.rows > div:first-child { border-top: 0 }
+.rows b { font-weight: 800; font-size: 18px }
+.gift { position: relative; height: 300px; overflow: hidden }
+.gift .rh, .gift .rv { position: absolute; background: var(--blue); box-shadow: 0 0 0 3px var(--white) }
+.gift .rh { left: 0; right: 0; top: 135px; height: 30px }
+.gift .rv { top: 0; bottom: 0; left: 50%; width: 30px; margin-left: -15px }
+.gift svg { position: absolute; left: 50%; top: 75px; width: 150px; height: 150px; margin-left: -75px; overflow: visible }
+.name { font: 500 52px/1.1 var(--hand) }
+.box { border: 2px solid var(--ink); border-radius: 10px; padding: 10px 12px; min-height: 48px; color: var(--muted) }
+.wide-col { max-width: 560px; margin-inline: auto }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="girl" viewBox="448 494 1150 1150"><path style="fill:var(--g-ink,#1E1A16)" d="M 737 821 C 740 774 752 727 773 685 C 806 617 864 562 937 538 C 980 524 1061 504 1017 581 C 1022 578 1027 573 1032 570 C 1027 595 1025 604 1013 626 C 1019 621 1022 618 1028 613 C 1022 638 1020 647 1004 667 L 1004 669 C 1013 665 1020 658 1026 652 C 1024 669 1020 691 1010 705 L 1014 706 L 1021 697 L 1024 699 C 1020 717 1018 727 1009 744 L 1012 745 C 1016 741 1020 737 1023 732 C 1023 752 1023 776 1011 792 L 1013 794 L 1022 784 C 1022 783 1024 780 1025 780 C 1025 782 1024 799 1024 801 C 1026 836 1023 884 1006 914 C 1014 905 1018 901 1023 891 C 1022 916 1017 933 1004 953 C 1010 949 1012 946 1017 941 L 1022 943 C 1019 964 1016 975 1005 992 C 1012 987 1016 982 1021 975 L 1025 977 C 1025 1013 1028 1055 996 1079 C 978 1093 948 1098 925 1094 C 833 1078 793 993 777 909 C 776 901 774 892 773 884 C 770 858 771 824 737 821 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1022 784 C 1022 783 1024 780 1025 780 C 1025 782 1024 799 1024 801 C 1023 795 1025 789 1022 784 z"/><path style="fill:var(--g-gap,#fff)" d="M 1002 754 C 1004 752 1007 746 1009 744 L 1012 745 C 1009 749 1006 751 1002 754 z"/><path style="fill:var(--g-gap,#fff)" d="M 1011 792 L 1013 794 C 1008 799 1007 798 1011 792 z"/><path style="fill:var(--g-gap,#fff)" d="M 1010 705 L 1014 706 C 1010 709 1008 710 1010 705 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1065 583 C 1061 573 1047 545 1052 537 C 1067 509 1144 539 1160 547 C 1227 579 1276 643 1301 712 C 1313 748 1320 785 1321 822 C 1293 833 1293 852 1289 879 C 1276 963 1242 1060 1158 1095 C 1112 1114 1068 1104 1051 1055 C 1047 1046 1045 1037 1044 1028 C 1045 1026 1045 1025 1046 1023 C 1052 1034 1055 1039 1064 1048 C 1044 1014 1042 987 1042 948 C 1046 956 1048 960 1054 967 L 1056 966 C 1048 949 1047 935 1047 916 C 1046 914 1045 898 1047 897 C 1048 898 1049 901 1050 902 C 1056 911 1060 915 1069 922 C 1050 896 1045 872 1044 839 C 1043 837 1042 824 1044 823 C 1045 822 1045 825 1045 825 C 1048 830 1051 834 1054 838 C 1049 824 1045 811 1044 796 C 1043 793 1043 787 1043 783 L 1044 780 C 1045 782 1045 784 1046 786 C 1049 794 1052 799 1057 807 C 1053 795 1048 779 1047 766 C 1046 763 1045 741 1047 740 L 1048 740 C 1048 741 1048 741 1048 742 C 1053 757 1056 763 1067 775 C 1057 752 1055 741 1052 717 L 1055 716 C 1061 723 1064 725 1071 729 C 1054 700 1052 688 1050 654 L 1050 650 C 1050 643 1050 643 1054 648 C 1058 653 1062 657 1066 661 C 1055 637 1054 631 1052 604 C 1058 611 1060 613 1068 619 C 1058 602 1053 590 1050 570 C 1056 576 1058 578 1065 583 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1047 766 C 1046 763 1045 741 1047 740 L 1048 740 C 1048 741 1048 741 1048 742 C 1046 750 1048 758 1047 766 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1047 916 C 1046 914 1045 898 1047 897 C 1048 898 1049 901 1050 902 C 1046 906 1047 910 1047 916 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1050 654 L 1050 650 C 1050 643 1050 643 1054 648 L 1053 650 C 1052 651 1051 652 1050 654 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 839 C 1043 837 1042 824 1044 823 C 1045 822 1045 825 1045 825 C 1044 830 1044 834 1044 839 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 780 C 1045 782 1045 784 1046 786 C 1042 791 1045 790 1044 796 C 1043 793 1043 787 1043 783 L 1044 780 z"/><path style="fill:var(--g-gap,#fff)" d="M 1054 967 L 1056 966 C 1061 975 1058 971 1054 967 z"/><path style="fill:var(--g-shirt,#E3EBF0)" d="M 900 1104 C 903 1106 906 1111 907 1114 C 949 1192 1063 1200 1126 1145 C 1136 1137 1147 1120 1154 1110 C 1160 1121 1166 1131 1173 1141 C 1203 1181 1254 1211 1304 1218 C 1306 1271 1235 1302 1194 1318 C 1153 1333 1109 1342 1065 1345 C 1044 1346 1022 1345 1001 1345 C 932 1342 746 1313 748 1221 C 756 1217 781 1210 793 1205 C 848 1180 869 1152 900 1104 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 693 971 C 674 921 647 860 716 835 C 732 829 751 829 757 850 C 761 870 768 908 766 928 C 765 937 762 946 758 954 C 747 976 720 1000 703 1018 L 705 1020 C 717 1009 732 996 745 986 C 761 1009 766 1032 762 1061 C 757 1094 720 1128 695 1152 L 696 1154 C 708 1145 725 1131 736 1121 C 775 1187 734 1229 688 1273 L 690 1275 C 701 1267 713 1257 723 1248 C 732 1272 733 1296 722 1320 C 709 1352 681 1361 658 1381 L 647 1380 C 633 1363 626 1343 628 1321 C 629 1307 634 1293 642 1281 C 651 1290 659 1298 668 1306 L 669 1304 C 638 1266 613 1235 641 1186 C 652 1196 664 1205 675 1215 L 677 1213 C 627 1164 592 1118 642 1052 C 655 1066 668 1079 682 1092 L 684 1091 C 672 1079 649 1048 641 1034 C 619 996 627 950 667 928 C 675 942 684 958 692 972 L 693 971 z"/><path style="fill:var(--g-gap,#fff)" d="M 677 1213 C 683 1219 685 1222 689 1229 C 685 1224 679 1220 675 1215 L 677 1213 z"/><path style="fill:var(--g-gap,#fff)" d="M 688 1273 L 690 1275 C 686 1279 681 1282 676 1286 C 680 1281 684 1277 688 1273 z"/><path style="fill:var(--g-gap,#fff)" d="M 669 1304 C 673 1309 676 1313 680 1317 C 674 1313 672 1311 668 1306 L 669 1304 z"/><path style="fill:var(--g-gap,#fff)" d="M 695 1152 L 696 1154 C 692 1158 690 1160 685 1162 C 688 1158 691 1155 695 1152 z"/><path style="fill:var(--g-gap,#fff)" d="M 684 1091 C 687 1094 690 1098 693 1102 L 689 1098 C 686 1096 684 1094 682 1092 L 684 1091 z"/><path style="fill:var(--g-gap,#fff)" d="M 703 1018 L 705 1020 C 704 1021 700 1026 699 1025 C 698 1024 702 1019 703 1018 z"/><path style="fill:var(--g-gap,#fff)" d="M 693 971 L 694 972 C 696 977 694 976 692 972 L 693 971 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1347 1018 C 1329 998 1293 968 1288 940 C 1287 934 1294 911 1296 902 C 1301 880 1299 823 1337 835 C 1353 841 1367 854 1374 869 C 1390 899 1369 939 1358 969 L 1360 970 C 1369 954 1375 943 1385 928 C 1427 956 1432 1001 1404 1042 C 1393 1059 1378 1075 1365 1092 L 1367 1093 C 1380 1081 1395 1064 1409 1053 C 1420 1066 1426 1076 1431 1094 C 1443 1144 1409 1177 1376 1211 L 1379 1212 L 1409 1186 C 1440 1230 1410 1268 1382 1304 L 1385 1305 L 1408 1281 C 1410 1284 1413 1288 1415 1292 C 1424 1311 1427 1333 1420 1353 C 1417 1362 1406 1386 1393 1381 C 1388 1378 1383 1373 1379 1370 C 1357 1356 1338 1341 1328 1316 C 1320 1294 1320 1270 1329 1249 L 1364 1278 L 1366 1276 C 1316 1227 1276 1194 1315 1120 C 1328 1131 1340 1142 1353 1152 L 1354 1150 C 1302 1102 1262 1057 1306 987 C 1313 992 1332 1009 1341 1016 C 1343 1017 1345 1017 1347 1018 z"/><path style="fill:var(--g-gap,#fff)" d="M 1376 1211 L 1379 1212 C 1373 1218 1368 1222 1362 1226 C 1365 1222 1372 1214 1376 1211 z"/><path style="fill:var(--g-gap,#fff)" d="M 1382 1304 L 1385 1305 C 1381 1310 1378 1313 1373 1317 C 1375 1313 1379 1307 1382 1304 z"/><path style="fill:var(--g-gap,#fff)" d="M 1341 1016 C 1343 1017 1345 1017 1347 1018 C 1350 1022 1353 1025 1355 1029 C 1351 1025 1345 1021 1341 1016 z"/><path style="fill:var(--g-gap,#fff)" d="M 1354 1150 C 1358 1153 1361 1157 1365 1161 C 1360 1158 1357 1156 1353 1152 L 1354 1150 z"/><path style="fill:var(--g-gap,#fff)" d="M 1366 1276 C 1370 1280 1370 1282 1374 1286 C 1371 1284 1367 1281 1364 1278 L 1366 1276 z"/><path style="fill:var(--g-gap,#fff)" d="M 1365 1092 L 1367 1093 L 1367 1094 C 1366 1095 1363 1098 1362 1098 C 1360 1097 1365 1092 1365 1092 z"/><path style="fill:var(--g-gap,#fff)" d="M 1360 970 C 1360 971 1358 976 1357 976 L 1356 976 C 1356 975 1358 970 1358 969 L 1360 970 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1397 1420 C 1424 1444 1452 1472 1454 1512 C 1455 1524 1453 1535 1449 1546 C 1440 1574 1420 1598 1456 1619 C 1457 1620 1458 1620 1458 1621 C 1457 1623 1449 1621 1448 1621 C 1433 1618 1424 1612 1419 1597 L 1418 1596 L 1417 1596 C 1412 1610 1414 1620 1418 1634 C 1405 1623 1397 1612 1395 1594 L 1392 1592 C 1391 1610 1391 1617 1398 1634 C 1340 1586 1335 1514 1373 1452 C 1379 1443 1385 1434 1392 1425 C 1394 1423 1395 1421 1397 1420 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1456 1619 C 1457 1620 1458 1620 1458 1621 C 1457 1623 1449 1621 1448 1621 C 1448 1621 1448 1620 1448 1619 C 1449 1619 1450 1619 1450 1619 C 1451 1620 1452 1620 1453 1620 L 1456 1619 z"/><path style="fill:var(--g-gap,#fff)" d="M 1392 1592 C 1395 1582 1395 1589 1395 1594 L 1392 1592 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 596 1618 C 629 1599 611 1570 601 1544 C 588 1505 605 1467 633 1440 C 639 1433 645 1426 653 1421 C 654 1421 654 1422 655 1423 C 712 1489 724 1574 652 1635 C 659 1617 662 1605 658 1586 C 657 1587 657 1587 656 1587 C 655 1609 647 1620 632 1635 C 639 1618 637 1610 632 1594 C 627 1612 621 1615 602 1621 C 600 1621 589 1623 596 1618 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 596 1618 C 598 1620 600 1620 602 1621 C 600 1621 589 1623 596 1618 z"/><path style="fill:var(--g-gap,#fff)" d="M 656 1587 C 656 1586 656 1584 657 1583 C 658 1583 658 1584 658 1585 L 658 1586 C 657 1587 657 1587 656 1587 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1312 1357 C 1337 1356 1369 1371 1385 1389 C 1385 1395 1386 1400 1386 1406 C 1377 1411 1372 1414 1363 1418 C 1344 1424 1310 1433 1300 1411 C 1291 1392 1290 1367 1312 1357 z"/><path style="fill:var(--g-gap,#fff)" d="M 1332 1379 C 1353 1378 1363 1388 1381 1397 C 1382 1397 1383 1397 1384 1398 C 1383 1400 1378 1401 1376 1401 C 1365 1403 1348 1406 1337 1403 C 1326 1399 1318 1386 1332 1379 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 665 1390 C 665 1389 665 1388 667 1387 C 693 1365 761 1329 756 1395 C 752 1444 692 1423 665 1407 C 665 1406 665 1401 665 1400 C 665 1397 665 1394 665 1390 z"/><path style="fill:var(--g-gap,#fff)" d="M 668 1398 C 681 1391 691 1383 705 1379 C 723 1374 736 1392 717 1401 C 705 1408 680 1404 668 1399 L 668 1398 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 665 1390 L 665 1392 C 666 1396 666 1396 668 1398 L 668 1399 L 665 1400 C 665 1397 665 1394 665 1390 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 563 1347 C 594 1346 615 1368 638 1387 C 636 1396 636 1396 637 1405 C 629 1407 622 1409 614 1411 C 602 1414 579 1415 567 1411 C 539 1401 533 1360 563 1347 z"/><path style="fill:var(--g-gap,#fff)" d="M 581 1370 C 606 1369 615 1384 634 1396 C 629 1397 627 1397 622 1398 C 608 1400 581 1399 574 1385 C 569 1377 575 1373 581 1370 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1477 1347 C 1507 1345 1514 1381 1499 1400 C 1487 1417 1462 1415 1444 1413 C 1439 1412 1406 1407 1415 1396 C 1416 1394 1414 1391 1413 1389 L 1412 1387 C 1433 1370 1449 1353 1477 1347 z"/><path style="fill:var(--g-gap,#fff)" d="M 1459 1370 C 1489 1368 1484 1400 1438 1399 C 1431 1398 1425 1397 1419 1396 L 1417 1396 C 1431 1386 1442 1374 1459 1370 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 637 1409 C 641 1411 633 1418 630 1420 C 609 1443 592 1470 573 1495 C 573 1485 572 1478 572 1467 C 570 1464 546 1465 540 1464 C 575 1442 596 1419 637 1409 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1411 1410 C 1443 1412 1482 1446 1509 1464 C 1499 1465 1489 1465 1479 1465 C 1478 1477 1478 1483 1476 1495 C 1453 1462 1438 1441 1411 1410 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1387 1411 C 1387 1411 1388 1412 1388 1412 C 1371 1436 1343 1480 1329 1503 C 1328 1494 1327 1484 1325 1475 C 1323 1473 1302 1475 1297 1475 C 1329 1449 1348 1428 1387 1411 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 662 1412 C 683 1416 737 1458 753 1474 C 748 1474 728 1473 726 1475 C 726 1483 724 1491 723 1498 L 723 1503 C 711 1480 689 1449 674 1428 C 670 1423 662 1417 662 1412 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1393 1387 C 1402 1387 1409 1385 1410 1397 C 1410 1403 1410 1406 1406 1410 C 1390 1413 1389 1408 1390 1394 C 1390 1390 1390 1390 1393 1387 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 645 1387 C 662 1387 662 1390 660 1408 C 660 1409 657 1409 657 1410 C 653 1410 641 1411 641 1406 C 641 1399 637 1390 645 1387 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1017 941 C 1018 940 1021 934 1022 934 C 1023 935 1022 942 1022 943 L 1017 941 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 1028 C 1044 1026 1042 1018 1043 1018 C 1044 1018 1044 1018 1044 1019 L 1044 1018 C 1045 1020 1045 1021 1046 1023 C 1045 1025 1045 1026 1044 1028 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1052 717 C 1051 716 1050 712 1051 711 C 1052 710 1054 715 1055 716 L 1052 717 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1021 975 C 1022 974 1023 970 1024 970 C 1025 970 1025 976 1025 977 L 1021 975 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1021 697 C 1021 697 1023 693 1024 694 C 1024 695 1024 698 1024 699 L 1021 697 z"/><path style="fill:var(--g-gap,#fff)" d="M 1043 783 C 1041 775 1044 773 1044 780 L 1043 783 z"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M12 3.5a6 6 0 0 0-6 6v3.8L4 16.5v1h16v-1l-2-3.2V9.5a6 6 0 0 0-6-6ZM9.8 20.2a2.3 2.3 0 0 0 4.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="bow" viewBox="0 0 32 32" overflow="visible">
+    <path style="fill:var(--b-rb,#3F6E8C)" d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z"/>
+    <path fill="#1E1A16" fill-opacity=".3" d="M12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z"/>
+    <path fill="#1E1A16" fill-opacity=".3" transform="translate(31.99 0) scale(-1 1)" d="M12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z"/>
+    <rect style="fill:var(--b-knot,#1E1A16)" x="12" y="6" width="8" height="13" rx="2.2"/>
+  </symbol>
+  <symbol id="bow-edge" viewBox="0 0 32 32" overflow="visible">
+    <path fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.3" stroke-linejoin="round" d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z"/>
+  </symbol>
+  <symbol id="bow-small" viewBox="0 0 32 32">
+    <path fill="#3F6E8C" d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z"/>
+    <rect x="12" y="6" width="8" height="13" rx="2.2" fill="#1E1A16"/>
+  </symbol>
+  <pattern id="gh20" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="20" height="40" fill="#3F6E8C" fill-opacity=".5"/><rect width="40" height="20" fill="#3F6E8C" fill-opacity=".5"/></pattern>
+  <pattern id="gh30" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="30" height="60" fill="#3F6E8C" fill-opacity=".5"/><rect width="60" height="30" fill="#3F6E8C" fill-opacity=".5"/></pattern>
+</svg>
+
+<div class="page">
+  <header>
+    <h1>Pollyanna outside the app</h1>
+    <p class="softer">The tablecloth direction on the five surfaces that are not app screens. Each opens on the take I recommend; the selects show the others.</p>
+    <nav class="jump" aria-label="Surfaces"><a href="#email">Email</a><a href="#icons">Icons</a><a href="#banner">README banner</a><a href="#social">Social preview</a><a href="#shots">Screenshots</a></nav>
+  </header>
+
+  <section class="ask" id="choices" aria-labelledby="ch-h">
+    <h2 id="ch-h">Six picks for the owner</h2>
+    <ol>
+      <li><b>Email layout.</b> A, the panel on the band (recommended), B, a band across the top, or C, a letter with no band.</li>
+      <li><b>No image in the email.</b> The spec's "nothing remote, no images" rule (§15) is one of the fixed rules, so the email carries the wordmark as text and no bow. The earlier note about a bow image on the band then falls away. The switch shows what a bow would add; keeping the rule is recommended.</li>
+      <li><b>Touch icon.</b> A, the bow tied on the cloth (recommended), B, the bow on a white panel, or C, the girl on a white panel.</li>
+      <li><b>README banner.</b> A, the wordmark panel on the cloth (recommended), B, the tied gift with a tag, or C, mostly white with a strip of cloth.</li>
+      <li><b>Social preview.</b> The same composition as the banner at 1280 × 640, with or without a line of words (recommended: without).</li>
+      <li><b>Screenshots.</b> A, three phones in a row (recommended), or B, one wide shot beside one phone as today. Either way the set is home, the event tied, the event untied, organizing, questions, and a GIF of the untying.</li>
+    </ol>
+  </section>
+
+  <section class="shot two" id="email" aria-labelledby="em-h">
+    <div class="stage">
+      <div class="client" id="client"></div>
+      <p class="cap" id="em-cap"></p>
+    </div>
+    <div class="side">
+      <h2 id="em-h">The email</h2>
+      <div class="ctl">
+        <label for="em-v">Layout<select id="em-v"><option value="A">A · The panel on the band</option><option value="B">B · A band across the top</option><option value="C">C · A letter, no band</option></select></label>
+        <label for="em-k">Kind<select id="em-k"><option value="drawn">Names are drawn</option><option value="open">Event is open</option><option value="question">A question for you</option><option value="invite">Invitation</option><option value="redraw">Redraw needed</option></select></label>
+        <label for="em-d">Mail client<select id="em-d"><option value="light">Shows it as sent</option><option value="dark">Darkens it (rough simulation)</option></select></label>
+        <label for="em-w">Width<select id="em-w"><option value="phone">Phone</option><option value="desk">Desktop, 600px</option></select></label>
+        <label for="em-b">Bow image<select id="em-b"><option value="off">None, text only (§15)</option><option value="on">A bow by the wordmark</option></select></label>
+      </div>
+      <ul>
+        <li>Order as decided: event name, the kind's text, the button, the address small under it, the footer. No status stamp.</li>
+        <li>Six colors only, all solid. The pale-blue band stands in for the cloth; text never sits on it in A.</li>
+        <li>System font, since an email loads nothing: San Francisco on Apple, Segoe UI on Windows, Roboto on Android. The wordmark is lowercase bold text.</li>
+        <li>One 10px corner on the panel and the button. Classic Outlook squares both, and nothing is lost.</li>
+        <li>Sentence-case button, replacing today's spaced capitals.</li>
+        <li>Darkened: every surface sets its own background, so a client that inverts the email swaps whole surfaces and text stays readable. The band becomes a dark blue-gray. With no image there is nothing that fails to invert.</li>
+        <li>The three "slip" phrases use the new words.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="shot" id="icons" aria-labelledby="ic-h">
+    <h2 id="ic-h">Touch icon and favicon</h2>
+    <div class="icons" id="icon-grid"></div>
+    <div class="stage">
+      <div class="homescreen" id="home-row"></div>
+      <p class="cap">All three at home-screen size, 60px, where the choice matters most.</p>
+    </div>
+    <div class="stage">
+      <div class="tabs">
+        <span class="tab l"><svg width="16" height="16" aria-hidden="true"><use href="#bow-small"/></svg>Pollyanna</span>
+        <span class="tab d"><svg width="16" height="16" aria-hidden="true"><use href="#bow-small"/></svg>Pollyanna</span>
+        <span class="tab l"><svg width="32" height="32" aria-hidden="true"><use href="#bow-small"/></svg>32px</span>
+        <span class="tab d"><svg width="32" height="32" aria-hidden="true"><use href="#bow-small"/></svg>32px</span>
+      </div>
+      <p class="cap">The favicon is already decided: the bow without folds. Shown for reference on a light and a dark browser tab. On the dark tab the ink knot sinks into the background and the loops carry the shape.</p>
+    </div>
+    <ul class="side" style="font-size:.9rem;max-width:70ch;padding-left:18px">
+      <li>The cloth on the icon uses six checks across, so the pattern still reads as gingham at 60px. At the app's 14px check it would turn to gray noise.</li>
+      <li>A is the gift from the reveal: bow on cloth with the white edge. It gives the bow the most room. It stretches the rule that the white edge appears only at the reveal.</li>
+      <li>B keeps the rule that only a white panel sits on the cloth, and costs the bow about a quarter of its size.</li>
+      <li>C puts the girl on the home screen. She stays above her 32px floor, but her braids and bows blur at 60px.</li>
+    </ul>
+  </section>
+
+  <section class="shot" id="banner" aria-labelledby="bn-h">
+    <h2 id="bn-h">README banner</h2>
+    <div class="ctl">
+      <label for="bn-v">Composition<select id="bn-v"><option value="A">A · The wordmark panel on the cloth</option><option value="B">B · The tied gift with a tag</option><option value="C">C · Mostly white, a strip of cloth</option></select></label>
+      <label for="bn-t">GitHub theme<select id="bn-t"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    </div>
+    <div class="gh" id="gh-banner"></div>
+    <ul class="side" style="font-size:.9rem;max-width:70ch;padding-left:18px">
+      <li>1280 × 320 as today, shown at the README's 820px. The wordmark is Figtree 800 in lowercase, converted to outlines in the real file because GitHub loads no fonts inside an SVG.</li>
+      <li>The banner stays light on GitHub's dark theme, like the app. A and B fill their own rectangle; C has a white field that sits as a bright block on dark.</li>
+      <li>The line under the banner is today's, kept as a placeholder. It says "names in a hat", which describes the tradition, so the words ticket lets it stand; <code>/to-spec</code> can revisit it with the README's alt texts.</li>
+    </ul>
+  </section>
+
+  <section class="shot" id="social" aria-labelledby="so-h">
+    <h2 id="so-h">Social preview</h2>
+    <div class="ctl">
+      <label for="so-v">Composition<select id="so-v"><option value="A">A · The wordmark panel on the cloth</option><option value="B">B · The tied gift with a tag</option><option value="C">C · Mostly white, a strip of cloth</option></select></label>
+      <label for="so-l">A line of words<select id="so-l"><option value="off">None</option><option value="on">Under the wordmark</option></select></label>
+    </div>
+    <div class="card" id="so-card"></div>
+    <ul class="side" style="font-size:.9rem;max-width:70ch;padding-left:18px">
+      <li>1280 × 640, the size GitHub asks for, shown as a link card. The site that shows the card prints the repository name and description beside it, so a line inside the image says it twice.</li>
+      <li>It follows the banner's composition here; the select lets you compare a different one.</li>
+      <li>The owner uploads it in the repository settings; it is a PNG kept in <code>docs/assets/</code>.</li>
+    </ul>
+  </section>
+
+  <section class="shot" id="shots" aria-labelledby="sh-h">
+    <h2 id="sh-h">README screenshots</h2>
+    <div class="ctl">
+      <label for="sh-v">Arrangement at the top of the README<select id="sh-v"><option value="A">A · Three phones in a row</option><option value="B">B · One wide shot and one phone</option></select></label>
+    </div>
+    <div class="gh" id="gh-shots"></div>
+    <ul class="side" style="font-size:.9rem;max-width:70ch;padding-left:18px">
+      <li>These are drawn stand-ins. The real ones are captured from the built app with the demo people and the "Cousins' Swap" event, as today.</li>
+      <li>A matches how the design was made, phone first, and shows the story in order: what waits for you, the gift, the name.</li>
+      <li>B keeps today's shape. The wide shot is mostly empty, because wide screens use one 560px column.</li>
+      <li>Further down the README, under Features: organizing (wide) and questions (phone), and the GIF of the untying in place of the old reveal GIF.</li>
+      <li>Phone shots 390 CSS px wide and wide shots 640, both at 2×.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var girl = function (px) { return '<svg class="girl-w" width="' + px + '" height="' + px + '" aria-hidden="true"><use href="#girl"/></svg>'; };
+
+  /* ---------- email ---------- */
+  var EV = 'Cousins’ Swap', U = 'https://pollyanna.example/events/7';
+  var part = ['You’re getting this because you take part in “' + EV + '” on Pollyanna.', 'stop'];
+  var KINDS = {
+    drawn: { subj: EV + ': names are drawn', txt: ['Names are drawn in “' + EV + '” on Pollyanna, and you can see who you’re giving to. Open the event to see who you’re giving to.'], btn: 'Open the event', url: U, foot: part },
+    open: { subj: EV + ' is open: write your notes', txt: ['“' + EV + '” is open on Pollyanna. Write your notes so your giver knows what to get you: likes, sizes, no-gos.'], btn: 'Open the event', url: U, foot: part },
+    question: { subj: EV + ': a question for you', txt: ['Your giver in “' + EV + '” asked you something. Read it and reply on Pollyanna.'], btn: 'Read the question', url: U + '/questions', foot: part },
+    invite: { subj: 'You’re invited to ' + EV + ' on Pollyanna', txt: ['Ana invited you to “' + EV + '”, a gift exchange on Pollyanna.', 'Sign in with Google using this address (sue@example.com).'], btn: 'Open the event', url: U, foot: ['Someone invited this address to “' + EV + '” on Pollyanna. If this email wasn’t meant for you, ignore it.'] },
+    redraw: { subj: EV + ': a redraw is needed', txt: ['Kofi wants to leave “' + EV + '”; a redraw is needed. Open the manage page to draw names again.'], btn: 'Open the manage page', url: U + '/manage', foot: ['You’re getting this because you organize “' + EV + '” on Pollyanna.', 'stop'] }
+  };
+  function renderMail() {
+    var v = $('em-v').value, k = KINDS[$('em-k').value], bow = $('em-b').value === 'on';
+    var wm = '<div class="wm">' + (bow ? '<svg aria-hidden="true"><use href="#bow"/></svg>' : '') + 'pollyanna</div>';
+    var txt = '<div class="txt">' + k.txt.map(function (t) { return '<p>' + t + '</p>'; }).join('') + '</div>';
+    var cta = '<a class="cta" href="#email">' + k.btn + '</a>';
+    var url = '<p class="url">' + k.url + '</p>';
+    var foot = '<div class="foot">' + k.foot.map(function (f) { return f === 'stop' ? '<p>To stop Pollyanna emails, switch them off on your account page: <a href="#email">https://pollyanna.example/account</a></p>' : '<p>' + f + '</p>'; }).join('') + '</div>';
+    var h = '<h3>' + EV + '</h3>';
+    var body = v === 'A'
+      ? '<div class="top">' + wm + '</div><div class="band"><div class="pan stack">' + h + txt + cta + url + '</div></div><div class="under">' + foot + '</div>'
+      : v === 'B'
+      ? '<div class="band">' + wm + '</div><div class="in stack">' + h + txt + '<div>' + cta + '</div>' + url + '</div><div class="under">' + foot + '</div>'
+      : '<div class="in stack">' + wm + '<div class="rule"></div>' + h + txt + cta + url + '<div class="rule"></div>' + foot + '</div>';
+    var c = $('client');
+    c.className = 'client' + ($('em-d').value === 'dark' ? ' dark' : '') + ($('em-w').value === 'phone' ? ' phone-w' : '');
+    c.innerHTML = '<div class="chrome"><b>' + k.subj + '</b><span>Pollyanna &lt;pollyanna@pollyanna.example&gt;</span></div><div class="mail m' + v + '">' + body + '</div>';
+    $('em-cap').textContent = {
+      A: 'A mirrors the app: one white panel holding the thing to do, on the band that stands in for the cloth. Footer below on white.',
+      B: 'B keeps the band as a masthead only. The button is as wide as its words, and the content sits on plain white.',
+      C: 'C drops the band. Two pale-blue lines are the only color. Closest to a plain letter, furthest from the app.'
+    }[v] + (bow ? ' With the bow: it would have to travel inside the email as an attached image, which §15 rules out today.' : '');
+  }
+
+  /* ---------- drawn compositions (icon, banner, social) ---------- */
+  function wordmark(x, y, size, anchor) {
+    return '<text x="' + x + '" y="' + y + '" font-family="Figtree, system-ui, sans-serif" font-weight="800" font-size="' + size + '" letter-spacing="' + (-0.02 * size) + '" fill="#1E1A16" dominant-baseline="central" text-anchor="' + (anchor || 'start') + '">pollyanna</text>';
+  }
+  function girlAt(x, y, s) { return '<svg x="' + x + '" y="' + y + '" width="' + s + '" height="' + s + '" style="--g-gap:#fff;--g-shirt:#DCE7EE"><use href="#girl"/></svg>'; }
+  function bowAt(cx, cy, s, edge) {
+    var a = ' x="' + (cx - s / 2) + '" y="' + (cy - s / 2) + '" width="' + s + '" height="' + s + '" overflow="visible"';
+    return (edge ? '<svg' + a + '><use href="#bow-edge"/></svg>' : '') + '<svg' + a + '><use href="#bow"/></svg>';
+  }
+  function cloth(x, y, w, h, pat) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="#fff"/><rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="url(#' + pat + ')"/>'; }
+  function comp(v, H, line) {
+    var W = 1280, s = H === 320 ? 1 : 1.3, cy = H / 2, o = '', LINE = 'Draw names for your family’s gift exchange.';
+    var words = function (x, y, anchor) { return line ? '<text x="' + x + '" y="' + y + '" font-family="Figtree, system-ui, sans-serif" font-weight="600" font-size="' + 30 * s + '" fill="#5B5650" dominant-baseline="central" text-anchor="' + anchor + '">' + LINE + '</text>' : ''; };
+    if (v === 'A') {
+      var pw = 680 * s, ph = 208 * s + (line ? 56 * s : 0), px = (W - pw) / 2, py = (H - ph) / 2, g = 150 * s, my = py + 104 * s;
+      o = cloth(0, 0, W, H, 'gh20') + '<rect x="' + px + '" y="' + py + '" width="' + pw + '" height="' + ph + '" rx="16" fill="#fff"/>' +
+        girlAt(px + 40 * s, my - g / 2, g) + wordmark(px + 204 * s, my, 84 * s) + words(W / 2, py + ph - 48 * s, 'middle');
+    } else if (v === 'B') {
+      var rx = 250, rw = 44, th = 150 * s + (line ? 50 * s : 0), tx = 500, tw = 700, ty = cy - th / 2;
+      o = cloth(0, 0, W, H, 'gh20') +
+        '<rect x="0" y="' + (cy - rw / 2 - 5) + '" width="' + W + '" height="' + (rw + 10) + '" fill="#fff"/><rect x="' + (rx - rw / 2 - 5) + '" y="0" width="' + (rw + 10) + '" height="' + H + '" fill="#fff"/>' +
+        '<rect x="0" y="' + (cy - rw / 2) + '" width="' + W + '" height="' + rw + '" fill="#3F6E8C"/><rect x="' + (rx - rw / 2) + '" y="0" width="' + rw + '" height="' + H + '" fill="#3F6E8C"/>' +
+        bowAt(rx, cy + 14, H === 320 ? 230 : 300, true) +
+        '<rect x="' + tx + '" y="' + ty + '" width="' + tw + '" height="' + th + '" rx="16" fill="#fff"/>' +
+        wordmark(tx + tw / 2, ty + 75 * s, 84 * s, 'middle') + words(tx + tw / 2, ty + th - 44 * s, 'middle');
+    } else {
+      var sh = Math.round(H * 0.3 / 20) * 20, top = H - sh, g2 = 150 * s, mid = top / 2 - (line ? 24 * s : 0);
+      o = '<rect width="' + W + '" height="' + H + '" fill="#fff"/>' + cloth(0, top, W, sh, 'gh20') +
+        girlAt(W / 2 - 330 * s, mid - g2 / 2, g2) + wordmark(W / 2 - 166 * s, mid, 84 * s) + words(W / 2, mid + 92 * s, 'middle');
+    }
+    return '<svg class="art" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Pollyanna">' + o + '</svg>';
+  }
+  function icon(v, px) {
+    var o = cloth(0, 0, 180, 180, 'gh30');
+    if (v === 'A') o += bowAt(90, 92, 150, true);
+    if (v === 'B') o += '<rect x="24" y="24" width="132" height="132" rx="20" fill="#fff"/>' + bowAt(90, 92, 108, false);
+    if (v === 'C') o += '<rect x="20" y="20" width="140" height="140" rx="20" fill="#fff"/>' + girlAt(26, 28, 128);
+    return '<svg viewBox="0 0 180 180" width="' + px + '" height="' + px + '" role="img" aria-label="Icon ' + v + '">' + o + '</svg>';
+  }
+  function renderIcons() {
+    var names = { A: 'A · The bow tied on the cloth', B: 'B · The bow on a white panel', C: 'C · The girl on a white panel' };
+    $('icon-grid').innerHTML = ['A', 'B', 'C'].map(function (v) { return '<div class="icon-opt"><div class="sizes">' + icon(v, 180) + '</div><b>' + names[v] + '</b></div>'; }).join('');
+    $('home-row').innerHTML = ['A', 'B', 'C'].map(function (v) { return '<div class="icon-opt">' + icon(v, 60) + '<span>Pollyanna</span></div>'; }).join('');
+  }
+  function renderBanner() {
+    var g = $('gh-banner');
+    g.className = 'gh' + ($('bn-t').value === 'dark' ? ' dark' : '');
+    g.innerHTML = comp($('bn-v').value, 320, false) + '<em>Names in a hat for your family’s gift exchange. Self-hosted, and sealed even from you.</em>';
+  }
+  function renderSocial() {
+    $('so-card').innerHTML = comp($('so-v').value, 640, $('so-l').value === 'on') + '<div><b>MacheteBang/pollyanna</b><span>Self-hosted gift exchange: everyone draws one name and nobody sees who drew whom.</span></div>';
+  }
+
+  /* ---------- screens for the screenshot stand-ins ---------- */
+  var mast = '<div class="mast"><span class="brand">' + girl(40) + '<span>pollyanna</span></span><span class="mast-r"><svg aria-hidden="true"><use href="#bell"/></svg><a>Ana</a></span></div>';
+  function evHead() { return '<div class="head"><a class="small">Home</a><h3>' + EV + '</h3><p class="count">27 days to go</p><p class="small soft">December 24, $40 budget</p></div>'; }
+  var SCREENS = {
+    home: function (w) { return mast + '<div class="head"><h3>Your events</h3></div><div class="cloth gingham"><div class="panel' + w + '"><h4>' + EV + '</h4><p class="small soft">December 24, 27 days to go</p><div class="btn fill">See who you’re giving to</div></div></div><div class="body' + w + '"><div class="rows"><div><b>Book Club Swap</b><span>Write your notes</span><span class="small soft">January 9, open</span></div></div><div class="btn line">New event</div><a>Past events</a></div>'; },
+    tied: function () { return mast + evHead() + '<div class="gift gingham"><span class="rh"></span><span class="rv"></span><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#bow-edge"/><use href="#bow"/></svg></div><div class="body"><div class="btn fill">Untie the bow</div><a>Your notes</a></div>'; },
+    untied: function () { return mast + evHead() + '<div class="cloth gingham"><div class="panel"><p class="small soft">You’re giving to</p><p class="name">Kofi</p><p>Size L. Loves spicy food, board games for two, anything for the garden. No scented candles.</p><div class="box">Ask Kofi something</div><a class="small">Hide the name</a></div></div>'; }
+  };
+  function shot(name, wide, label) { return '<div><div class="shrink' + (wide ? ' w' : '') + '"><div class="screen">' + SCREENS[name](wide ? ' wide-col' : '') + '</div></div><p class="lbl">' + label + '</p></div>'; }
+  function renderShots() {
+    var a = $('sh-v').value === 'A';
+    $('gh-shots').innerHTML = '<div class="row">' + (a
+      ? shot('home', false, 'Home') + shot('tied', false, 'The event, tied') + shot('untied', false, 'The event, untied')
+      : shot('home', true, 'Home, wide') + shot('tied', false, 'The event, tied')) + '</div>';
+  }
+
+  [['em-v', renderMail], ['em-k', renderMail], ['em-d', renderMail], ['em-w', renderMail], ['em-b', renderMail], ['bn-v', function () { $('so-v').value = $('bn-v').value; renderBanner(); renderSocial(); }], ['bn-t', renderBanner], ['so-v', renderSocial], ['so-l', renderSocial], ['sh-v', renderShots]]
+    .forEach(function (p) { $(p[0]).addEventListener('change', p[1]); });
+  renderMail(); renderIcons(); renderBanner(); renderSocial(); renderShots();
+})();
+</script>
