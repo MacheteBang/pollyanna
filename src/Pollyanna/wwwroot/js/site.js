@@ -121,6 +121,42 @@ function messageTimes() {
     }
 }
 
+// "Questions for you" as a conversation (spec §7, §12): the page carries its day lines and
+// times in UTC; this redoes them in the viewer's own time zone. A day line is "Today", the
+// weekday within the week, otherwise the date; a time is "about 7 PM".
+function conversations() {
+    const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayLine = day => {
+        const ago = Math.round((today - day) / 86400000);
+        return ago === 0 ? "Today"
+            : ago > 0 && ago < 7 ? weekdays[day.getDay()]
+            : `${months[day.getMonth()]} ${day.getDate()}${day.getFullYear() === today.getFullYear() ? "" : ", " + day.getFullYear()}`;
+    };
+    for (const list of document.querySelectorAll("[data-conversation]")) {
+        for (const line of list.querySelectorAll("[data-day]")) line.remove();
+        let last = null;
+        for (const message of list.querySelectorAll(".message")) {
+            const time = message.querySelector("time[data-said]");
+            const at = new Date(time?.getAttribute("datetime"));
+            if (isNaN(at)) continue;
+            const h = at.getHours();
+            time.textContent = `about ${h === 0 ? "midnight" : h === 12 ? "noon" : `${h % 12} ${h < 12 ? "AM" : "PM"}`}`;
+            const day = new Date(at);
+            day.setHours(0, 0, 0, 0);
+            if (last !== null && day.getTime() === last) continue;
+            last = day.getTime();
+            const line = document.createElement("li");
+            line.className = "day-line";
+            line.dataset.day = "";
+            line.textContent = dayLine(day);
+            message.before(line);
+        }
+    }
+}
+
 // "12 / 1,000" under a message box as it fills.
 function counters() {
     for (const el of document.querySelectorAll("[data-counter]")) {
@@ -149,6 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
     addPeople();
     revealCards();
     messageTimes();
+    conversations();
     counters();
     saveOnChange();
 });
