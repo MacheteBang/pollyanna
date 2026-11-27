@@ -752,6 +752,7 @@ who is asking.
 | `/` | signed in | One panel per event the user takes part in or organizes: its name and the one thing waiting on them; then "New event" and "Past events". With no events, the empty home |
 | `/events/new` | signed in | Create an event as a draft; the creator becomes its organizer and lands on the organizing page, where people are added |
 | `/events/{id}` | participant | Before the draw, the notes editor; after it, the gift that unties to show who the user is giving to, with that person's notes and the question box; once the event is over, the pairings |
+| `/events/{id}/untie` | participant | "Untie the bow" without the script: the event page with the gift already untied and nothing moving (§12 The reveal) |
 | `/events/{id}/questions` | participant | The conversation with the user's giver |
 | `/events/{id}/manage` | organizer | The organizing page: the next step; people and invitations; who can't draw whom; details and organizers; the bigger changes (dropout, late joiner, redraw, archive, cancel); once revealed, the full pairing list |
 | `/past` | signed in | Archived events the user took part in or organized |
@@ -788,10 +789,12 @@ of this spec: its place stays empty until that feature exists. Signed-out
 pages show the mark and wordmark only.
 
 **Page head.** Under the masthead: a small back link ("Home", or the event's
-name on its sub-pages), or the two-way switch; the page title; one small
-soft line. An organizer who also takes part gets the same switch, "My page"
-/ "Organizing", at the top of both the event page and the organizing page.
-An organizer who doesn't take part sees no switch.
+name on its sub-pages); the page title; one small soft line. An organizer
+who also takes part gets the two-way switch, "My page" / "Organizing", on
+both the event page and the organizing page, in place of the back link.
+The event's name comes first there: the switch sits right under the title
+(decided 2026-11-27, user). An organizer who doesn't take part sees no
+switch and keeps the "Home" back link above the title.
 
 **Home, with events.**
 - One panel per event: the event's name and the one thing waiting on the
@@ -864,7 +867,8 @@ archived straight from `drawn` stays sealed (§4): the viewer sees only who
 they were giving to, and no list.
 
 **Organizing an event** (`/events/{id}/manage`).
-1. Head: the switch or a "Home" back link; the title; date and budget; the
+1. Head: a "Home" back link (an organizer who doesn't take part); the
+   title; the switch (an organizer who takes part); date and budget; the
    row of steps (§12 Statuses).
 2. The next step: one sentence on where the event stands and one button.
    - `draft`: "Only organizers can see this event. Open it so the people
@@ -882,13 +886,18 @@ they were giving to, and no list.
      with "Draw names again" and a small "Keep X in instead" link. The
      other reasons a draw is refused (§5.1) are stated in the same place,
      such as "The household X has more than half the people taking part, so
-     they can't all draw someone outside it."
+     they can't all draw someone outside it.", with "Change who can't draw
+     whom", which opens that fold below and moves to it. "Add people" here
+     likewise opens the "Add people" fold and moves to it; without the
+     script both are links to the fold, which the page renders open while
+     the blocker stands.
 3. "Taking part (N)": one row per person. A row says in small words what is
    missing ("no notes yet", "hasn't looked yet", "wants to leave") or
    "done shopping"; a row with nothing to say stays quiet. With nobody:
    "Nobody's taking part yet." Then "Invited, not signed in yet (N)", with
-   "Take back" per row, and "Add people". Once names are drawn: "Invitations
-   by email wait until names are drawn again."
+   "Take back" per row, and "Add people", a fold row (§12 Controls). Once
+   names are drawn: "Invitations by email wait until names are drawn
+   again."
 4. "Who can't draw whom" (households and extra rules) and "Details and
    organizers": closed rows with a summary on the right ("2 households, 1
    rule", "2 organizers") that open in place. The organizers hint reads
@@ -1315,7 +1324,16 @@ is in §14.
   be undone has a red outline. Links are ink at weight 600 with a 2px
   ribbon-blue underline. Keyboard focus is a 3px ribbon-blue ring, offset
   2px. The empty home is the one screen with no filled button: its two
-  halves are equal. With several sign-in providers every provider button is
+  halves are equal. Home with events is the one screen with several: each
+  event's panel has its own waiting line, and that line is the panel's
+  filled button (decided 2026-11-27, user).
+  - A control that only opens something in place is a fold row, the same
+    closed row with a chevron as "Who can't draw whom", never a button:
+    "Add people", "Add a household", "Add a rule", "Edit details" and "Add
+    an organizer" on the organizing page. The form it opens holds the one
+    button, its submit. "Bigger changes" are the exception: each is a real
+    button that opens its confirmation (§7). Every fold opens without the
+    script (decided 2026-11-27, user). With several sign-in providers every provider button is
   outlined, each with its logo (§3); a single button is filled.
 - Wordmark: the girl at 40px, then "pollyanna" in lowercase Figtree 800,
   tightened by 0.02em. There is no separate logo drawing. The product's
@@ -1345,7 +1363,11 @@ is in §14.
     `archived` "over"; `draft` (organizers only) "draft, only organizers can
     see it". Past-event rows carry no status word.
   - The organizing page adds a row of steps, Draft, Open, Names drawn,
-    Revealed, with the current one in ink over a ribbon-blue line.
+    Revealed, read as a trail (decided 2026-11-27, user): the steps in
+    order, joined by chevrons drawn in the 2px line. Done steps are ink at
+    600 with ribbon-blue chevrons after them; the current one is ink at 800
+    over a 2px ribbon-blue line; later steps are soft ink at 400 with
+    pale-blue chevrons. The row fits a 390px phone on one line.
 - The reveal is the one orchestrated motion; nothing else on the page
   moves.
   - Tied: the whole gingham band is the gift, and no white panel shows. A
@@ -1463,7 +1485,8 @@ words, and are left as written.
 - **Error and sign-in failure pages (#69):** the girl large, one or two
   sentences and one way out (`.lone`).
 - **Home, empty home and past events (#70).** One panel per event, its
-  waiting line (`EventManager.WaitingAsync`) the panel's filled button;
+  waiting line (`EventManager.WaitingAsync`) the panel's filled button, so
+  home is the one screen with several (§12 Controls);
   `Format.StatusLine` gives the status words used everywhere.
 - **Account and delete confirmation (#71).** Three groups; the email switch
   saves on change (`site.js saveOnChange()`), with a Save button without
