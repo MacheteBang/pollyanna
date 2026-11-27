@@ -75,7 +75,7 @@ public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, Sea
         {
             case HappeningKind.Question:
                 return happening.About is { } recipient && online.Contains(recipient) ? [recipient] : [];
-            case HappeningKind.Reply or HappeningKind.ConversationClosed or HappeningKind.ConversationReopened:
+            case HappeningKind.Reply or HappeningKind.ThreadClosed or HappeningKind.ThreadReopened:
                 return happening.Actor is { } actor && await hat.GiverAmongAsync(happening.EventId, actor, online) is { } giver ? [giver] : [];
             case HappeningKind.Patched:
                 return await hat.PatchedAmongAsync(happening.EventId, online);

@@ -170,7 +170,7 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.Contains("Conversation closed", await NoticeAsync(ann, Questions));
 
         var page = await pat.GetPageAsync(Page);
-        Assert.Contains("Ann closed this conversation.", page.QuerySelector("#ask")!.TextContent);
+        Assert.Contains("Your recipient has closed this conversation.", page.QuerySelector("#ask-closed")!.TextContent);
         Assert.Null(page.QuerySelector($"form[action='{Page}/ask']"));
         await pat.PostWithTokenAsync(Page, $"{Page}/ask", Form(("body", "Please?")));
         Assert.Contains("Your recipient has closed this conversation.", await ThreadNoticeAsync(pat, Page));

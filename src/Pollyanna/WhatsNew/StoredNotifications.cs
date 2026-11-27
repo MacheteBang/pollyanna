@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using Pollyanna.Data;
+using Pollyanna.Events;
 using Pollyanna.Happenings;
+using Pollyanna.Notifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace Pollyanna.WhatsNew;
@@ -20,7 +22,7 @@ public sealed class StoredNotifications(PollyannaDb db, TimeProvider clock)
     {
         var named = kind.Named?.Invoke(happening);
         var at = clock.GetUtcNow().UtcDateTime;
-        foreach (var person in (await kind.To(happening, db)).Distinct())
+        foreach (var person in (await kind.To(happening, this)).Distinct())
         {
             if (person == happening.Actor)
                 continue;
@@ -33,8 +35,23 @@ public sealed class StoredNotifications(PollyannaDb db, TimeProvider clock)
         }
     }
 
+    /// <summary>The people in <paramref name="audience"/> of the event, as the database stands in this transaction.</summary>
+    public async Task<IReadOnlyList<Guid>> MembersAsync(Guid eventId, Audience audience) =>
+        await audience.Members(db, eventId).ToListAsync();
+
+    /// <summary>A new participant, unless the event is still a draft: "It's open" covers them when it opens, as the email does.</summary>
+    public async Task<IReadOnlyList<Guid>> NewParticipantAsync(Guid eventId, Guid person)
+    {
+        var status = db.Events.Local.FirstOrDefault(e => e.Id == eventId)?.Status
+            ?? await db.Events.Where(e => e.Id == eventId).Select(e => e.Status).SingleAsync();
+        return EventLifecycle.ShownToParticipants.Contains(status) ? [person] : [];
+    }
+
     static bool Is(InAppNotification n, Guid person, Guid eventId, HappeningKind kind) =>
         n.PersonId == person && n.EventId == eventId && n.Kind == kind;
+
+    /// <summary>Every row of the person's, once they delete their account.</summary>
+    public Task ForgetPersonAsync(Guid person) => DeleteAsync(n => n.PersonId == person);
 
     /// <summary>Every row of the event, once it is canceled or archived.</summary>
     public Task ForgetEventAsync(Guid eventId) => DeleteAsync(n => n.EventId == eventId);

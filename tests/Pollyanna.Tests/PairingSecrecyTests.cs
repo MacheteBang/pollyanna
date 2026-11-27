@@ -251,7 +251,7 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
             Assert.Equal(before.WhatsNew, after.WhatsNew);
             var contents = before.Frames.Where(f => f.StartsWith("content ")).Select(f => f.Split('\n')[0]).ToList();
             if (viewer == Viewer.Participant)
-                Assert.Equal(["content Question", "content Reply", "content ConversationClosed", "content ConversationReopened"], contents);
+                Assert.Equal(["content Question", "content Reply", "content ThreadClosed", "content ThreadReopened"], contents);
             else
                 Assert.Empty(before.Frames);
         }

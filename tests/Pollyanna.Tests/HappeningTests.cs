@@ -281,7 +281,7 @@ public sealed class HappeningTests : IAsyncLifetime
         await annBrowser.PostWithTokenAsync(questions, $"{questions}/reopen");
 
         Heard(new Happening(HappeningKind.Reply, ev, ann),
-            new Happening(HappeningKind.ConversationClosed, ev, ann),
-            new Happening(HappeningKind.ConversationReopened, ev, ann));
+            new Happening(HappeningKind.ThreadClosed, ev, ann),
+            new Happening(HappeningKind.ThreadReopened, ev, ann));
     }
 }

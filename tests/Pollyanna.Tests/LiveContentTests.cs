@@ -118,11 +118,11 @@ public sealed class LiveContentTests : IAsyncLifetime
 
         await Browser("Rae").SubmitOnAsync($"{Page}/questions", $"{Page}/questions/close");
         await app.Live.SettleAsync();
-        var closed = Parse(GiverGot(nameof(HappeningKind.ConversationClosed), "Rae").Pages[Page]);
+        var closed = Parse(GiverGot(nameof(HappeningKind.ThreadClosed), "Rae").Pages[Page]);
         await SettledAsync();
         await Browser("Rae").SubmitOnAsync($"{Page}/questions", $"{Page}/questions/reopen");
         await app.Live.SettleAsync();
-        var reopened = Parse(GiverGot(nameof(HappeningKind.ConversationReopened), "Rae").Pages[Page]);
+        var reopened = Parse(GiverGot(nameof(HappeningKind.ThreadReopened), "Rae").Pages[Page]);
 
         Assert.NotNull(closed.QuerySelector("#ask-closed [data-closed]"));
         Assert.Null(closed.QuerySelector($"#ask form[action='{Page}/ask']"));

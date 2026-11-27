@@ -80,7 +80,7 @@ public sealed class WhatsNewList(PollyannaDb db, SealedHat hat)
             {
                 Row = n,
                 Event = e,
-                Named = db.People.Where(p => p.Id == n.NamedPersonId).Select(p => p.DisplayName).FirstOrDefault(),
+                Named = db.People.Where(p => p.Id == n.NamedPersonId).OrderBy(p => p.Id).Select(p => p.DisplayName).FirstOrDefault(),
                 TakesPart = db.Participants.Any(p => p.EventId == e.Id && p.PersonId == me),
             })
             .ToListAsync();

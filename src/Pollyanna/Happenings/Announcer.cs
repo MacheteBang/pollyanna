@@ -18,9 +18,9 @@ public sealed class Announcer(IEnumerable<IHappeningListener> listeners)
     }
 }
 
-/// <summary>Email, the first thing behind <see cref="Announcer"/>: queues each kind's emails by its table row (spec §15).</summary>
-public sealed class EmailOnHappening(Outbox outbox, PollyannaDb db) : IHappeningListener
+/// <summary>Email, the first thing behind <see cref="Announcer"/>: adds each kind's emails to the outbox by its table row (spec §15).</summary>
+public sealed class EmailOnHappening(Outbox outbox) : IHappeningListener
 {
     public Task HearAsync(Happening happening) =>
-        HappeningKinds.Of(happening.Kind).Email?.Invoke(happening, new EmailQueue(outbox, db)) ?? Task.CompletedTask;
+        HappeningKinds.Of(happening.Kind).Email?.Invoke(happening, outbox) ?? Task.CompletedTask;
 }

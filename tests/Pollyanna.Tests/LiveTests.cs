@@ -136,15 +136,10 @@ public sealed class LiveTests : IAsyncLifetime
             await live.EndedAsync();
         }
 
-        await WaitUntilAsync(() => app.Logs.Entries.Any(e => e.Message == "GET /live 200"));
+        // The stream's line is written as its request ends, before the reader sees the end.
+        await app.Live.SettleAsync();
         Assert.Equal(["GET /live 200"], app.Logs.Entries.Skip(before).Select(e => e.Message).Where(m => m.Contains("/live")));
         Assert.DoesNotContain(app.Logs.Entries.Skip(before), e => e.Message.Contains(me.ToString()) || e.Message.Contains(ev.ToString()));
-    }
-
-    static async Task WaitUntilAsync(Func<bool> condition)
-    {
-        for (var i = 0; i < 200 && !condition(); i++)
-            await Task.Delay(20);
     }
 
     /// <summary>Pat signed in a second time, as on another device.</summary>

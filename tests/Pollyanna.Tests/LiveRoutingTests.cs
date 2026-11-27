@@ -60,8 +60,8 @@ public sealed class LiveRoutingTests : IAsyncLifetime
         new("question", HappeningKind.Question, EventStatus.Open, true, "Gus", "Rae", null, Content: "Rae"),
         new("reply", HappeningKind.Reply, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
         new("patched", HappeningKind.Patched, EventStatus.Open, true, "Olga", null, null, Content: "Rae"),
-        new("closed", HappeningKind.ConversationClosed, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
-        new("reopened", HappeningKind.ConversationReopened, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
+        new("closed", HappeningKind.ThreadClosed, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
+        new("reopened", HappeningKind.ThreadReopened, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
         new("dismiss", null, EventStatus.Open, false, "Gus", null, null),
         // The event page's own parts (spec §16 "What each page does live").
         new("notes", HappeningKind.NotesEdited, EventStatus.Open, false, "Bea", null, null),
@@ -75,8 +75,8 @@ public sealed class LiveRoutingTests : IAsyncLifetime
     [Fact]
     public void Every_kind_says_where_its_signal_goes_and_assignment_ones_never_go_as_a_hint_to_the_event()
     {
-        foreach (var kind in new[] { HappeningKind.Question, HappeningKind.Reply, HappeningKind.ConversationClosed,
-            HappeningKind.ConversationReopened, HappeningKind.Patched })
+        foreach (var kind in new[] { HappeningKind.Question, HappeningKind.Reply, HappeningKind.ThreadClosed,
+            HappeningKind.ThreadReopened, HappeningKind.Patched })
             Assert.Equal(LiveTo.Pair, HappeningKinds.Of(kind).Live);
         Assert.All(HappeningKinds.Table.Where(r => r.Stored is not null), r => Assert.NotEqual(LiveTo.Pair, r.Live));
     }

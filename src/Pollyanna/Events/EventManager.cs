@@ -2,6 +2,7 @@ using System.Net.Mail;
 using Pollyanna.Configuration;
 using Pollyanna.Data;
 using Pollyanna.Happenings;
+using Pollyanna.WhatsNew;
 using Invitation = Pollyanna.Data.Invitation;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,7 +30,8 @@ public sealed record NewEvent(
 /// The draw and the changes after it are in <c>EventManager.Draw.cs</c>, the question box in
 /// <c>EventManager.Questions.cs</c>.
 /// </summary>
-public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, SealedHat hat, PostingLimit limit, Announcer announcer)
+public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, SealedHat hat, PostingLimit limit, Announcer announcer,
+    StoredNotifications stored)
 {
     public const int NameMax = 200;
     public const int BudgetMax = 100;

@@ -344,7 +344,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
     public async Task<SlipNews> NewsAsync(Guid eventId, Guid me)
     {
         // Two plain subqueries each, for the time and the number (SQLite has no APPLY for one with both).
-        var question = await db.Assignments.Where(a => a.EventId == eventId && a.RecipientId == me)
+        var question = await db.Assignments.Where(a => a.EventId == eventId && a.RecipientId == me).OrderBy(a => a.Id)
             .Select(a => new
             {
                 CreatedAt = db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Giver && m.Seq > a.RecipientReadUpto)
@@ -364,7 +364,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
                 a.RecipientChanged,
                 a.Viewed,
                 a.NotesVersionSeen,
-                NotesVersion = db.Participants.Where(p => p.EventId == eventId && p.PersonId == a.RecipientId).Select(p => p.NotesVersion).FirstOrDefault(),
+                NotesVersion = db.Participants.Where(p => p.EventId == eventId && p.PersonId == a.RecipientId).OrderBy(p => p.PersonId).Select(p => p.NotesVersion).FirstOrDefault(),
                 a.ThreadChangeUnseen,
                 a.ThreadClosed,
             })
@@ -404,7 +404,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
                 break;
             case SlipMarker.NotesUpdated:
                 row.NotesVersionSeen = await db.Participants.Where(p => p.EventId == eventId && p.PersonId == row.RecipientId)
-                    .Select(p => p.NotesVersion).FirstOrDefaultAsync();
+                    .OrderBy(p => p.PersonId).Select(p => p.NotesVersion).FirstOrDefaultAsync();
                 break;
             case SlipMarker.ThreadChanged:
                 row.ThreadChangeUnseen = false;

@@ -112,7 +112,7 @@ public sealed partial class EventManager
             return refusal;
         if (!await hat.SetClosedAsync(m.Event.Id, me, closed))
             return Outcome.Fail("There's no conversation here.");
-        await announcer.AnnounceAsync(new Happening(closed ? HappeningKind.ConversationClosed : HappeningKind.ConversationReopened, m.Event.Id, me));
+        await announcer.AnnounceAsync(new Happening(closed ? HappeningKind.ThreadClosed : HappeningKind.ThreadReopened, m.Event.Id, me));
         await db.SaveChangesAsync();
         return Outcome.Done(closed
             ? "Conversation closed. Your giver can't send more questions until you reopen it."

@@ -16,7 +16,7 @@ public static class WorkedOutKinds
     {
         HappeningKind.Question => SlipMarker.Question,
         HappeningKind.Reply => SlipMarker.Reply,
-        HappeningKind.ConversationClosed or HappeningKind.ConversationReopened => SlipMarker.ThreadChanged,
+        HappeningKind.ThreadClosed or HappeningKind.ThreadReopened => SlipMarker.ThreadChanged,
         HappeningKind.Patched => SlipMarker.Patched,
         HappeningKind.NotesEdited => SlipMarker.NotesUpdated,
         _ => null,
@@ -30,7 +30,7 @@ public static class WorkedOutKinds
     {
         HappeningKind.Patched => 0,
         HappeningKind.NotesEdited => 1,
-        HappeningKind.ConversationClosed or HappeningKind.ConversationReopened => 2,
+        HappeningKind.ThreadClosed or HappeningKind.ThreadReopened => 2,
         _ => null,
     };
 
@@ -44,8 +44,8 @@ public static class WorkedOutKinds
             yield return new(ev.Id, HappeningKind.Reply, "Your recipient replied", page, ev.Name, replied, news.ReplyUpto);
         if (news.ThreadChanged)
             yield return news.Closed
-                ? new(ev.Id, HappeningKind.ConversationClosed, "Your recipient closed the conversation", page, ev.Name, null)
-                : new(ev.Id, HappeningKind.ConversationReopened, "Your recipient reopened the conversation", page, ev.Name, null);
+                ? new(ev.Id, HappeningKind.ThreadClosed, "Your recipient closed the conversation", page, ev.Name, null)
+                : new(ev.Id, HappeningKind.ThreadReopened, "Your recipient reopened the conversation", page, ev.Name, null);
         if (news.Patched)
             yield return new(ev.Id, HappeningKind.Patched, "You're giving to someone new", page, ev.Name, null);
         if (news.NotesUpdated)
