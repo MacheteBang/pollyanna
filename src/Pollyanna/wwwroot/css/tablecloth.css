@@ -372,3 +372,49 @@ strong, b { font-weight: 800; }
     line-height: 1.1;
     overflow-wrap: anywhere;
 }
+
+/* ---------- The "My page" / "Organizing" switch (_EventSwitch), in the page head ---------- */
+
+.switch {
+    display: inline-flex;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    overflow: hidden;
+    font: var(--type-small);
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.switch > * {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 14px;
+    text-decoration: none;
+}
+
+.switch-on { background: var(--ink); color: var(--white); }
+
+/* The focus ring would be clipped by the switch's corner: draw it inside. */
+.switch a:focus-visible { outline-offset: -5px; }
+
+/* ---------- The row of steps on the organizing page (spec §12 Statuses) ---------- */
+
+.steps {
+    align-self: stretch;
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    margin-top: 10px;
+    padding: 0;
+    list-style: none;
+    font: var(--type-small);
+    color: var(--soft-ink);
+}
+
+.steps li {
+    padding: 0 var(--space-2) var(--space-2) 0;
+    border-bottom: var(--line) solid var(--pale);
+}
+
+.steps .step-done { border-color: var(--ribbon); }
+.steps .step-now { border-color: var(--ribbon); color: var(--ink); font-weight: 800; }

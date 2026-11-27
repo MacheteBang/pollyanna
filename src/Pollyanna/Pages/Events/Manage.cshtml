@@ -3,25 +3,44 @@
 @using Pollyanna.Events
 @using Pollyanna.Infrastructure
 @{
-    ViewData["Title"] = "Manage " + Model.Event.Name;
+    Layout = "_Tablecloth";
+    ViewData["Title"] = "Organizing " + Model.Event.Name;
     var m = Model.Membership;
     var editable = m.PeopleEditable;
     var drawn = m.IsLive;
     string Box(bool on) => on ? "[x]" : "[ ]";
     string Household(Guid? id) => Model.Households.FirstOrDefault(h => h.Id == id)?.Name ?? "no household";
     var lateJoiner = new Pollyanna.Pages.Shared.PickOneView("late", Model.Known, "Who's joining", "they're added");
+    // The row of steps (spec §12 Statuses): the current one in ink; an archived event has passed them all.
+    string[] Steps = ["Draft", "Open", "Names drawn", "Revealed"];
+    var step = Model.Event.Status switch
+    {
+        EventStatus.Draft => 0,
+        EventStatus.Open => 1,
+        EventStatus.Drawn => 2,
+        EventStatus.Revealed => 3,
+        _ => Steps.Length,
+    };
     var newOrganizer = new Pollyanna.Pages.Shared.PickOneView("organizer", Model.KnownNotOrganizing, "Add an organizer", "they're made an organizer");
 }
 
-<a class="back" href="/">← Your exchanges</a>
-<div class="page-head">
-    <p class="kicker">ORGANIZING</p>
-    <h1>@Model.Event.Name</h1>
-    <p>@(string.IsNullOrWhiteSpace(Model.Event.BudgetText) ? "" : Model.Event.BudgetText + " · ")<partial name="_When" model="Model.Event.ExchangeDate" /></p>
-    @if (m.IsParticipant && m.ShownToParticipants)
+<div class="column page-head">
+    @if (m.IsParticipant)
     {
-        <p><a href="/events/@Model.Event.Id">Your event page</a></p>
+        <partial name="_EventSwitch" model="new Pollyanna.Pages.Shared.EventSwitchView(Model.Event.Id, Organizing: true)" />
     }
+    else
+    {
+        <a class="page-head-back" href="/">Home</a>
+    }
+    <h1 class="page-title">@Model.Event.Name</h1>
+    <p class="page-head-line"><partial name="_When" model="Model.Event.ExchangeDate" />@(string.IsNullOrWhiteSpace(Model.Event.BudgetText) ? "" : " · " + Model.Event.BudgetText)</p>
+    <ol class="steps" aria-label="Where this event stands">
+        @for (var i = 0; i < Steps.Length; i++)
+        {
+            <li class="@(i < step ? "step-done" : i == step ? "step-now" : null)" aria-current="@(i == step ? "step" : null)">@Steps[i]</li>
+        }
+    </ol>
 </div>
 
 <section class="slip slip-plain" id="status" aria-labelledby="status-heading">
