@@ -372,3 +372,51 @@ strong, b { font-weight: 800; }
     line-height: 1.1;
     overflow-wrap: anywhere;
 }
+
+/* ---------- Form fields (new event first; reuse for any form in a panel) ---------- */
+
+[hidden] { display: none !important; }
+
+/* A label over its control, with an optional small soft line under it. */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.field label { font-weight: 800; }
+
+.field input,
+.field select,
+.field textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    background: var(--white);
+    color: var(--ink);
+    font: inherit;
+}
+
+.field textarea { resize: vertical; }
+
+/* A checkbox with its words beside it, the whole row a 44px target. */
+.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--tap);
+    cursor: pointer;
+}
+
+.check input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    flex: none;
+    accent-color: var(--ribbon);
+}
+
+/* The panel's own button runs its full width. */
+.panel > .button { margin-top: var(--space-1); }

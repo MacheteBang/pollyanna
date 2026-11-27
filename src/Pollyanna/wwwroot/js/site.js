@@ -15,25 +15,14 @@ function countdowns() {
     }
 }
 
-// New event: show only the people of the earlier event that is picked, and the no-repeat
-// choice only when one is picked. Without the script, every group shows with its own heading.
-// The add-people list leaves out the people already ticked under the picked event (spec §4).
+// New event: the don't-repeat choice shows only once an earlier event is picked (spec §7).
+// Without the script it always shows, and is ignored when no earlier event is picked.
 function previousEventPicker() {
     const select = document.querySelector("[data-previous-select]");
     if (!select) return;
     const update = () => {
-        for (const group of document.querySelectorAll("[data-previous-group]"))
-            group.hidden = group.dataset.previousGroup !== select.value;
         for (const el of document.querySelectorAll("[data-needs-previous]"))
             el.hidden = select.value === "";
-        for (const row of document.querySelectorAll("[data-add-people] li[data-search]")) {
-            const prefilled = select.value !== "" && (row.dataset.previousGroups ?? "").split(" ").includes(select.value);
-            row.dataset.prefilled = prefilled ? "true" : "false";
-            row.hidden = prefilled;
-            row.querySelector("input").disabled = prefilled;
-        }
-        // Let the filter box apply itself to the rows that came back.
-        document.querySelector("[data-add-people-filter] input")?.dispatchEvent(new Event("input"));
     };
     select.addEventListener("change", update);
     update();
