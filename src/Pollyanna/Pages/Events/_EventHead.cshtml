@@ -1,0 +1,32 @@
+@model Pollyanna.Pages.Events.EventModel
+@using Pollyanna.Data
+@using Pollyanna.Infrastructure
+@using Pollyanna.Pages.Shared
+@* The event page's head (spec §7 Page head; §12 Statuses), for every state of the page: the
+   two-way switch for an organizer who takes part, otherwise a "Home" back link; the title; the
+   countdown, the prominent part, filled in by site.js (without the script, the date alone shows);
+   then one small soft line with the date, the budget and the status in plain words. *@
+@{
+    var ev = Model.Event;
+    var status = ev.Status switch
+    {
+        EventStatus.Draft => "draft, only organizers can see it",
+        EventStatus.Open => "names not drawn yet",
+        EventStatus.Drawn => "names drawn",
+        EventStatus.Revealed => "everyone's been revealed",
+        _ => "over",
+    };
+}
+<div class="column page-head">
+    @if (Model.Membership.IsOrganizer)
+    {
+        <partial name="_EventSwitch" model="new EventSwitchView(ev.Id, Organizing: false)" />
+    }
+    else
+    {
+        <a class="page-head-back" href="/">Home</a>
+    }
+    <h1 class="page-title">@ev.Name</h1>
+    <p class="page-countdown" data-countdown="@Format.IsoDate(ev.ExchangeDate)" data-countdown-alone hidden></p>
+    <p class="page-head-line"><time datetime="@Format.IsoDate(ev.ExchangeDate)">@Format.Date(ev.ExchangeDate)</time>@(string.IsNullOrWhiteSpace(ev.BudgetText) ? "" : " · " + ev.BudgetText) · @status</p>
+</div>

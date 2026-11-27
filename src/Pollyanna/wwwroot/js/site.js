@@ -10,7 +10,9 @@ function countdowns() {
         const [y, m, d] = el.dataset.countdown.split("-").map(Number);
         const days = Math.round((new Date(y, m - 1, d) - today) / 86400000);
         if (days < 0) continue;
-        el.textContent = days === 0 ? " · Today's the day" : days === 1 ? " · 1 day to go" : ` · ${days} days to go`;
+        // "data-countdown-alone" stands on its own line ("Tablecloth"); otherwise it follows the date.
+        const text = days === 0 ? "Today's the day" : days === 1 ? "1 day to go" : `${days} days to go`;
+        el.textContent = "countdownAlone" in el.dataset ? text : ` · ${text}`;
         el.hidden = false;
     }
 }

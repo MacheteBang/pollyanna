@@ -358,11 +358,11 @@ public sealed class AfterDrawTests : IAsyncLifetime
         var eventPage = await browser.GetPageAsync($"/events/{ev}");
         Assert.NotNull(eventPage.QuerySelector($"a[href='/events/{ev}/leave']"));
 
-        // First confirmation, then the second one explaining someone else's slip changes.
+        // First confirmation, then the second one explaining someone else gives to someone new.
         var second = await browser.SubmitOnAsync($"/events/{ev}/leave", $"/events/{ev}/leave");
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         var page = await TestBrowser.ParseAsync(second);
-        Assert.Contains("Someone else's slip will change", page.Body!.TextContent);
+        Assert.Contains("Names are drawn, so one other person will be giving to someone new.", page.Body!.TextContent);
         Assert.Contains(me, await app.ParticipantsAsync(ev));
 
         var response = await browser.SubmitAsync(page, $"/events/{ev}/leave");

@@ -373,6 +373,27 @@ strong, b { font-weight: 800; }
     overflow-wrap: anywhere;
 }
 
+/* ---------- The row of steps on the organizing page (spec §12 Statuses) ---------- */
+
+.steps {
+    align-self: stretch;
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    margin-top: 10px;
+    padding: 0;
+    list-style: none;
+    font: var(--type-small);
+    color: var(--soft-ink);
+}
+
+.steps li {
+    padding: 0 var(--space-2) var(--space-2) 0;
+    border-bottom: var(--line) solid var(--pale);
+}
+
+.steps .step-done { border-color: var(--ribbon); }
+.steps .step-now { border-color: var(--ribbon); color: var(--ink); font-weight: 800; }
+
 /* ---------- Error and sign-in failure pages: the girl large, no cloth (spec §7, §12) ---------- */
 
 /* One block in the column: the girl at about 130px, the title, one or two sentences, one way out. */
@@ -519,3 +540,94 @@ strong, b { font-weight: 800; }
 }
 
 .link-button.small { font: var(--type-small); font-weight: 600; }
+
+/* ---------- Event page (#72): countdown, the two-way switch, the notes field, people rows ---------- */
+
+/* The countdown in the page head: the prominent part of the date line. Filled in by site.js;
+   without the script it stays hidden and the date line says the date alone. */
+.page-countdown { font: var(--type-action); }
+
+/* "My page" / "Organizing" (_EventSwitch): two halves of one outlined control, the current one in ink. */
+.switch {
+    display: inline-flex;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.switch a {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 14px;
+    font: var(--type-small);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.switch a[aria-current="page"] {
+    background: var(--ink);
+    color: var(--white);
+}
+
+/* The switch clips its halves, so their focus ring goes inside. */
+.switch a:focus-visible { outline-offset: -5px; }
+.switch a[aria-current="page"]:focus-visible { outline-color: var(--white); }
+
+/* A field's own button (the notes form) sits just under its control. */
+.field .button { margin-top: var(--space-1); }
+
+/* A heading for a group on white, under the cloth. */
+.section-title { font: var(--type-body); font-weight: 800; }
+
+/* The people rows (.rows above): a little under their heading, each person split by a pale-blue line. */
+.people { margin-top: var(--space-2); }
+
+.people > li {
+    padding-block: var(--space-3);
+    border-top: var(--line) solid var(--pale);
+}
+
+.people > li:first-child { border-top: 0; }
+
+/* A person: their picture beside their name, their notes under the name. */
+.person {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+.person-body { min-width: 0; }
+.person-name { font-weight: 800; overflow-wrap: anywhere; }
+.notes { white-space: pre-line; overflow-wrap: anywhere; }
+
+/* A picture or initials: 40px, with the one corner, never a circle. */
+.avatar {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: var(--corner);
+    object-fit: cover;
+}
+
+.avatar-initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--pale);
+    color: var(--ink);
+    font: var(--type-small);
+    font-weight: 800;
+}
+
+/* A link standing alone as a way out, such as "Stay in": tall enough to tap. */
+.tap-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+}
+
+/* A confirmation (leave): plain text on white, then the button and the way out. */
+.confirm { padding-top: 0; gap: var(--space-3); }
+.confirm .actions { margin-top: var(--space-3); align-items: stretch; }

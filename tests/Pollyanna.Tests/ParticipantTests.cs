@@ -7,7 +7,7 @@ using static Pollyanna.Tests.Support.Seed;
 
 namespace Pollyanna.Tests;
 
-/// <summary>The event page for participants (spec §4, §7): the people in the hat, notes, leaving.</summary>
+/// <summary>The event page for participants (spec §4, §7): the people taking part, notes, leaving.</summary>
 public sealed class ParticipantTests : IAsyncLifetime
 {
     TestApp app = null!;
@@ -46,9 +46,9 @@ public sealed class ParticipantTests : IAsyncLifetime
         var page = await browser.GetPageAsync($"/events/{ev}");
         var text = page.Body!.TextContent;
         Assert.Equal("Stockings 2026", page.QuerySelector("h1")!.TextContent);
-        Assert.Contains("$25 · Dec 24, 2026", text);
+        Assert.Contains("Dec 24, 2026 · $25", text);
         Assert.NotNull(page.QuerySelector(".page-head [data-countdown='2026-12-24']"));
-        Assert.Contains("In the hat (2)", text);
+        Assert.Contains("Taking part (2)", text);
         Assert.Contains("Socks: women's M.\nNo candles please.", page.QuerySelector(".people .notes")!.TextContent);
         // Organizer-only things stay off the participant's page.
         Assert.DoesNotContain("secret@example.com", text);
@@ -119,7 +119,7 @@ public sealed class ParticipantTests : IAsyncLifetime
         var eventPage = await browser.GetPageAsync($"/events/{ev}");
         Assert.NotNull(eventPage.QuerySelector($"a[href='/events/{ev}/leave']"));
         var confirm = await browser.GetPageAsync($"/events/{ev}/leave");
-        Assert.Contains("Leave Stockings?", confirm.QuerySelector("h1")!.TextContent);
+        Assert.Equal("Leave this event?", confirm.QuerySelector("h1")!.TextContent);
         Assert.Contains(me, await app.ParticipantsAsync(ev)); // nothing happens until confirmed
 
         var response = await browser.SubmitAsync(confirm, $"/events/{ev}/leave");
