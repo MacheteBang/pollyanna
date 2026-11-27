@@ -161,6 +161,10 @@ public sealed partial class NotificationSecrecyTests
     public async Task What_is_queued_and_sent_doesnt_change_when_other_peoples_recipients_do()
     {
         await using var app = await TestApp.StartAsync(mail: true);
+        // Each run moves the clock on three hours, so the second starts three hours after the
+        // first. Both stay on one day: a run that crossed midnight would put a day line between a
+        // question and its reply that the other run hasn't, in Pat's own thread.
+        app.Clock.SetUtcNow(new DateTimeOffset(Tomorrow.At(9)));
         var people = await SignInAllAsync(app, "Pat", "Ann", "Bob", "Carol", "Dave", "Eve");
         try
         {
