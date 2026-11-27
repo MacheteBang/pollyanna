@@ -122,4 +122,99 @@ public sealed class LivePagesTests : IAsyncLifetime
         // The invitations' region is there to fill even with none waiting.
         Assert.Empty(page.QuerySelector("#live-invited")!.Children);
     }
+
+    async Task<Guid> EventInAsync(EventStatus status, bool redrawn = false)
+    {
+        var ev = await app.EventAsync("Stockings", status, [ann], [patId, ann, bob]);
+        if (status is not (EventStatus.Draft or EventStatus.Open))
+            await app.SealAsync(ev, Loop(patId, ann, bob));
+        await app.WithDbAsync(async db =>
+        {
+            var e = (await db.Events.FindAsync(ev))!;
+            e.Status = status;
+            e.Redrawn = redrawn;
+            await db.SaveChangesAsync();
+        });
+        return ev;
+    }
+
+    public static TheoryData<EventStatus, bool, string, string> EventShapes => new()
+    {
+        { EventStatus.Open, false, "event-open", "The event is open." },
+        { EventStatus.Open, true, "event-open", "The event is open." },
+        { EventStatus.Drawn, false, "event-drawn", "Names have been drawn." },
+        { EventStatus.Drawn, true, "event-drawn", "Names have been drawn again." },
+        { EventStatus.Revealed, false, "event-revealed", "Everyone's been revealed." },
+        { EventStatus.Archived, false, "event-archived", "This event was archived." },
+    };
+
+    [Theory]
+    [MemberData(nameof(EventShapes))]
+    public async Task The_event_page_names_its_shape_by_status_with_the_line_for_arriving_there(
+        EventStatus status, bool redrawn, string shape, string line)
+    {
+        var ev = await EventInAsync(status, redrawn);
+
+        var main = (await pat.GetPageAsync($"/events/{ev}")).QuerySelector("main")!;
+
+        Assert.Equal(shape, main.GetAttribute("data-live-shape"));
+        Assert.Equal(line, main.GetAttribute("data-live-line") ?? "");
+    }
+
+    public static TheoryData<EventStatus, string[]> EventRegions => new()
+    {
+        // Before the draw: the details, your own notes (saved in another tab), "Taking part".
+        { EventStatus.Open, ["event-head", "your-notes", "taking-part"] },
+        // After it: the recipient's notes under "You're giving to", "Done shopping", your notes and the people.
+        { EventStatus.Drawn, ["event-head", "their-notes", "shopping", "your-notes", "taking-part"] },
+        // Over: state changes only (the head is the same part in every state, though nothing in it changes now).
+        { EventStatus.Revealed, ["event-head"] },
+        { EventStatus.Archived, ["event-head"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(EventRegions))]
+    public async Task The_event_page_marks_the_regions_that_patch_in_place(EventStatus status, string[] regions)
+    {
+        var ev = await EventInAsync(status);
+
+        var page = await pat.GetPageAsync($"/events/{ev}");
+
+        Assert.Equal(regions, Regions(page));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("/untie")]
+    public async Task The_gift_is_never_part_of_a_region_so_a_patch_keeps_it_tied_or_untied(string untie)
+    {
+        var ev = await EventInAsync(EventStatus.Drawn);
+
+        var gift = (await pat.GetPageAsync($"/events/{ev}{untie}")).QuerySelector("#gift")!;
+
+        Assert.Null(gift.Closest("[data-live]"));
+        // Only the parts under the name patch, inside it.
+        Assert.Equal(["their-notes", "shopping"], gift.QuerySelectorAll("[data-live]").Select(r => r.Id ?? "").ToList());
+    }
+
+    [Fact]
+    public async Task A_live_refetch_brings_the_recipients_new_notes_and_the_updated_line_under_the_name()
+    {
+        var (rae, raeId) = await app.SignInAsync(new MockIdentity("rae", "Rae", "rae@example.com", true, null));
+        var ev = await app.EventAsync("Stockings", EventStatus.Drawn, [ann], [patId, raeId, bob]);
+        await app.SealAsync(ev, Loop(patId, raeId, bob));
+        await app.UpdateAssignmentAsync(ev, patId, a => a.Viewed = true);
+        using var tab = await pat.OpenLiveAsync();
+        await app.Live.SettleAsync();
+        tab.Clear();
+
+        await rae.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/notes", Form(("notes", "Blue socks, size 9")));
+        await app.Live.SettleAsync();
+        var notes = (await pat.GetPageAsync($"/events/{ev}", live: true)).QuerySelector("#their-notes")!;
+
+        Assert.Equal([new LiveHintData(ev, nameof(Pollyanna.Happenings.HappeningKind.NotesEdited))], tab.Hints);
+        Assert.Contains("Blue socks, size 9", notes.TextContent);
+        Assert.Contains("Notes updated since you last looked", notes.TextContent);
+        rae.Dispose();
+    }
 }

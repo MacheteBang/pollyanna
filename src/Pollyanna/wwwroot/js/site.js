@@ -315,7 +315,7 @@ function whatsNewPanel() {
 // closed until the next page load. Without the script, or without EventSource, nothing changes.
 const live = { tab: "", posting: false, onRefetch: [] };
 
-// A page that updates live (spec §16 "What each page does live"; home and organizing so far).
+// A page that updates live (spec §16 "What each page does live"; home, the event page and organizing).
 // The server marks it up (Pollyanna.Live.LiveShape and the page):
 // - main[data-live-shape] names the page's shape, and data-live-line the quiet line for arriving
 //   at it ("Names have been drawn."). A refetch with another shape is a state change.
@@ -323,6 +323,8 @@ const live = { tab: "", posting: false, onRefetch: [] };
 //   it changed, unless something in it is being edited, and then tried again on the next refetch.
 // - [data-live-list][id] holds regions (by id) that come and go, such as home's panels.
 // Being edited: a form with focus or unsaved changes, or an open "Bigger changes" confirmation.
+// The event page's gift is never a region, so its tied or untied state stays as the viewer left it
+// while the parts under the name (their notes, "Done shopping") patch inside it.
 // Open folds stay open and focus stays where it was. A state change swaps the page body when
 // nothing is being edited, and says the line politely; otherwise the line shows, with "Show",
 // and the page stays as it is. A refetch that comes back not found means the event was canceled
@@ -433,6 +435,9 @@ function livePage() {
     const body = (page, fresh) => {
         const was = [...main.querySelectorAll("details[id]")].map(d => [d.id, d.open]);
         for (const notice of fresh.querySelectorAll(".notice")) notice.remove(); // left for the next visit
+        // A gift arrives tied, whatever the refetch said (a waiting "untied" is for the next
+        // visit, like a notice): nothing shows the name on its own.
+        for (const gift of fresh.querySelectorAll("[data-gift]")) gift.classList.remove("untied", "still");
         const nodes = [...fresh.childNodes].map(n => document.importNode(n, true));
         main.replaceChildren(...nodes);
         const slot = main.querySelector("[data-live-say]");
