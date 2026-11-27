@@ -36,12 +36,35 @@ public static class Format
     public static string Said(Note message)
     {
         var at = message.CreatedAt;
-        var hour = at.Hour % 12 == 0 ? 12 : at.Hour % 12;
-        var half = at.Hour < 12 ? "AM" : "PM";
         if (!message.OnTheHour)
-            return $"{hour}:{at.Minute:00} {half} UTC";
-        return "about " + (at.Hour == 0 ? "midnight" : at.Hour == 12 ? "noon" : $"{hour} {half}") + " UTC";
+            return Clock(at) + " UTC";
+        var hour = at.Hour % 12 == 0 ? 12 : at.Hour % 12;
+        return "about " + (at.Hour == 0 ? "midnight" : at.Hour == 12 ? "noon" : $"{hour} {(at.Hour < 12 ? "AM" : "PM")}") + " UTC";
     }
+
+    /// <summary>"7:42 PM".</summary>
+    public static string Clock(DateTime at)
+    {
+        var hour = at.Hour % 12 == 0 ? 12 : at.Hour % 12;
+        return $"{hour}:{at.Minute:00} {(at.Hour < 12 ? "AM" : "PM")}";
+    }
+
+    /// <summary>
+    /// The day line between days of a conversation: "Today", the weekday within a week, or the
+    /// date (with the year when it isn't this year's).
+    /// </summary>
+    public static string DayLine(DateOnly day, DateOnly today)
+    {
+        var ago = today.DayNumber - day.DayNumber;
+        return ago == 0 ? "Today"
+            : ago is > 0 and < 7 ? day.DayOfWeek.ToString()
+            : day.Year == today.Year ? day.ToString("MMMM d", CultureInfo.InvariantCulture)
+            : day.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>When something happened, in UTC, for the page without the script: "Today, 7:42 PM UTC".</summary>
+    public static string When(DateTime utc, DateTime nowUtc) =>
+        $"{DayLine(DateOnly.FromDateTime(utc), DateOnly.FromDateTime(nowUtc))}, {Clock(utc)} UTC";
 
     public static string People(int count) => count == 1 ? "1 person" : $"{count} people";
 

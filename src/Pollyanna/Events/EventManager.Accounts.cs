@@ -84,6 +84,8 @@ public sealed partial class EventManager
             // Revealed and archived events keep the participant row; their notes go.
             await db.Participants.Where(p => p.PersonId == me)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.Notes, "").SetProperty(p => p.NotesVersion, p => p.NotesVersion + 1));
+            // Their "What's new" rows go with the account (spec §16).
+            await db.InAppNotifications.Where(n => n.PersonId == me).ExecuteDeleteAsync();
             await db.PersonPictures.Where(p => p.PersonId == me).ExecuteDeleteAsync();
             await db.Sessions.Where(s => s.PersonId == me).ExecuteDeleteAsync();
             await db.Logins.Where(l => l.PersonId == me).ExecuteDeleteAsync();

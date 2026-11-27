@@ -100,7 +100,7 @@ public sealed class TableclothTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task For_a_signed_in_person_the_masthead_adds_an_empty_reserved_place_and_their_first_name_but_no_sign_out()
+    public async Task For_a_signed_in_person_the_masthead_adds_the_bell_and_their_first_name_but_no_sign_out()
     {
         var (browser, _) = await app.SignInAsync(new("ana", "Ana María Example", "ana@example.com", true, null));
         using var _b = browser;
@@ -109,9 +109,7 @@ public sealed class TableclothTests : IAsyncLifetime
 
         var masthead = page.QuerySelector("header.masthead")!;
         var links = masthead.QuerySelectorAll("a").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"))).ToList();
-        Assert.Equal([("pollyanna", "/"), ("Ana", "/account")], links);
-        var slot = Assert.Single(masthead.QuerySelectorAll(".masthead-slot"));
-        Assert.Equal("", slot.InnerHtml);
+        Assert.Equal([("pollyanna", "/"), ("", "/whats-new"), ("Ana", "/account")], links);
         Assert.DoesNotContain("Sign out", masthead.TextContent);
         Assert.Empty(masthead.QuerySelectorAll("form, button"));
     }

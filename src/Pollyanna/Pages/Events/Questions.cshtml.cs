@@ -1,6 +1,6 @@
-using System.Globalization;
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Pollyanna.Pages.Events;
@@ -27,14 +27,7 @@ public sealed class QuestionsModel(PollyannaDb db, EventManager events, TimeProv
         && note.Seq > Thread!.Notes.Where(n => n.Sender == MessageSender.Recipient).Select(n => n.Seq).DefaultIfEmpty(0).Max();
 
     /// <summary>The day line (spec §7): "Today", the weekday within the week, otherwise the date ("December 1", with the year when it isn't this one).</summary>
-    public static string DayLine(DateOnly day, DateOnly today)
-    {
-        var ago = today.DayNumber - day.DayNumber;
-        return ago == 0 ? "Today"
-            : ago is > 0 and < 7 ? day.DayOfWeek.ToString()
-            : day.Year == today.Year ? day.ToString("MMMM d", CultureInfo.InvariantCulture)
-            : day.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
-    }
+    public static string DayLine(DateOnly day, DateOnly today) => Format.DayLine(day, today);
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
