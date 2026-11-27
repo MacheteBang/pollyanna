@@ -15,8 +15,14 @@ namespace Pollyanna.Happenings;
 /// <param name="Email">Adds the emails it causes to the outbox (spec §15); null when it causes none.</param>
 /// <param name="Stored">Kept in "What's new" as a stored row: who gets it, its line and link (spec §16); null when not.</param>
 /// <param name="WhatsNew">Stored rows it deletes because what they say no longer holds; null when none.</param>
+/// <param name="Content">
+/// Between a giver and a recipient: who gets its content, the pages it changes as they see them,
+/// inside their own live connection (spec §16); null when nobody does.
+/// </param>
+/// <param name="WorkedOut">One of "What's new"'s five kinds worked out from a sealed row (docs/adr/0008); null when not.</param>
 public sealed record HappeningKindRow(HappeningKind Kind, LiveTo Live, Func<Happening, Outbox, Task>? Email = null,
-    StoredKind? Stored = null, Func<Happening, StoredNotifications, Task>? WhatsNew = null);
+    StoredKind? Stored = null, Func<Happening, StoredNotifications, Task>? WhatsNew = null, ContentTo? Content = null,
+    WorkedOutKind? WorkedOut = null);
 
 /// <summary>The per-kind table (spec §16): each <see cref="HappeningKind"/> once.</summary>
 public static class HappeningKinds
@@ -58,8 +64,9 @@ public static class HappeningKinds
             Stored: new(StoredFor.Organizers, (h, s) => s.MembersAsync(h.EventId, Audience.Organizers),
                 v => $"{v.Named ?? "Former participant"} wants to leave, and that needs a redraw", v => v.ManageUrl, h => h.Actor)),
         // Nothing is ever added to the outbox for the giver (docs/adr/0001).
-        new(HappeningKind.Question, LiveTo.Pair,
-            Email: (h, o) => o.AddAsync(new Question.Cause(h.EventId, h.About!.Value, h.Actor))),
+        new(HappeningKind.Question, LiveTo.Actor,
+            Email: (h, o) => o.AddAsync(new Question.Cause(h.EventId, h.About!.Value, h.Actor)),
+            Content: PairContent.Recipient, WorkedOut: new(SlipMarker.Question)),
         // A redraw sends nothing, and a slip email still waiting is about a slip that's gone (spec §15).
         // Its "names are drawn" rows go for the same reason, and the redraw meets every request to leave.
         new(HappeningKind.NamesPutBack, LiveTo.Event, Email: (h, o) => o.WithdrawNamesDrawnAsync(h.EventId),
@@ -74,19 +81,20 @@ public static class HappeningKinds
             Email: (h, o) => o.WithdrawEventAsync(h.EventId),
             WhatsNew: (h, s) => s.ForgetEventAsync(h.EventId)),
         new(HappeningKind.DetailsChanged, LiveTo.Event),
-        new(HappeningKind.NotesEdited, LiveTo.Event),
+        // Public to the event; "Your recipient updated their notes" is the editor's giver's alone.
+        new(HappeningKind.NotesEdited, LiveTo.Event, Content: PairContent.ActorsGiver, WorkedOut: new(SlipMarker.NotesUpdated, TimelessRank: 1)),
         new(HappeningKind.Left, LiveTo.Event, WhatsNew: OutAsync),
         new(HappeningKind.TakenOut, LiveTo.Event | LiveTo.About, WhatsNew: OutAsync),
-        new(HappeningKind.Patched, LiveTo.Pair),
+        new(HappeningKind.Patched, LiveTo.Actor, Content: PairContent.PatchedGivers, WorkedOut: new(SlipMarker.Patched, TimelessRank: 0)),
         new(HappeningKind.InvitationCanceled, LiveTo.Organizers),
         new(HappeningKind.OrganizerRemoved, LiveTo.Organizers | LiveTo.About, WhatsNew: (h, s) => s.ForgetRoleAsync(h.EventId, h.About!.Value, StoredFor.Organizers)),
         new(HappeningKind.RulesChanged, LiveTo.Organizers),
         new(HappeningKind.HasLooked, LiveTo.Organizers),
         new(HappeningKind.DoneShopping, LiveTo.Organizers),
         new(HappeningKind.LeaveWithdrawn, LiveTo.Organizers, WhatsNew: (h, s) => s.ForgetKindAsync(h.EventId, HappeningKind.RedrawNeeded, h.About)),
-        new(HappeningKind.Reply, LiveTo.Pair),
-        new(HappeningKind.ThreadClosed, LiveTo.Pair),
-        new(HappeningKind.ThreadReopened, LiveTo.Pair),
+        new(HappeningKind.Reply, LiveTo.Actor, Content: PairContent.ActorsGiver, WorkedOut: new(SlipMarker.Reply)),
+        new(HappeningKind.ThreadClosed, LiveTo.Actor, Content: PairContent.ActorsGiver, WorkedOut: new(SlipMarker.ThreadChanged, TimelessRank: 2)),
+        new(HappeningKind.ThreadReopened, LiveTo.Actor, Content: PairContent.ActorsGiver, WorkedOut: new(SlipMarker.ThreadChanged, TimelessRank: 2)),
     ];
 
     /// <summary>
@@ -100,6 +108,9 @@ public static class HappeningKinds
     }
 
     static readonly Dictionary<HappeningKind, HappeningKindRow> ByKind = Table.ToDictionary(r => r.Kind);
+
+    /// <summary>The row of <paramref name="kind"/>; null if the table has none (a kind named in a post, say).</summary>
+    public static HappeningKindRow? Find(HappeningKind kind) => ByKind.GetValueOrDefault(kind);
 
     /// <summary>The row of <paramref name="kind"/>; throws if the table has none.</summary>
     public static HappeningKindRow Of(HappeningKind kind) =>

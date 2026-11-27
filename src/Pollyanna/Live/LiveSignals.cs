@@ -23,26 +23,48 @@ public enum LiveTo
     Organizers = 2,
     /// <summary>The person the happening is about (<see cref="Happening.About"/>), even once they're out of the event.</summary>
     About = 4,
-    /// <summary>
-    /// Between a giver and a recipient: only that one person, carrying the content itself
-    /// (<see cref="LiveContent"/>). Never a hint, since a hint and the fetch it sets off from one
-    /// giver would pair them in the proxy log. Whoever acted gets the hint on their other tabs.
-    /// </summary>
-    Pair = 8,
+}
+
+/// <summary>
+/// Who a giver-recipient happening's content goes to (spec §16): the content column of
+/// <see cref="HappeningKinds.Table"/>. Worked out in memory as the happening is announced, inside
+/// its transaction, among the people connected then (<paramref name="online"/>, whoever acted left
+/// out), as <see cref="SealedHat"/> finds a giver; held with the happening until it commits and
+/// never stored or subscribed under an assignment.
+/// </summary>
+public delegate Task<IReadOnlyList<Guid>> ContentTo(Happening happening, SealedHat hat, IReadOnlyCollection<Guid> online);
+
+/// <summary>The content column's values: who in a pair a happening's content is for.</summary>
+public static class PairContent
+{
+    /// <summary>A question's recipient (<see cref="Happening.About"/>).</summary>
+    public static readonly ContentTo Recipient = (h, _, online) =>
+        Task.FromResult<IReadOnlyList<Guid>>(h.About is { } recipient && online.Contains(recipient) ? [recipient] : []);
+
+    /// <summary>The giver of whoever acted: they replied, closed or reopened, or edited their notes.</summary>
+    public static readonly ContentTo ActorsGiver = async (h, hat, online) =>
+        h.Actor is { } actor && online.Count > 0 && await hat.GiverAmongAsync(h.EventId, actor, online) is { } giver ? [giver] : [];
+
+    /// <summary>The givers this patch changed, as <see cref="SealedHat"/> worked them out in memory while patching.</summary>
+    public static readonly ContentTo PatchedGivers = (h, hat, online) =>
+        Task.FromResult<IReadOnlyList<Guid>>([.. hat.TakePatchedGivers(h.EventId).Where(online.Contains)]);
 }
 
 /// <summary>
 /// The live side's routing rule (spec §16): who gets a hint, worked out when it's sent, from the
-/// database as committed. Hints name the event and an area (the happening's kind), never a
+/// database as committed, and the content for whoever <see cref="ContentTo"/> found. Hints name the event and an area (the happening's kind), never a
 /// person. Connections are known by person only; an event's members are looked up here.
 /// </summary>
-public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, SealedHat hat, LiveContent content)
+public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, LiveContent content)
 {
     /// <summary>The request header a page's own background post names its live connection in ("not this tab").</summary>
     public const string TabHeader = "Pollyanna-Tab";
 
-    /// <summary>Sends <paramref name="happening"/>'s hint by its kind's <see cref="HappeningKindRow.Live"/>.</summary>
-    public async Task SendAsync(Happening happening)
+    /// <summary>
+    /// Sends <paramref name="happening"/>'s hint by its kind's <see cref="HappeningKindRow.Live"/>,
+    /// and its content to <paramref name="contentTo"/>, the people its content column found.
+    /// </summary>
+    public async Task SendAsync(Happening happening, IReadOnlyList<Guid> contentTo)
     {
         var to = HappeningKinds.Of(happening.Kind).Live;
         var people = new HashSet<Guid>();
@@ -56,32 +78,8 @@ public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, Sea
         if (happening.Actor is { } actor)
             people.Add(actor);
         connections.Send(people, LiveFrame.Hint(happening.EventId, happening.Kind.ToString()));
-        if (to.HasFlag(LiveTo.Pair))
-            foreach (var person in await PairTargetsAsync(happening))
-                connections.Send([person], await content.FrameAsync(person, happening.EventId, happening.Kind.ToString()));
-    }
-
-    /// <summary>
-    /// Who a giver-recipient happening's content goes to, among the people connected now, worked
-    /// out in memory as <see cref="SealedHat"/> finds a giver and never kept (spec §16): a question's
-    /// recipient; the giver of whoever replied, closed or reopened; the givers a patch changed.
-    /// </summary>
-    async Task<IReadOnlyList<Guid>> PairTargetsAsync(Happening happening)
-    {
-        var online = connections.People.Where(p => p != happening.Actor).ToList();
-        if (online.Count == 0)
-            return [];
-        switch (happening.Kind)
-        {
-            case HappeningKind.Question:
-                return happening.About is { } recipient && online.Contains(recipient) ? [recipient] : [];
-            case HappeningKind.Reply or HappeningKind.ThreadClosed or HappeningKind.ThreadReopened:
-                return happening.Actor is { } actor && await hat.GiverAmongAsync(happening.EventId, actor, online) is { } giver ? [giver] : [];
-            case HappeningKind.Patched:
-                return await hat.PatchedAmongAsync(happening.EventId, online);
-            default:
-                return [];
-        }
+        foreach (var person in contentTo)
+            connections.Send([person], await content.FrameAsync(person, happening.EventId, happening.Kind.ToString()));
     }
 
     /// <summary>
@@ -107,12 +105,15 @@ public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, Sea
 /// change that made it is committed (spec §16: a signal before the commit could set off a refetch
 /// that still sees the old state), then sends it. A rolled-back change sends nothing.
 /// </summary>
-public sealed class LiveOnHappening(PollyannaDb db, LiveAfterCommit afterCommit) : IHappeningListener
+public sealed class LiveOnHappening(PollyannaDb db, LiveAfterCommit afterCommit, SealedHat hat, LiveConnections connections) : IHappeningListener
 {
-    public Task HearAsync(Happening happening)
+    public async Task HearAsync(Happening happening)
     {
-        afterCommit.Hold(db, happening, db.Database.CurrentTransaction?.GetDbTransaction());
-        return Task.CompletedTask;
+        // Whom its content is for is worked out now, while the patch that knows it is in memory.
+        IReadOnlyList<Guid> contentTo = HappeningKinds.Of(happening.Kind).Content is { } to
+            ? await to(happening, hat, [.. connections.People.Where(p => p != happening.Actor)])
+            : [];
+        afterCommit.Hold(db, happening, contentTo, db.Database.CurrentTransaction?.GetDbTransaction());
     }
 }
 
@@ -128,14 +129,14 @@ public sealed class LiveOnHappening(PollyannaDb db, LiveAfterCommit afterCommit)
 /// </summary>
 public sealed class LiveAfterCommit(IServiceScopeFactory scopes) : ISaveChangesInterceptor, IDbTransactionInterceptor
 {
-    sealed record Held(Happening Happening, System.Data.Common.DbTransaction? Transaction);
+    sealed record Held(Happening Happening, IReadOnlyList<Guid> ContentTo, System.Data.Common.DbTransaction? Transaction);
 
     readonly ConditionalWeakTable<DbContext, List<Held>> held = new();
 
-    public void Hold(DbContext db, Happening happening, System.Data.Common.DbTransaction? transaction)
+    public void Hold(DbContext db, Happening happening, IReadOnlyList<Guid> contentTo, System.Data.Common.DbTransaction? transaction)
     {
         var list = held.GetOrCreateValue(db);
-        lock (list) list.Add(new Held(happening, transaction));
+        lock (list) list.Add(new Held(happening, contentTo, transaction));
     }
 
     public async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
@@ -170,7 +171,7 @@ public sealed class LiveAfterCommit(IServiceScopeFactory scopes) : ISaveChangesI
         await using var scope = scopes.CreateAsyncScope();
         var signals = scope.ServiceProvider.GetRequiredService<LiveSignals>();
         foreach (var h in taken.Where(send))
-            await signals.SendAsync(h.Happening);
+            await signals.SendAsync(h.Happening, h.ContentTo);
     }
 
     List<Held> Take(DbContext db, Func<Held, bool> which)

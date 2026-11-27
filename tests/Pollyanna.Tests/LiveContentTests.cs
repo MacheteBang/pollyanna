@@ -144,6 +144,8 @@ public sealed class LiveContentTests : IAsyncLifetime
         var four = await app.EventAsync("Mittens", EventStatus.Open, [Id("Olga")], [Id("Gus"), Id("Rae"), Id("Bea"), Id("Olga")]);
         await app.SealAsync(four, Loop(Id("Gus"), Id("Rae"), Id("Bea"), Id("Olga")));
         await app.UpdateAssignmentAsync(four, Id("Rae"), a => a.Viewed = true);
+        // Gus hasn't looked since an earlier patch gave him someone new: this one isn't his.
+        await app.UpdateAssignmentAsync(four, Id("Gus"), a => a.RecipientChanged = true);
         await SettledAsync();
 
         await Browser("Olga").PostWithTokenAsync($"/events/{four}/manage", $"/events/{four}/manage/removeperson",

@@ -181,9 +181,9 @@ public sealed partial class NotificationSecrecyTests
             // question, and the late joiner that they're in.
             var (questionRows, questionMail) = ((List<Row>)before[2], (List<string>)before[3]);
             // Pat's open page got the question as content, and the reply, closing and reopening of
-            // Pat's own recipient, Ann, each as content (spec §16).
+            // Pat's own recipient, Ann, and her notes edit, each as content (spec §16).
             Assert.Single((List<string>)before[0], f => f.StartsWith("content Question\n"));
-            Assert.Equal(["content Reply", "content ThreadClosed", "content ThreadReopened"],
+            Assert.Equal(["content Reply", "content ThreadClosed", "content ThreadReopened", "content NotesEdited"],
                 ((List<string>)before[4]).Where(f => f.StartsWith("content ")).Select(f => f.Split('\n')[0]));
             Assert.Equal(5, questionRows.Count);
             Assert.All(questionRows, r => Assert.Equal(NotificationKind.Question, r.Kind));

@@ -26,7 +26,7 @@ public sealed class WhatsNewList(PollyannaDb db, SealedHat hat)
         [.. (await ViewsAsync(me, eventId: null))
             .Select(x => new WhatsNewRow(x.Row.EventId, x.Row.Kind, x.Kind.Line(x.View), x.Kind.Href(x.View), x.View.Event.Name, x.Row.At))
             .Concat(await WorkedOutAsync(me))
-            .OrderBy(r => WorkedOutKinds.TimelessRank(r.Kind) ?? int.MaxValue)
+            .OrderBy(r => HappeningKinds.Of(r.Kind).WorkedOut?.TimelessRank ?? int.MaxValue)
             .ThenByDescending(r => r.At).ThenBy(r => r.EventName, StringComparer.Ordinal).ThenBy(r => r.Kind)];
 
     /// <summary>How many rows the person has, for the bell.</summary>
@@ -40,7 +40,7 @@ public sealed class WhatsNewList(PollyannaDb db, SealedHat hat)
     /// </summary>
     public async Task<bool> DismissAsync(Guid me, Guid eventId, HappeningKind kind, int? upto = null)
     {
-        if (WorkedOutKinds.MarkerOf(kind) is not { } marker)
+        if (HappeningKinds.Find(kind)?.WorkedOut?.Marker is not { } marker)
             return await db.InAppNotifications.Where(n => n.PersonId == me && n.EventId == eventId && n.Kind == kind).ExecuteDeleteAsync() > 0;
         // Only where the rows show: a participant of a drawn event (a revealed event's threads are read-only).
         if (!await DrawnFor(me).AnyAsync(e => e.Id == eventId))

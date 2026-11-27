@@ -65,7 +65,8 @@ public sealed class LiveRoutingTests : IAsyncLifetime
         new("dismiss", null, EventStatus.Open, false, "Gus", null, null),
         // The event page's own parts (spec §16 "What each page does live").
         new("notes", HappeningKind.NotesEdited, EventStatus.Open, false, "Bea", null, null),
-        new("notes drawn", HappeningKind.NotesEdited, EventStatus.Open, true, "Rae", null, null),
+        // Public to the event, and the giver's own "Your recipient updated their notes" as content.
+        new("notes drawn", HappeningKind.NotesEdited, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
         new("details", HappeningKind.DetailsChanged, EventStatus.Open, false, "Olga", null, null),
         new("left", HappeningKind.Left, EventStatus.Open, false, "Bea", "Bea", null),
         new("taken out", HappeningKind.TakenOut, EventStatus.Open, false, "Olga", "Bea", null),
@@ -75,10 +76,16 @@ public sealed class LiveRoutingTests : IAsyncLifetime
     [Fact]
     public void Every_kind_says_where_its_signal_goes_and_assignment_ones_never_go_as_a_hint_to_the_event()
     {
-        foreach (var kind in new[] { HappeningKind.Question, HappeningKind.Reply, HappeningKind.ThreadClosed,
-            HappeningKind.ThreadReopened, HappeningKind.Patched })
-            Assert.Equal(LiveTo.Pair, HappeningKinds.Of(kind).Live);
-        Assert.All(HappeningKinds.Table.Where(r => r.Stored is not null), r => Assert.NotEqual(LiveTo.Pair, r.Live));
+        HappeningKind[] pair = [HappeningKind.Question, HappeningKind.Reply, HappeningKind.ThreadClosed,
+            HappeningKind.ThreadReopened, HappeningKind.Patched];
+        foreach (var kind in pair)
+        {
+            Assert.Equal(LiveTo.Actor, HappeningKinds.Of(kind).Live);
+            Assert.NotNull(HappeningKinds.Of(kind).Content);
+        }
+        // Notes edited is public to the event, and content for the one giver as well.
+        Assert.NotNull(HappeningKinds.Of(HappeningKind.NotesEdited).Content);
+        Assert.All(HappeningKinds.Table.Where(r => !pair.Contains(r.Kind) && r.Kind != HappeningKind.NotesEdited), r => Assert.Null(r.Content));
     }
 
     [Theory]
