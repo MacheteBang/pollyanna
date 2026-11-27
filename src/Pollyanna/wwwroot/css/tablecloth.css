@@ -393,3 +393,150 @@ strong, b { font-weight: 800; }
 
 .steps .step-done { border-color: var(--ribbon); }
 .steps .step-now { border-color: var(--ribbon); color: var(--ink); font-weight: 800; }
+
+/* ---------- Error and sign-in failure pages: the girl large, no cloth (spec §7, §12) ---------- */
+
+/* One block in the column: the girl at about 130px, the title, one or two sentences, one way out. */
+.lone {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding-top: var(--space-5);
+    padding-bottom: var(--space-6);
+}
+
+/* The girl's drawing has air on its left; pull her back so she lines up with the text. */
+.lone > .girl { margin: var(--space-2) 0 var(--space-1) -14px; }
+
+/* The provider buttons run the full column width. */
+.lone > .actions { align-self: stretch; }
+
+/* "Back to your events": a plain link with a full tap target. */
+.lone-way-out {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+}
+
+/* ---------- Form fields (new event first; reuse for any form in a panel) ---------- */
+
+/* What the script hides stays hidden, whatever its display. */
+[hidden] { display: none !important; }
+
+/* A label over its control, with an optional small soft line under it. */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.field label { font-weight: 800; }
+
+.field input,
+.field select,
+.field textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    background: var(--white);
+    color: var(--ink);
+    font: inherit;
+}
+
+.field textarea { resize: vertical; }
+
+/* A checkbox with its words beside it, the whole row a 44px target (forms and the account page). */
+.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--tap);
+    cursor: pointer;
+}
+
+.check input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    flex: none;
+    accent-color: var(--ribbon);
+}
+
+/* The panel's own button runs its full width. */
+.panel > .button { margin-top: var(--space-1); }
+
+/* ---------- Groups and rows on white (account, confirmations) ---------- */
+
+/* Plain groups under the page head, with no cloth: a heading, then rows, buttons or text. */
+.groups {
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+}
+
+.group-loose { gap: var(--space-3); }
+
+.group-title { font: var(--type-body); font-weight: 800; }
+
+.group-note { margin-top: var(--space-2); }
+
+/* Buttons that keep their own width, one under the other. */
+.group-buttons, .group-leave {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+.group-buttons { margin-top: var(--space-2); }
+
+/* Rows split by pale-blue lines: what the row is on the left, its action on the right. */
+.rows {
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-3);
+    border-top: var(--line) solid var(--pale);
+}
+
+.row:first-child { border-top: 0; }
+
+.row-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* A confirmation's action: the size of the one thing to do, whatever its color. */
+.button-strong { font: var(--type-action); }
+
+/* The way out under a confirmation's button. */
+.way-out {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+}
+
+.link-button.small { font: var(--type-small); font-weight: 600; }
