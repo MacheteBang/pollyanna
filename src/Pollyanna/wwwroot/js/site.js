@@ -66,35 +66,50 @@ function addPeople() {
     }
 }
 
-// The reveal card (spec §7, §12): a <details> tied with ribbon. Pulling the ribbon unties the
-// bow, then the slip unfolds. Opening it tells the server the slip was seen, which clears its
-// markers; "Tie it back up" then just closes it. Without the script, the card opens at once,
-// and "Tie it back up" posts the same thing as a form.
-function revealCards() {
+// The gift (spec §7, §12 The reveal): "Untie the bow", or a tap on the gift, unties it with the
+// beats in tablecloth.css: the full sequence with the name written the first time, 0.4 times as
+// long with the name already there on later visits, and nothing moving under reduce motion.
+// Untying tells the server it was seen (by posting "Hide the name"'s own form in the
+// background), which clears its markers; "Hide the name" then ties it back at once. Without the
+// script, "Untie the bow" is a link to the page untied, and "Hide the name" posts that form.
+function gifts() {
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
-    for (const card of document.querySelectorAll("[data-reveal]")) {
-        const fold = card.querySelector("[data-fold]");
-        if (!fold) continue;
-        card.querySelector("summary").addEventListener("click", event => {
-            if (card.open || still.matches) return;
-            event.preventDefault();
-            if (card.classList.contains("untying")) return;
-            card.classList.add("untying");
-            setTimeout(() => { card.open = true; }, 600);
-        });
+    for (const gift of document.querySelectorAll("[data-gift]")) {
+        const hide = gift.querySelector("form[data-hide]");
+        const name = gift.querySelector(".revealed-name");
+        const button = gift.querySelector(".gift-under [data-untie]");
+        if (!hide || !name || !button) continue;
+        let first = gift.dataset.first === "true";
         let told = false;
-        card.addEventListener("toggle", () => {
-            if (!card.open) card.classList.remove("untying");
-            if (!card.open || told) return;
+        const tell = () => {
+            if (told) return;
             told = true;
-            fetch(fold.action, { method: "POST", body: new FormData(fold), redirect: "manual", credentials: "same-origin" })
+            fetch(hide.action, { method: "POST", body: new FormData(hide), redirect: "manual", credentials: "same-origin" })
                 .catch(() => { told = false; });
-        });
-        fold.addEventListener("submit", event => {
+        };
+        const untie = event => {
             event.preventDefault();
-            card.open = false;
-            card.querySelector("summary").focus();
+            if (gift.classList.contains("untied")) return;
+            const motion = !still.matches;
+            gift.classList.toggle("still", !motion);
+            gift.classList.toggle("gift-first", motion && first);
+            gift.classList.toggle("gift-later", !first);
+            void gift.offsetWidth;
+            gift.classList.add("untied");
+            first = false;
+            name.focus({ preventScroll: true });
+            tell();
+        };
+        for (const el of gift.querySelectorAll("[data-untie]")) el.addEventListener("click", untie);
+        hide.addEventListener("submit", event => {
+            event.preventDefault();
+            gift.classList.add("still");
+            gift.classList.remove("untied", "gift-first");
+            void gift.offsetWidth;
+            button.focus();
         });
+        // Rendered untied (just after asking something, say): it was seen.
+        if (gift.classList.contains("untied")) tell();
     }
 }
 
@@ -201,7 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
     copyButtons();
     previousEventPicker();
     addPeople();
-    revealCards();
+    gifts();
     messageTimes();
     conversations();
     counters();

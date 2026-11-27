@@ -39,7 +39,7 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         if (viewer != Viewer.Participant)
             paths.Add($"/events/{ev}/manage");
         if (viewer != Viewer.Organizer)
-            paths.AddRange([$"/events/{ev}/leave", $"/events/{ev}/questions"]);
+            paths.AddRange([$"/events/{ev}/untie", $"/events/{ev}/leave", $"/events/{ev}/questions"]);
 
         var pages = new List<string>();
         foreach (var path in paths)
@@ -136,7 +136,7 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
             if (archived)
                 Assert.Contains("<p class=\"over-line\">You gave to <strong>Ann</strong></p>", eventPage);
             else
-                Assert.Contains("<p class=\"reveal-name\">Ann</p>", eventPage);
+                Assert.Contains("<p class=\"revealed-name\" tabindex=\"-1\">Ann</p>", eventPage);
             Assert.Contains("Gloves, please.", eventPage);
             Assert.Contains(archived ? "Your giver asked you" : "Your giver asked you something", eventPage);
             var questions = before.Single(p => p.StartsWith($"/events/{ev}/questions "));
@@ -147,6 +147,7 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         else
         {
             Assert.DoesNotContain("reveal-name", string.Concat(before));
+            Assert.DoesNotContain("revealed-name", string.Concat(before));
             Assert.DoesNotContain("passed-note", string.Concat(before));
             Assert.DoesNotContain("class=\"bubble\"", string.Concat(before));
         }

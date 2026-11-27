@@ -1,0 +1,190 @@
+@model Pollyanna.Pages.Events.EventModel
+@using Pollyanna.Data
+@using Pollyanna.Events
+@using Pollyanna.Infrastructure
+@*
+    The event page once names are drawn (spec §7 Event page, after the draw; §12 The reveal), in
+    this order: an unread question from the viewer's giver; the gift, alone until untied; once
+    untied, one group on the panel (the name, their notes, the question box, "Done shopping",
+    "Hide the name"); "Questions from your giver" as a quiet link; the viewer's own notes and the
+    people taking part, each folded; "Leave this event" at the very bottom.
+
+    The gift is the cloth band tied with a ribbon each way and the bow. The panel under it is
+    rendered with the page but hidden until untied. With the script, "Untie the bow" (or a tap on
+    the gift) runs the untying in CSS (site.js gifts()) and posts /seen; "Hide the name" ties it
+    back at once. Without the script, "Untie the bow" goes to /events/{id}/untie, which renders the
+    page untied with no motion, and "Hide the name" posts /seen, which records the viewing.
+*@
+@{
+    var id = Model.Event.Id;
+    var slip = Model.Slip;
+    var ask = Model.AskThread;
+    var questions = Model.QuestionsThread is { Notes.Count: > 0 } q ? q : null;
+    var untie = $"/events/{id}/untie#gift";
+}
+
+@if (questions is { Unread: > 0 })
+{
+    <div class="column gift-asked">
+        <a class="asked-link" href="/events/@id/questions">Your giver asked you something</a>
+    </div>
+}
+
+@if (slip is { RecipientChanged: true })
+{
+    <div class="column"><p class="gift-again" role="status">You're giving to someone new. Someone left or joined, so who you're giving to changed.</p></div>
+}
+else if (slip is { DrawnAgain: true })
+{
+    <div class="column"><p class="gift-again">Names were drawn again, so this may be someone new.</p></div>
+}
+
+@if (Model.WantsToLeave)
+{
+    <section class="column gift-leaving" aria-labelledby="leaving-heading">
+        <h2 id="leaving-heading" class="section-title">You've asked to leave</h2>
+        <p>Taking you out means drawing names again. You'll be out once the organizers do. Until then, you're still giving to the same person.</p>
+        <form method="post" asp-page-handler="stay">
+            <button type="submit" class="button button-start">Stay in after all</button>
+        </form>
+    </section>
+}
+
+@if (slip is null)
+{
+    <div class="column lone" id="gift">
+        <partial name="_TableclothGirl" model="130" />
+        <h2 class="page-title">We can't show who you're giving to</h2>
+        <p>Names have been drawn, but yours can't be read any more. Ask an organizer to draw names again.</p>
+    </div>
+}
+else
+{
+    var first = Model.FirstTime ? "true" : "false";
+    var name = slip.Recipient.Name;
+    <section id="gift" class="gift@(Model.Unfold ? " untied still" : "")" data-gift data-first="@first" aria-label="Who you're giving to">
+        <div class="cloth gift-cloth">
+            <div class="panel gift-panel">
+                <p class="gift-to">You're giving to</p>
+                <p class="revealed-name@(name.Length > 8 ? " revealed-name-long" : "")" tabindex="-1">@name</p>
+                <div class="gift-more">
+                    <div class="gift-more-in">
+                        <section class="gift-group" aria-labelledby="their-notes-heading">
+                            <h2 id="their-notes-heading" class="section-title">@Format.Possessive(name) notes</h2>
+                            @if (slip.NotesUpdated)
+                            {
+                                <p class="small"><strong>Notes updated since you last looked</strong></p>
+                            }
+                            <p class="notes">@(slip.Notes.Length > 0 ? slip.Notes : "No notes yet.")</p>
+                        </section>
+                        @if (ask is not null)
+                        {
+                            <section class="gift-group" id="ask" aria-labelledby="ask-heading">
+                                <h2 id="ask-heading" class="section-title">Ask @name something</h2>
+                                <p class="small soft">@name sees "Your giver asks…", never your name. Times are rounded to the hour.</p>
+                                @if (ask.Notes.Count > 0)
+                                {
+                                    <ol class="conversation" data-conversation>
+                                        @{ DateOnly? day = null; }
+                                        @foreach (var note in ask.Notes)
+                                        {
+                                            var mine = note.Sender == MessageSender.Giver;
+                                            var on = DateOnly.FromDateTime(note.CreatedAt);
+                                            if (on != day)
+                                            {
+                                                day = on;
+                                                <li class="day-line" data-day><time datetime="@Format.IsoDate(on)">@QuestionsModel.DayLine(on, Model.Today)</time></li>
+                                            }
+                                            <li class="message @(mine ? "message-mine" : "message-theirs")">
+                                                <p class="bubble"><span class="visually-hidden">@(mine ? "You:" : $"{name}:")</span> <span class="bubble-body">@note.Body</span></p>
+                                                <p class="message-meta"><time datetime="@Format.IsoHour(note.CreatedAt)" data-said>@QuestionsModel.About(note.CreatedAt.Hour) UTC</time>@if (note.IsNew)
+                                                    {
+                                                        <text> · </text><strong class="message-new">new</strong>
+                                                    }</p>
+                                            </li>
+                                        }
+                                    </ol>
+                                }
+                                <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "ask" })" />
+                                @if (ask.Closed)
+                                {
+                                    <p role="status">@name closed this conversation.</p>
+                                }
+                                else
+                                {
+                                    <form method="post" action="/events/@id/ask" asp-antiforgery="true" class="field">
+                                        <label for="ask-body" class="visually-hidden">Your question for @name</label>
+                                        <textarea id="ask-body" name="body" rows="2" maxlength="@EventManager.MessageMax" required></textarea>
+                                        <button type="submit" class="button button-start">Send</button>
+                                    </form>
+                                }
+                            </section>
+                        }
+                        <form method="post" asp-page-handler="shopping" id="shopping" class="gift-shopping" data-save-on-change>
+                            <label class="check"><input type="checkbox" name="done" value="true" checked="@Model.DoneShopping"> Done shopping</label>
+                            <button type="submit" class="button button-start" data-save-button>Save</button>
+                        </form>
+                        <form method="post" action="/events/@id/seen" asp-antiforgery="true" data-hide>
+                            <input type="hidden" name="upto" value="@(ask?.Upto ?? 0)">
+                            <button type="submit" class="link-button">Hide the name</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @* Tied: the cloth's two halves cover the panel, a ribbon runs each way, and the bow sits
+               where they cross. A tap anywhere on it unties it, like the button. *@
+            <a class="gift-cover" href="@untie" data-untie tabindex="-1" aria-hidden="true"><span class="gift-half gift-half-left"></span><span class="gift-half gift-half-right"></span></a>
+            <span class="gift-ribbon gift-ribbon-across" aria-hidden="true"></span>
+            <span class="gift-ribbon gift-ribbon-down" aria-hidden="true"></span>
+            @* The bow is adapted from Microsoft Fluent Emoji "Ribbon" (MIT); see THIRD-PARTY-NOTICES.md.
+               In pieces so it can come undone; tied, it is the kept mark, with the white edge. *@
+            <svg class="gift-bow" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                <path class="bow-edge" d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z"/>
+                <g class="bow-tail"><path class="bow-ribbon" d="M8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L16 13L10 15Z"/></g>
+                <g transform="translate(31.99 0) scale(-1 1)"><g class="bow-tail"><path class="bow-ribbon" d="M8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L16 13L10 15Z"/></g></g>
+                <g class="bow-loop"><path class="bow-ribbon" d="M16 9.775L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L16 15.71Z"/><path class="bow-fold" d="M12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z"/></g>
+                <g transform="translate(31.99 0) scale(-1 1)"><g class="bow-loop"><path class="bow-ribbon" d="M16 9.775L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L16 15.71Z"/><path class="bow-fold" d="M12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z"/></g></g>
+                <rect class="bow-knot" x="12" y="6" width="8" height="13" rx="2.2"/>
+            </svg>
+        </div>
+        <div class="column gift-under">
+            <a class="button button-fill" href="@untie" data-untie>Untie the bow</a>
+        </div>
+    </section>
+}
+
+<div class="column below">
+    @if (questions is { Unread: 0 })
+    {
+        <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
+    }
+    <div class="folds">
+        <details class="fold" id="your-notes">
+            <summary><span>Your notes</span><span class="fold-hint">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "None yet")</span></summary>
+            <div class="fold-body">
+                @if (Model.Membership.Editable)
+                {
+                    <form method="post" asp-page-handler="notes" class="field">
+                        <label for="notes">Likes, sizes, no-gos. Everyone taking part can read them.</label>
+                        <textarea id="notes" name="notes" rows="5" maxlength="@EventManager.NotesMax">@Model.MyNotes</textarea>
+                        <button type="submit" class="button button-start">Save notes</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="notes">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "No notes yet.")</p>
+                }
+            </div>
+        </details>
+        <details class="fold" id="taking-part">
+            <summary><span>Taking part</span><span class="fold-hint">@Model.Participants.Count people</span></summary>
+            <div class="fold-body">
+                <partial name="_People" model="Model" />
+            </div>
+        </details>
+    </div>
+    @if (Model.Membership.CanLeave && !Model.WantsToLeave)
+    {
+        <p class="small"><a href="/events/@id/leave">Leave this event</a></p>
+    }
+</div>

@@ -153,19 +153,4 @@ public sealed class EventPageTests : IAsyncLifetime
             Assert.All(hexes, h => Assert.Contains(h, Palette));
         }
     }
-
-    [Fact]
-    public async Task Once_names_are_drawn_the_event_page_keeps_the_old_look_until_its_own_ticket()
-    {
-        var org = await app.PersonAsync("Org");
-        var ann = await app.PersonAsync("Ann");
-        var bob = await app.PersonAsync("Bob");
-        var ev = await app.EventAsync("Stockings", EventStatus.Open, [org], [me, ann, bob]);
-        await app.SealAsync(ev, Seed.Loop(me, ann, bob));
-
-        var page = await browser.GetPageAsync($"/events/{ev}");
-
-        Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
-        Assert.NotNull(page.QuerySelector("details.reveal"));
-    }
 }

@@ -1,0 +1,33 @@
+@model Pollyanna.Pages.Events.EventModel
+@using Pollyanna.Infrastructure
+@* Everyone else taking part (spec §7): a row each with their picture beside their name and their
+   notes under it. Under "Taking part (N)" before the draw, and in its fold after it. *@
+@{
+    var others = Model.Participants.Where(p => p.Id != User.PersonId()).ToList();
+}
+@if (others.Count == 0)
+{
+    <p class="soft">Nobody else yet.</p>
+}
+else
+{
+    <ul class="rows people" role="list">
+        @foreach (var p in others)
+        {
+            <li class="person">
+                <partial name="_Avatar" model="p" />
+                <div class="person-body">
+                    <span class="person-name">@p.Name</span>
+                    @if (p.Notes.Length > 0)
+                    {
+                        <p class="notes small">@p.Notes</p>
+                    }
+                    else
+                    {
+                        <p class="small soft">No notes yet.</p>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+}

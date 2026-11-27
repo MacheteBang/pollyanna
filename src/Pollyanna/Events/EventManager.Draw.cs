@@ -24,9 +24,10 @@ public sealed record DrawCheck(string? Blocker, string? Problem, bool Predictabl
 
 /// <summary>
 /// The signed-in giver's own slip (spec §5.2, §7): their recipient and the markers on the card.
-/// Nothing here says anything about anyone else's assignment.
+/// Nothing here says anything about anyone else's assignment. <paramref name="Viewed"/> is the
+/// assignment's own "viewed" flag: whether the giver has untied it before (spec §12 The reveal).
 /// </summary>
-public sealed record Slip(PersonRow Recipient, string Notes, bool NotesUpdated, bool RecipientChanged, bool DrawnAgain);
+public sealed record Slip(PersonRow Recipient, string Notes, bool NotesUpdated, bool RecipientChanged, bool DrawnAgain, bool Viewed = false);
 
 /// <summary>
 /// The draw, redraw and the changes after it (spec §5). Pairings are held in plaintext only in
@@ -367,7 +368,8 @@ public sealed partial class EventManager
         return new Slip(recipient.Row, recipient.Notes,
             NotesUpdated: live && row.Viewed && recipient.NotesVersion != row.NotesVersionSeen,
             RecipientChanged: live && row.RecipientChanged,
-            DrawnAgain: live && m.Event.Redrawn && !row.Viewed);
+            DrawnAgain: live && m.Event.Redrawn && !row.Viewed,
+            Viewed: row.Viewed);
     }
 
     /// <summary>

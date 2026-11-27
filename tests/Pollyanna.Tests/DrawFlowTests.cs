@@ -167,7 +167,7 @@ public sealed class DrawFlowTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_event_page_shows_my_recipient_behind_tap_to_reveal()
+    public async Task The_event_page_shows_who_Im_giving_to_under_the_bow()
     {
         var (ev, others) = await OpenEventAsync(3);
         var (ann, bob, carol) = (others[0], others[1], others[2]);
@@ -179,13 +179,13 @@ public sealed class DrawFlowTests : IAsyncLifetime
         await app.SealAsync(ev, Loop(me, carol, ann, bob));
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        var card = page.QuerySelector("details.reveal[data-reveal]")!;
-        Assert.False(card.HasAttribute("open"));
-        Assert.Contains("Pull the ribbon", card.QuerySelector("summary")!.TextContent);
-        Assert.Equal("Carol", card.QuerySelector(".reveal-name")!.TextContent);
+        var card = page.QuerySelector("#gift[data-gift]")!;
+        Assert.False(card.ClassList.Contains("untied"));
+        Assert.Contains("Untie the bow", card.QuerySelector(".gift-under")!.TextContent);
+        Assert.Equal("Carol", card.QuerySelector(".revealed-name")!.TextContent);
         Assert.Contains("Lemon anything", card.TextContent);
-        Assert.Null(card.QuerySelector(".stamp"));
-        Assert.DoesNotContain("drawn again", card.TextContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Notes updated", card.TextContent);
+        Assert.DoesNotContain("drawn again", page.QuerySelector("main")!.TextContent, StringComparison.OrdinalIgnoreCase);
         Assert.NotNull(page.QuerySelector($"form[action='/events/{ev}/shopping']"));
 
         // Opening the card is "viewed assignment", which organizers see as a mark.
@@ -218,15 +218,14 @@ public sealed class DrawFlowTests : IAsyncLifetime
 
         // Before I've ever looked, there's nothing to mark as updated.
         await CarolEditsAsync();
-        Assert.Null((await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".reveal .stamp"));
+        Assert.DoesNotContain("Notes updated", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("#gift")!.TextContent);
         Assert.Equal("See who you're giving to", (await browser.GetPageAsync("/")).QuerySelector(".waiting")!.TextContent.Trim());
 
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/seen");
         await CarolEditsAsync();
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Equal("UPDATED", page.QuerySelector(".reveal .stamp")!.TextContent);
-        Assert.Contains("Notes updated since you last looked", page.QuerySelector(".reveal")!.TextContent);
+        Assert.Contains("Notes updated since you last looked", page.QuerySelector("#gift")!.TextContent);
         var home = await browser.GetPageAsync("/");
         var update = home.QuerySelector(".waiting")!;
         Assert.Equal("Your recipient updated their notes", update.TextContent.Trim());
@@ -234,7 +233,7 @@ public sealed class DrawFlowTests : IAsyncLifetime
         Assert.DoesNotContain("Carol", home.Body!.TextContent);
 
         await browser.SubmitAsync(page, $"/events/{ev}/seen");
-        Assert.Null((await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".reveal .stamp"));
+        Assert.DoesNotContain("Notes updated", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("#gift")!.TextContent);
         Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".waiting"));
     }
 
@@ -248,7 +247,7 @@ public sealed class DrawFlowTests : IAsyncLifetime
         Assert.False(await app.WithDbAsync(db => db.Participants.Where(p => p.EventId == ev && p.PersonId == me).Select(p => p.DoneShopping).SingleAsync()));
 
         await app.SealAsync(ev, Loop([me, .. others]));
-        await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/shopping");
+        await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/shopping", Form(("done", "true")));
         Assert.True(await app.WithDbAsync(db => db.Participants.Where(p => p.EventId == ev && p.PersonId == me).Select(p => p.DoneShopping).SingleAsync()));
         var manage = await browser.GetPageAsync(Manage(ev));
         Assert.Contains("done shopping", manage.QuerySelectorAll("#people .row").Single(p => p.TextContent.Contains("Pat (you)")).TextContent);
@@ -263,7 +262,7 @@ public sealed class DrawFlowTests : IAsyncLifetime
         var (ev, others) = await OpenEventAsync(3);
         await app.SealAsync(ev, Loop([me, .. others]));
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/seen");
-        await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/shopping");
+        await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/shopping", Form(("done", "true")));
 
         await ActAsync(ev, "redraw");
         Assert.Equal(EventStatus.Open, await app.StatusAsync(ev));
@@ -273,10 +272,9 @@ public sealed class DrawFlowTests : IAsyncLifetime
         Assert.Contains("Names are being drawn again.", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
 
         await ActAsync(ev, "draw");
-        var card = (await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".reveal")!;
-        Assert.Contains("NAMES WERE DRAWN AGAIN", card.QuerySelector("summary")!.TextContent);
+        Assert.Equal("Names were drawn again, so this may be someone new.", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".gift-again")!.TextContent);
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/seen");
-        Assert.DoesNotContain("DRAWN AGAIN", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".reveal summary")!.TextContent);
+        Assert.Null((await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".gift-again"));
     }
 
     [Fact]
@@ -302,9 +300,9 @@ public sealed class DrawFlowTests : IAsyncLifetime
         });
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Null(page.QuerySelector(".reveal"));
-        Assert.Contains("Can't find your slip", page.QuerySelector("#slip")!.TextContent);
-        Assert.Contains("Ask an organizer to draw names again", page.QuerySelector("#slip")!.TextContent);
+        Assert.Null(page.QuerySelector("[data-gift]"));
+        Assert.Contains("We can't show who you're giving to", page.QuerySelector("#gift")!.TextContent);
+        Assert.Contains("Ask an organizer to draw names again", page.QuerySelector("#gift")!.TextContent);
     }
 
     [Fact]

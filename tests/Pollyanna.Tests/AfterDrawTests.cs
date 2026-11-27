@@ -338,12 +338,12 @@ public sealed class AfterDrawTests : IAsyncLifetime
         await RemoveAsync(ev, carol, "Patch");
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Contains("Your recipient has changed", page.QuerySelector("main")!.TextContent);
-        Assert.Equal("Ann", page.QuerySelector(".reveal-name")!.TextContent);
+        Assert.Contains("You're giving to someone new.", page.QuerySelector("main")!.TextContent);
+        Assert.Equal("Ann", page.QuerySelector(".revealed-name")!.TextContent);
         Assert.Equal("You're giving to someone new", (await browser.GetPageAsync("/")).QuerySelector(".waiting")!.TextContent.Trim());
 
         await browser.SubmitAsync(page, $"/events/{ev}/seen");
-        Assert.DoesNotContain("Your recipient has changed", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
+        Assert.DoesNotContain("You're giving to someone new.", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
         Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".waiting"));
     }
 
@@ -410,7 +410,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
         var page = await browser.GetPageAsync($"/events/{ev}");
         Assert.Contains("You've asked to leave", page.Body!.TextContent);
         Assert.Null(page.QuerySelector($"a[href='/events/{ev}/leave']"));
-        Assert.NotNull(page.QuerySelector(".reveal"));
+        Assert.NotNull(page.QuerySelector("[data-gift]"));
 
         var manage = await browser.GetPageAsync(Manage(ev));
         Assert.Contains("Pat wants to leave, and that needs a redraw.", manage.QuerySelector("#next-step")!.TextContent);

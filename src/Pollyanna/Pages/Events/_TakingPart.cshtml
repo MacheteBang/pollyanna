@@ -1,37 +1,7 @@
 @model Pollyanna.Pages.Events.EventModel
-@using Pollyanna.Infrastructure
-@* "Taking part (N)" (spec §7): everyone else in the event, a row each with their picture beside
-   their name and their notes under it. N counts the viewer too. The reveal (#76) wraps this in a
-   fold that opens from the count. *@
-@{
-    var others = Model.Participants.Where(p => p.Id != User.PersonId()).ToList();
-}
+@* "Taking part (N)" (spec §7): everyone else in the event (_People). N counts the viewer too.
+   After the draw the same list sits in a fold that opens from the count (_EventDrawn). *@
 <section aria-labelledby="people-heading">
     <h2 id="people-heading" class="section-title">Taking part (@Model.Participants.Count)</h2>
-    @if (others.Count == 0)
-    {
-        <p class="soft">Nobody else yet.</p>
-    }
-    else
-    {
-        <ul class="rows people" role="list">
-            @foreach (var p in others)
-            {
-                <li class="person">
-                    <partial name="_Avatar" model="p" />
-                    <div class="person-body">
-                        <span class="person-name">@p.Name</span>
-                        @if (p.Notes.Length > 0)
-                        {
-                            <p class="notes small">@p.Notes</p>
-                        }
-                        else
-                        {
-                            <p class="small soft">No notes yet.</p>
-                        }
-                    </div>
-                </li>
-            }
-        </ul>
-    }
+    <partial name="_People" model="Model" />
 </section>
