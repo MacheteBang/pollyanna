@@ -76,9 +76,16 @@
                     {
                         <p class="small soft" id="no-repeat-warning">@EventManager.NoRepeatIncompleteWarning</p>
                     }
+                    @* The way to fix it, where it is on this page (spec §7): a link to the fold that
+                       holds it, which the page renders open while the blocker stands; the script
+                       opens it again if it was closed. *@
                     if (Model.TooFewPeople && editable)
                     {
-                        <div class="actions"><a class="button button-fill" href="#add-people">Add people</a></div>
+                        <div class="actions"><a class="button button-fill" href="#add-people" data-opens>Add people</a></div>
+                    }
+                    else if (Model.RulesBlockTheDraw && editable)
+                    {
+                        <div class="actions"><a class="button button-fill" href="#rules" data-opens>Change who can't draw whom</a></div>
                     }
                     break;
                 case EventStatus.Drawn when Model.Leaving.Count > 0:
@@ -198,11 +205,11 @@
     @if (editable)
     {
         @* One control for adding people (spec §7): the people the organizer has shared an event
-           with, names and pictures only, and an address that adds or invites (_AddPeople). Folded
-           behind "Add people" unless adding people is the next step. *@
-        <details class="add-people-fold" id="add-people" open="@Model.TooFewPeople">
-            <summary class="button">Add people</summary>
-            <form method="post" asp-page-handler="AddPeople" class="stack add-people" data-add-people>
+           with, names and pictures only, and an address that adds or invites (_AddPeople). Behind
+           the "Add people" fold row (§12 Controls), open when adding people is the next step. *@
+        <details class="fold" id="add-people" open="@Model.TooFewPeople">
+            <summary><span>Add people</span></summary>
+            <form method="post" asp-page-handler="AddPeople" class="fold-body add-people" data-add-people>
                 <partial name="_AddPeople" model="new AddPeopleControl(Model.Known, [], null)" />
                 <button type="submit" class="button button-start">Add ticked</button>
                 <p class="hint">Only people you've shared an event with are listed. For anyone else, type their email: if they already use Pollyanna they're added, and if not, the address is invited and they join when they first sign in with it.</p>
@@ -217,7 +224,7 @@
     @* "Who can't draw whom" and "Details and organizers" (spec §7): closed rows with a summary on
        the right that open in place. A redirect back here names a spot inside one, which opens it. *@
     <div class="folds">
-        <details class="fold" id="rules">
+        <details class="fold" id="rules" open="@Model.RulesBlockTheDraw">
             <summary><span id="rules-heading">Who can't draw whom</span><span class="fold-hint">@Model.RulesSummary</span></summary>
             <div class="fold-body">
                 <p class="small soft">People in the same household never draw each other.</p>
@@ -287,9 +294,9 @@
                 }
                 @if (editable)
                 {
-                    <details class="disclose">
-                        <summary class="button">Add a household</summary>
-                        <form method="post" asp-page-handler="SaveHousehold" class="stack">
+                    <details class="fold">
+                        <summary><span>Add a household</span></summary>
+                        <form method="post" asp-page-handler="SaveHousehold" class="fold-body">
                             <div class="field">
                                 <label for="hh-name-new">Name</label>
                                 <input id="hh-name-new" name="householdName" required maxlength="@EventManager.HouseholdNameMax" autocomplete="off" placeholder="e.g. Mom &amp; Dad">
@@ -312,9 +319,9 @@
                     </details>
                     @if (Model.Participants.Count >= 2)
                     {
-                        <details class="disclose">
-                            <summary class="button">Add a rule</summary>
-                            <form method="post" asp-page-handler="AddRule" class="stack">
+                        <details class="fold">
+                            <summary><span>Add a rule</span></summary>
+                            <form method="post" asp-page-handler="AddRule" class="fold-body">
                                 <div class="field">
                                     <label for="rule-a">This person</label>
                                     <select id="rule-a" name="personA" required>
@@ -358,9 +365,9 @@
                     }
                     @if (m.Editable)
                     {
-                        <details class="disclose" open="@(Model.DetailsError is not null)">
-                            <summary class="button">Edit details</summary>
-                            <form method="post" asp-page-handler="Details" class="stack">
+                        <details class="fold" open="@(Model.DetailsError is not null)">
+                            <summary><span>Edit details</span></summary>
+                            <form method="post" asp-page-handler="Details" class="fold-body">
                                 <div class="field">
                                     <label for="name">Name</label>
                                     <input id="name" name="Name" value="@Model.Name" required maxlength="@EventManager.NameMax" autocomplete="off">
@@ -434,9 +441,9 @@
                     }
                     @if (m.Editable)
                     {
-                        <details class="disclose">
-                            <summary class="button">Add an organizer</summary>
-                            <form method="post" asp-page-handler="AddOrganizer" class="stack add-people" data-add-people>
+                        <details class="fold">
+                            <summary><span>Add an organizer</span></summary>
+                            <form method="post" asp-page-handler="AddOrganizer" class="fold-body add-people" data-add-people>
                                 <partial name="_PickOne" model="newOrganizer" />
                                 <p class="hint">They need to have signed in.</p>
                                 <button type="submit" class="button button-start">Make organizer</button>

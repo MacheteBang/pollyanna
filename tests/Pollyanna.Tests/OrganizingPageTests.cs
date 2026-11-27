@@ -191,8 +191,46 @@ public sealed class OrganizingPageTests : IAsyncLifetime
 
         var (text, controls) = Panel(page);
         Assert.Equal(["Can't draw: The household The Parks has more than half the people taking part, so they can't all draw someone outside it."], text);
-        Assert.Empty(controls);
         Assert.Null(page.QuerySelector($"form[action='{Manage(ev)}/draw']"));
+        // The way to fix it: open "Who can't draw whom", which the page renders open for links
+        // followed without the script.
+        Assert.Equal([("Change who can't draw whom", true)], controls);
+        Assert.Equal("#rules", page.QuerySelector(".panel a.button-fill")!.GetAttribute("href"));
+        Assert.True(page.QuerySelector("details#rules")!.HasAttribute("open"));
+    }
+
+    [Fact]
+    public async Task Who_cant_draw_whom_stays_closed_while_nothing_blocks_the_draw()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me, ann, bob, cy]);
+        await app.HouseholdAsync(ev, "The Parks", ann, bob);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.False(page.QuerySelector("details#rules")!.HasAttribute("open"));
+    }
+
+    [Fact]
+    public async Task Controls_that_only_open_a_form_in_place_are_fold_rows_not_buttons()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me, ann, bob, cy]);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        // Outside "Bigger changes", whose items are real buttons, nothing that only opens in place
+        // looks like a button.
+        var summaries = page.QuerySelectorAll("main summary").Where(s => s.Closest("#changes") is null).ToList();
+        Assert.All(summaries, s => Assert.DoesNotContain("button", s.ClassList));
+        foreach (var opener in new[] { "Add people", "Add a household", "Add a rule", "Edit details", "Add an organizer" })
+        {
+            var summary = Assert.Single(summaries, s => Squash(s.TextContent) == opener);
+            var fold = summary.ParentElement!;
+            Assert.Contains("fold", fold.ClassList);
+            // The form it opens has the one button: its submit.
+            Assert.Single(fold.QuerySelectorAll("button, .button"));
+        }
     }
 
     [Fact]
@@ -350,7 +388,7 @@ public sealed class OrganizingPageTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Invitations_are_listed_with_take_back_then_an_outlined_add_people()
+    public async Task Invitations_are_listed_with_take_back_then_the_add_people_fold()
     {
         var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me]);
         await app.WithDbAsync(async db =>
@@ -368,7 +406,7 @@ public sealed class OrganizingPageTests : IAsyncLifetime
         Assert.Equal("Take back", Squash(row.QuerySelector("button")!.TextContent));
         var add = page.QuerySelector("#add-people > summary")!;
         Assert.Equal("Add people", Squash(add.TextContent));
-        Assert.DoesNotContain("button-fill", add.ClassList);
+        Assert.DoesNotContain("button", add.ClassList);
 
         await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/cancelinvite");
         Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));

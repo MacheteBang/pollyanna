@@ -49,6 +49,12 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     /// <summary>Before the draw: too few people take part, so adding people is the next step.</summary>
     public bool TooFewPeople => Membership.PeopleEditable && Participants.Count < Draw.MinPeople;
 
+    /// <summary>
+    /// Open, and the households or rules leave no way to draw: "Who can't draw whom" is where to fix
+    /// it, so the next step links there and that fold renders open.
+    /// </summary>
+    public bool RulesBlockTheDraw => Event.Status == EventStatus.Open && Check is { Blocker: null, Problem: not null };
+
     /// <summary>In drawn: who asked to leave and waits for a redraw.</summary>
     public IReadOnlyList<ParticipantRow> Leaving => Event.Status == EventStatus.Drawn ? [.. Participants.Where(p => p.WantsToLeave)] : [];
 

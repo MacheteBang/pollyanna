@@ -802,7 +802,9 @@ strong, b { font-weight: 800; }
 .who-drew-whom + .small { margin-top: var(--space-2); }
 
 /* Folds: a row that opens in place, its title on the left, then a small soft hint and a
-   chevron on the right. Pale-blue lines above each fold and under the last one. */
+   chevron on the right. Pale-blue lines above each fold and under the last one. Anything that
+   only opens in place is a fold, never a button (spec §12 Controls): "Add people", "Add a
+   household", "Edit details" and the like. */
 .fold { border-top: var(--line) solid var(--pale); }
 .fold:last-child { border-bottom: var(--line) solid var(--pale); }
 
@@ -836,7 +838,7 @@ strong, b { font-weight: 800; }
     flex: none;
     width: 8px;
     height: 8px;
-    margin: 0 3px 3px 0;
+    margin: 0 3px 3px auto;
     border-right: var(--line) solid var(--ink);
     border-bottom: var(--line) solid var(--ink);
     transform: rotate(45deg);
@@ -859,12 +861,6 @@ strong, b { font-weight: 800; }
 .row-words { text-align: right; }
 .row-end { flex: none; }
 .row > .avatar { align-self: center; }
-
-/* "Add people": an outlined button that opens the add-people control in place. */
-.add-people-fold > summary { list-style: none; align-self: flex-start; }
-.add-people-fold > summary::-webkit-details-marker { display: none; }
-.add-people-fold { display: flex; flex-direction: column; gap: var(--space-4); }
-.add-people-fold > form { margin-top: var(--space-4); }
 
 /* Forms inside the folds and "Bigger changes": stacks, hints, field rows, choices, and a household's "Edit". */
 .stack { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -1098,13 +1094,7 @@ details.editor > form, details.editor > p, details.editor > div { margin-bottom:
 }
 .change-costs { padding-left: var(--space-5); }
 
-/* Inside the folds (#77's .fold): an outlined button that opens a form in place, such as "Edit
-   details" or "Add a rule", and rows of a label and its value. */
-.disclose { display: flex; flex-direction: column; }
-.disclose > summary { list-style: none; align-self: flex-start; }
-.disclose > summary::-webkit-details-marker { display: none; }
-.disclose > form { margin-top: var(--space-3); }
-.fold-body > .rows + .disclose, #details > .disclose, #organizers > .disclose { margin-top: var(--space-2); }
+/* Rows of a label and its value (the event's details). */
 .row-value { text-align: right; overflow-wrap: anywhere; min-width: 0; }
 /* A household's "Edit", tucked under its row. */
 .row-more { margin-top: calc(-1 * var(--space-3)); }
