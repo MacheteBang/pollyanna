@@ -15,6 +15,37 @@ public sealed record GiverSlip(Guid RecipientId, bool Viewed, int NotesVersionSe
 /// <summary>What a giver's waiting line on home is worked out from (spec §5.2, §7).</summary>
 public sealed record GiverSlipUpdates(bool Viewed, bool RecipientChanged, int NotesVersionSeen, int RecipientNotesVersion);
 
+/// <summary>
+/// What "What's new" works out from one person's two rows in a drawn event (spec §16,
+/// docs/adr/0008): as recipient, the newest unread question; as giver, the newest unread reply
+/// and the markers with no time.
+/// </summary>
+/// <param name="Question">When the newest question the person hasn't read was sent; null if none.</param>
+/// <param name="Reply">When the newest reply the person hasn't read was sent; null if none.</param>
+/// <param name="Patched">A patch gave the person a new recipient they haven't looked at.</param>
+/// <param name="NotesUpdated">Their recipient's notes changed since they last opened the card.</param>
+/// <param name="ThreadChanged">Their recipient closed or reopened the thread since they last looked.</param>
+/// <param name="Closed">Whether that thread is closed now.</param>
+public sealed record SlipNews(DateTime? Question, DateTime? Reply, bool Patched, bool NotesUpdated, bool ThreadChanged, bool Closed)
+{
+    public static readonly SlipNews None = new(null, null, false, false, false, false);
+}
+
+/// <summary>Which marker a deliberate dismissal in "What's new" moves (spec §16).</summary>
+public enum SlipMarker
+{
+    /// <summary>The recipient's questions: <c>RecipientReadUpto</c> to the thread's last message.</summary>
+    Question,
+    /// <summary>The giver's replies: <c>GiverReadUpto</c> to the thread's last message.</summary>
+    Reply,
+    /// <summary>The giver's "recipient changed" notice.</summary>
+    Patched,
+    /// <summary>The giver's notes version seen, to the recipient's current one.</summary>
+    NotesUpdated,
+    /// <summary>The giver's "closed or reopened" flag.</summary>
+    ThreadChanged,
+}
+
 /// <summary>One side's way into a thread: the recipient it's about, whether it's closed, whether anyone has written.</summary>
 public sealed record ThreadState(Guid RecipientId, bool Closed, bool Started)
 {
@@ -162,6 +193,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
         NotesVersionSeen = notesVersionSeen ?? a.NotesVersionSeen,
         RecipientChanged = recipientChanged ?? a.RecipientChanged,
         ThreadClosed = !newThread && a.ThreadClosed,
+        ThreadChangeUnseen = !newThread && a.ThreadChangeUnseen,
         GiverReadUpto = newThread ? 0 : a.GiverReadUpto,
         RecipientReadUpto = newThread ? 0 : a.RecipientReadUpto,
     };
@@ -186,6 +218,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
             return false;
         row.Viewed = true;
         row.RecipientChanged = false;
+        row.ThreadChangeUnseen = false;
         row.NotesVersionSeen = notesVersion;
         if (threadUpto > row.GiverReadUpto)
         {
@@ -286,6 +319,8 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
         var row = await FindAsync(eventId, recipient, MessageSender.Recipient);
         if (row is null)
             return false;
+        if (row.ThreadClosed != closed)
+            row.ThreadChangeUnseen = true;
         row.ThreadClosed = closed;
         await db.SaveChangesAsync();
         return true;
@@ -299,6 +334,69 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
     public Task<bool> HasUnreadQuestionAsync(Guid eventId, Guid recipient, CancellationToken cancellationToken = default) =>
         db.Assignments.AnyAsync(a => a.EventId == eventId && a.RecipientId == recipient
             && db.Messages.Any(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Giver && m.Seq > a.RecipientReadUpto), cancellationToken);
+
+    // ---------- "What's new" (spec §16, docs/adr/0008) ----------
+
+    /// <summary>What "What's new" works out for <paramref name="me"/> in a drawn event, from their two rows' markers.</summary>
+    public async Task<SlipNews> NewsAsync(Guid eventId, Guid me)
+    {
+        var question = await db.Assignments.Where(a => a.EventId == eventId && a.RecipientId == me)
+            .Select(a => db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Giver && m.Seq > a.RecipientReadUpto)
+                .OrderByDescending(m => m.Seq).Select(m => (DateTime?)m.CreatedAt).FirstOrDefault())
+            .FirstOrDefaultAsync();
+        var tag = key.GiverTag(eventId, me);
+        var giver = await db.Assignments.Where(a => a.EventId == eventId && a.GiverTag == tag)
+            .Select(a => new
+            {
+                Reply = db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Recipient && m.Seq > a.GiverReadUpto)
+                    .OrderByDescending(m => m.Seq).Select(m => (DateTime?)m.CreatedAt).FirstOrDefault(),
+                a.RecipientChanged,
+                a.Viewed,
+                a.NotesVersionSeen,
+                NotesVersion = db.Participants.Where(p => p.EventId == eventId && p.PersonId == a.RecipientId).Select(p => p.NotesVersion).FirstOrDefault(),
+                a.ThreadChangeUnseen,
+                a.ThreadClosed,
+            })
+            .SingleOrDefaultAsync();
+        return giver is null
+            ? SlipNews.None with { Question = question }
+            // Notes updated only once the card has been opened, as home's waiting line (spec §7).
+            : new SlipNews(question, giver.Reply, giver.RecipientChanged, giver.Viewed && giver.NotesVersion != giver.NotesVersionSeen,
+                giver.ThreadChangeUnseen, giver.ThreadClosed);
+    }
+
+    /// <summary>
+    /// <paramref name="me"/> dismissed one of "What's new"'s lines on purpose: the marker seeing it
+    /// would move moves, on their own row on that side only. False if they have no such row.
+    /// </summary>
+    public async Task<bool> DismissAsync(Guid eventId, Guid me, SlipMarker marker)
+    {
+        var row = await FindAsync(eventId, me, marker == SlipMarker.Question ? MessageSender.Recipient : MessageSender.Giver);
+        if (row is null)
+            return false;
+        switch (marker)
+        {
+            case SlipMarker.Question or SlipMarker.Reply:
+                var last = await db.Messages.Where(x => x.AssignmentId == row.Id).MaxAsync(x => (int?)x.Seq) ?? 0;
+                if (marker == SlipMarker.Question)
+                    row.RecipientReadUpto = Math.Max(row.RecipientReadUpto, last);
+                else
+                    row.GiverReadUpto = Math.Max(row.GiverReadUpto, last);
+                break;
+            case SlipMarker.Patched:
+                row.RecipientChanged = false;
+                break;
+            case SlipMarker.NotesUpdated:
+                row.NotesVersionSeen = await db.Participants.Where(p => p.EventId == eventId && p.PersonId == row.RecipientId)
+                    .Select(p => p.NotesVersion).FirstOrDefaultAsync();
+                break;
+            case SlipMarker.ThreadChanged:
+                row.ThreadChangeUnseen = false;
+                break;
+        }
+        await db.SaveChangesAsync();
+        return true;
+    }
 
     // ---------- Across events ----------
 
@@ -322,6 +420,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
     {
         await db.Messages.Where(x => x.AssignmentId == row.Id).ExecuteDeleteAsync();
         row.ThreadClosed = false;
+        row.ThreadChangeUnseen = false;
         row.GiverReadUpto = 0;
         row.RecipientReadUpto = 0;
     }

@@ -138,6 +138,12 @@ public sealed partial class NotificationSecrecyTests
         await ManageAsync(pat.Browser, ev, "addperson", Form(("personId", eve.Id.ToString()), ("change", "patch"), ("householdId", "")));
         Assert.Equal(new Guid[] { pat.Id, ann.Id, bob.Id, carol.Id, eve.Id }.Order(), (await app.ParticipantsAsync(ev)).Order());
         Assert.Equal(EventStatus.Drawn, await app.StatusAsync(ev));
+        // A patch tells its giver in "What's new", and which giver that is follows their own
+        // pairing and a random pick: everyone opens their card, which clears it with the replies,
+        // so what's left must say nothing about anyone's pairing. (PairingSecrecyTests covers the
+        // patched line itself, with the viewer's own pairing fixed.)
+        foreach (var (browser, _) in new[] { pat, ann, bob, carol, eve })
+            await browser.PostWithTokenAsync("/account", $"{page}/seen", Form(("upto", "1000")));
         await StageAsync();
         return stages;
     }
@@ -168,10 +174,18 @@ public sealed partial class NotificationSecrecyTests
             Assert.Equal(5, questionRows.Count);
             Assert.All(questionRows, r => Assert.Equal(NotificationKind.Question, r.Kind));
             Assert.Equal(5, questionMail.Count);
-            // Replies, closing, reopening and note edits reach no giver, or anyone.
+            Assert.All(((List<string>)before[0]).Where(p => !p.StartsWith("Eve\n")), p => Assert.Contains("Your giver asked you something", p));
+            // Replies, closing, reopening and note edits reach no giver, or anyone, by email; in
+            // "What's new" every giver hears of the reply and the reopening, worked out.
             Assert.Empty((List<Row>)before[4]);
             Assert.Empty((List<string>)before[5]);
-            // The patches tell no giver that their recipient changed; only the new participant hears.
+            Assert.All(((List<string>)before[3]).Where(p => !p.StartsWith("Eve\n")), p =>
+            {
+                Assert.Contains("Your recipient replied", p);
+                Assert.Contains("Your recipient reopened the conversation", p);
+                Assert.Contains("What&#x27;s new, 2 notifications", p);
+            });
+            // The patches tell no giver by email that their recipient changed; only the new participant hears.
             Assert.Equal([new Row(NotificationKind.AddedToEvent, people["Eve"].Id, null, null)], (List<Row>)before[7]);
             Assert.StartsWith("To: eve@example.com\n", Assert.Single((List<string>)before[8]));
             // In "What's new" too, only the late joiner hears anything.

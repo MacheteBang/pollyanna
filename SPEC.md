@@ -1595,6 +1595,20 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     shows the times in UTC ("Today, 7:42 PM UTC"). Tests: `WhatsNewTests`,
     plus `/whats-new` in `PairingSecrecyTests` and
     `NotificationSecrecyTests`.
+  - "What's new" for the five assignment kinds (#98): worked out on each
+    request by `SealedHat.NewsAsync` from the person's two sealed rows in
+    each drawn event they take part in, never stored (`WorkedOutKinds`
+    holds the lines, links and order). A new yes/no column,
+    `Assignments.ThreadChangeUnseen` (migration `ThreadChangeUnseen`), is
+    set when the recipient closes or reopens (only if that changes it),
+    cleared by opening the card, and reset with the thread by a patch or a
+    redraw. Dismissing one moves the marker seeing it would
+    (`SealedHat.DismissAsync`, on the person's own row on that side only),
+    so home's matching waiting line goes too; only while drawn. Notes
+    updated shows only once the card has been opened, as home's line. The
+    bell counts these rows too. Tests: `WhatsNewAssignmentTests`, with all
+    five kinds in `PairingSecrecyTests` and the question, reply and
+    reopened rows in `NotificationSecrecyTests`.
 
 ### Done: the "Tablecloth" identity
 
