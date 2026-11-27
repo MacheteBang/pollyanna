@@ -2,7 +2,8 @@
 
 ## Bow (favicon, apple-touch-icon, empty home page, reveal ribbon, README banner)
 
-The bow in `src/Pollyanna/wwwroot/favicon.svg`, `src/Pollyanna/wwwroot/apple-touch-icon.png`,
+The bow in `src/Pollyanna/wwwroot/favicon.svg`, `src/Pollyanna/wwwroot/apple-touch-icon.png`
+(drawn from `docs/assets/touch-icon.svg`),
 `src/Pollyanna/Pages/Index.cshtml`, `src/Pollyanna/Pages/Events/Event.cshtml` and
 `docs/assets/banner.svg` is adapted from
 the "Ribbon" emoji (Flat style) in [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji).
@@ -36,6 +37,7 @@ SOFTWARE.
 
 ## Fonts
 
-Courier Prime and Reenie Beanie are under the SIL Open Font License; the licence texts sit
-beside the font files in `src/Pollyanna/wwwroot/fonts`. The wordmark in `docs/assets/banner.svg`
+Courier Prime, Reenie Beanie, Figtree and Playpen Sans are under the SIL Open Font License; the
+licence texts sit beside the font files in `src/Pollyanna/wwwroot/fonts`. The Figtree and
+Playpen Sans files are the latin and latin-ext subsets published by Fontsource (5.3.0). The wordmark in `docs/assets/banner.svg`
 is Courier Prime Bold converted to outlines.

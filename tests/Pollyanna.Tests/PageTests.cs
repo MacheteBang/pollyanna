@@ -133,7 +133,9 @@ public sealed class PageTests : IAsyncLifetime
     {
         using var browser = app.NewBrowser();
         var page = await browser.GetPageAsync("/auth/signed-out");
-        Assert.Equal(AboutLine, page.QuerySelector(".about")!.TextContent.Trim());
+        // The short version of the about text (spec §7); TableclothTests covers its place.
+        Assert.Equal("Pollyanna is your family's gift exchange: everyone draws one name and nobody sees who drew whom. Around Philadelphia, that's what they call it.",
+            page.QuerySelector(".about")!.TextContent.Trim());
     }
 
     [Fact]

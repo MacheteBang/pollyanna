@@ -1,14 +1,16 @@
 @page "/auth/signed-out"
 @{
+    Layout = "_Tablecloth";
     ViewData["Title"] = "Signed out";
 }
 
-<div class="empty">
-    <h1>You're signed out</h1>
-    <p>You're still signed in to your sign-in provider, so signing in again may not ask for a password.</p>
+<div class="cloth">
+    <div class="panel">
+        <h1 class="panel-title">You're signed out</h1>
+        <partial name="_AboutShort" />
+        <div class="actions">
+            <a class="button button-fill" href="/auth/login">Sign in again</a>
+        </div>
+        <p class="small soft">You're still signed in to your sign-in provider, so signing in again may not ask for a password.</p>
+    </div>
 </div>
-<div class="actions">
-    <a class="button" href="/auth/login">Sign in again</a>
-</div>
-
-<partial name="_About" />
