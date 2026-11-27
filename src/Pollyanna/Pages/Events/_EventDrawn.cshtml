@@ -119,6 +119,7 @@ else
                                 <div class="live-slot" id="ask-thread" data-live data-thread>
                                 @if (ask.Notes.Count > 0)
                                 {
+                                    <div class="thread-scroll">
                                     <ol class="conversation" data-conversation>
                                         @{ DateOnly? day = null; }
                                         @foreach (var note in ask.Notes)
@@ -139,6 +140,7 @@ else
                                             </li>
                                         }
                                     </ol>
+                                    </div>
                                 }
                                 </div>
                                 <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "ask" })" />
@@ -150,10 +152,10 @@ else
                                 </div>
                                 @if (!ask.Closed)
                                 {
-                                    <form method="post" action="/events/@id/ask" asp-antiforgery="true" class="field">
+                                    <form method="post" action="/events/@id/ask" asp-antiforgery="true" class="composer" data-composer>
                                         <label for="ask-body" class="visually-hidden">Your question for @name</label>
-                                        <textarea id="ask-body" name="body" rows="2" maxlength="@EventManager.MessageMax" required></textarea>
-                                        <button type="submit" class="button button-start">Send</button>
+                                        <textarea id="ask-body" name="body" rows="1" maxlength="@EventManager.MessageMax" required></textarea>
+                                        <button type="submit" class="button button-fill">Send</button>
                                     </form>
                                 }
                             </section>

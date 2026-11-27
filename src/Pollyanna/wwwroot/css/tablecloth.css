@@ -560,10 +560,21 @@ summary::-webkit-details-marker { display: none; }
 
 .conversation-panel { gap: var(--space-5); }
 
-.conversation-quiet {
-    padding-top: var(--space-1);
-    padding-bottom: var(--space-5);
+/* The questions page is always the cloth, and it runs to the bottom of the page, under "Close
+   this conversation" too: the page body grows to the window and the cloth takes what's left. */
+body:has(.questions-cloth) { display: flex; flex-direction: column; min-height: 100dvh; }
+body:has(.questions-cloth) main { flex: 1; display: flex; flex-direction: column; }
+.questions-cloth { flex: 1; }
+
+/* A conversation scrolls in its own box (spec §16 Threads), so a new message is added inside it
+   and the page itself never moves. Plain: no shadow, no styled scrollbar. Without the script the
+   box starts at its newest message (column-reverse); with it, site.js puts it there. */
+.thread-scroll {
+    max-height: 55dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
+html:not(.js) .thread-scroll { display: flex; flex-direction: column-reverse; }
 
 /* The one-line reply box with "Send" beside it. */
 .composer {
@@ -589,11 +600,6 @@ summary::-webkit-details-marker { display: none; }
 
 .composer .button { flex: none; font: var(--type-body); font-weight: 800; padding-inline: var(--space-4); }
 
-/* With nothing new: the reply box in a bar under the conversation. */
-.reply-bar {
-    border-top: var(--line) solid var(--pale);
-    padding-block: var(--space-3);
-}
 
 .conversation-closed {
     display: flex;
@@ -604,8 +610,10 @@ summary::-webkit-details-marker { display: none; }
 
 .conversation-closed h2 { font: var(--type-body); font-weight: 800; }
 
-.conversation-foot { padding-block: var(--space-1) var(--space-5); }
-.cloth + .conversation-foot { padding-top: var(--space-2); }
+/* "Close this conversation", under the panel on the cloth. */
+.conversation-foot { max-width: var(--column); margin-inline: auto; padding-top: var(--space-2); }
+/* On white, so the small link reads on the gingham. */
+.conversation-foot .link-button { background: var(--white); padding-inline: var(--space-2); border-radius: var(--corner); }
 
 /* ---------- Error and sign-in failure pages: the girl large, no cloth (spec §7, §12) ---------- */
 

@@ -159,7 +159,14 @@ public sealed class QuestionTests : IAsyncLifetime
         var page = await pat.GetPageAsync(Page);
         Assert.Empty(page.QuerySelectorAll("#ask .message"));
         Assert.Equal("Ask Ann something", page.QuerySelector("#ask h2")!.TextContent);
-        Assert.NotNull(page.QuerySelector("#ask label[for='ask-body']"));
+        Assert.NotNull(page.QuerySelector("#ask label[for='ask-body'].visually-hidden"));
+        // The same one-line composer as the reply box: "Send" filled, beside the box (owner, November 27, 2026).
+        var form = page.QuerySelector($"#ask form[action='{Page}/ask']")!;
+        Assert.Contains("composer", form.ClassList);
+        Assert.Equal("1", form.QuerySelector("textarea#ask-body")!.GetAttribute("rows"));
+        var send = Assert.Single(form.QuerySelectorAll("button"));
+        Assert.Equal("Send", send.TextContent.Trim());
+        Assert.Contains("button-fill", send.ClassList);
     }
 
     [Fact]

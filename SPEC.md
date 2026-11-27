@@ -894,7 +894,10 @@ There is no separate status block.
    new." sits under the date line, above the gift.
 3. Once untied, one group: under "You're giving to", the name; their notes
    ("Notes updated since you last looked" when they changed, §5.2); the
-   question box; "Done shopping" as a small control; "Hide the name".
+   question box; "Done shopping" as a small control; "Hide the name". The
+   question box is the same one-line box as the reply box on "Questions for
+   you", with "Send" filled beside it on the right (decided November 27,
+   2026, owner); its label is for screen readers only.
 4. "Questions from your giver", a quiet link when nothing is unread.
 5. The viewer's own notes, collapsed to a preview with an edit control.
 6. Everyone taking part, collapsed to a count that opens the list.
@@ -989,9 +992,17 @@ small line "Your giver asks, you answer. Their name stays a secret." The
 thread reads as a conversation, oldest at the top: a day line between days,
 and under each message its time to the minute ("7:42 PM"; older messages
 stored to the hour keep it, §6). The reply
-is a one-line box, "Reply to your giver", with "Send" beside it; "Close
-this conversation" is a small link under it. A question that hasn't been
-answered carries the word "new". Empty: "No questions yet. When your giver
+is a one-line box, "Reply to your giver", with "Send" beside it, always
+filled; "Close this conversation" is a small link under it. In both boxes
+(this one and the giver's question box) Enter sends at once and
+Shift+Enter starts a new line, except while an input method is composing;
+an empty box sends nothing, and without the script the button sends
+(decided November 27, 2026, owner). A question that hasn't been
+answered carries the word "new". The page is always the cloth, running to
+the bottom of the page, under "Close this conversation" too, with the
+conversation and the reply box as the panel on it: it doesn't change shape
+when you reply (decided November 27, 2026, owner). The conversation
+scrolls in its own box (§16 Threads). Empty: "No questions yet. When your giver
 asks you something, it shows up here and you can reply." The rules of §6
 are unchanged.
 
@@ -1489,10 +1500,13 @@ is in §14.
   exception to the single corner. A centered day line sits between days
   ("Today", the weekday, or the date after a week) and the time under each
   message to the minute ("7:42 PM"; messages stored to the hour before map
-  #82 show "about 7 PM"). While a question is unanswered the whole
-  conversation and the reply box sit in the white panel on the cloth and
-  "Send" is the filled button; with nothing new there is no cloth, the
-  reply box sits in a bar under the conversation and "Send" is outlined.
+  #82 show "about 7 PM"). The questions page is always the cloth, down to
+  the bottom of the page: the conversation and the reply box sit in the
+  white panel on it, "Send" is the filled button, and "Close this
+  conversation" sits under the panel on the cloth, on a small white ground
+  so it reads (decided November 27, 2026, owner; the earlier "no cloth
+  with nothing new" variant is gone). The conversation's scrolling box
+  (§16 Threads) is plain: no shadow and no styled scrollbar.
 - The bell (§7, §16; decided on #89, November 27, 2026, user) sits in the
   masthead left of the first name. With something new it is filled ribbon
   blue with an ink clapper and has a small red dot at its top right,
@@ -2942,10 +2956,18 @@ live: the countdown turning over at midnight, and past events.
   server's existing refusal answers it.
 - **While a post is in flight, hints are ignored.** Its response is a
   fresh page.
-- **Threads** (the questions page and the giver's question box): a new
-  message is added at the bottom with its time to the minute, and a
-  question carries "new". At or near the bottom, the view stays there;
-  scrolled up, a quiet "New message below" link appears instead. When the
+- **Threads** (the questions page and the giver's question box): each
+  conversation lives in its own scrolling box, at most a little over half
+  the window high, starting at its newest message (decided November 27,
+  2026, owner: the page jumped as a message came in). A new message is
+  added inside the box, at the bottom, with its time to the minute, and a
+  question carries "new"; the box around it is never replaced, and the
+  page's own scroll position never moves on a live update. With the box at
+  its bottom, it scrolls smoothly to the new message (at once under reduce
+  motion); scrolled up, a quiet "New message below" link appears instead,
+  and pressing it scrolls the box. Sending your own message brings the
+  page back with the box at its newest. Without the script the box still
+  scrolls and starts at its newest message. When the
   conversation is closed, the giver's box shows "Your recipient has closed
   this conversation" and Send is turned off, but a draft stays visible;
   reopening turns Send back on. Live arrival never moves a read marker
@@ -3027,7 +3049,9 @@ back here for the hand checks.
   - a tab hidden and then shown
   - a network drop and reconnect
   - drafts, folds and the gift's tied state kept
-  - "New message below"
+  - a message arriving in each conversation's box: the page doesn't move,
+    the box scrolls smoothly at its bottom (at once under reduce motion),
+    "New message below" scrolled up; Enter and Shift+Enter in both boxes
   - screen-reader announcements
   - focus after a dismiss
   - the panel with "reduce motion", and `/whats-new` without the script

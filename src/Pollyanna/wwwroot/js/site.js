@@ -1,6 +1,9 @@
 // Pollyanna's only script. Pages work without it; it adds the countdown and small conveniences.
 "use strict";
 
+// The stylesheet tells pages with the script from those without (a conversation's scrolling box).
+document.documentElement.classList.add("js");
+
 // The page's parts are set up on load, and again on what a live update brings in (livePage), so
 // each takes the root to look in. all(root, selector) includes the root itself when it matches.
 const all = (root, selector) => [...(root.matches?.(selector) ? [root] : []), ...root.querySelectorAll(selector)];
@@ -330,8 +333,11 @@ function whatsNewPanel() {
 // makes the page do one live refetch of its own URL, marked by the Pollyanna-Live header
 // (LiveRefetch.Header: the server treats it as a read-only view, not a visit), and hands the
 // fetched page to whoever listens (live.onRefetch: the bell's panel and livePage), with what the
-// hints said: listener(page, { areas, gone }). Hints are ignored while a form post is in flight, since its
-// response is a fresh page anyway. A hidden page closes its connection (and on pagehide), opens it
+// hints said: listener(page, { areas, gone, moved }) (moved: the refetch was sent on elsewhere, and
+// page is null). A hint names its refetch's header value: "hint" leaves the parts between a giver
+// and a recipient out, since everyone it reached refetches with it; a catch-up (shown again,
+// reconnected, or your own action in a pair) carries everything. Hints are ignored while a form
+// post is in flight, since its response is a fresh page anyway. A hidden page closes its connection (and on pagehide), opens it
 // again when shown and then refetches once; so does EventSource's own reconnect after a drop.
 // Nothing is replayed. A refused connection (signed out, account deleted, session expired) stays
 // closed until the next page load. Without the script, or without EventSource, nothing changes.
@@ -343,14 +349,18 @@ const live = { tab: "", posting: false, onRefetch: [] };
 //   at it ("Names have been drawn."). A refetch with another shape is a state change.
 // - [data-live][id] is a region that patches in place: replaced whole when the server's HTML for
 //   it changed, unless something in it is being edited, and then tried again on the next refetch.
+//   A region inside another is compared and patched on its own. A conversation ([data-thread])
+//   is patched by adding its new messages inside its scrolling box.
+// - [data-live-pair] marks a part between a giver and a recipient; [data-live-withheld] says a
+//   refetch a hint set off left it out, so what this page shows of it stays (spec §16).
 // - [data-live-list][id] holds regions (by id) that come and go, such as home's panels.
 // Being edited: a form with focus or unsaved changes, or an open "Bigger changes" confirmation.
 // The event page's gift is never a region, so its tied or untied state stays as the viewer left it
 // while the parts under the name (their notes, "Done shopping") patch inside it.
 // A giver's or recipient's own content frame (liveConnection) brings this page as they'd see it,
 // patched the same way, and three things more: a patch brings the whole gift in again, tied, with
-// the new name in it (never left on screen); a thread with new messages stays at the bottom if
-// the view was there, or shows a quiet "New message below", and says them politely; and the
+// the new name in it (never left on screen); a conversation's box with new messages scrolls to
+// them if it was at the bottom, or shows a quiet "New message below", and says them politely; and the
 // question box's Send is off while the conversation is closed, with any draft kept.
 // Open folds stay open and focus stays where it was. A state change swaps the page body when
 // nothing is being edited, and says the line politely; otherwise the line shows, with "Show",
@@ -366,13 +376,14 @@ function livePage() {
 
     // Each region's HTML as the server sent it, to tell what changed: the page's own script changes
     // the regions (countdowns, folds, times), and every render has a new form token.
-    // A part between a giver and a recipient (data-live-pair) is compared on its own: a refetch a
-    // hint set off leaves it out (data-live-withheld, spec §16), so a region around it is compared
-    // without it, and what this page shows of it stays put.
+    // A region inside another is compared on its own, so the one around it changes only for
+    // what's its own. That keeps a conversation's box in place while messages arrive in it, and a
+    // part between a giver and a recipient (data-live-pair) that a refetch a hint set off leaves
+    // out (data-live-withheld, spec §16) shows what it showed.
     const sent = new Map();
     const html = el => {
         const copy = el.cloneNode(true);
-        for (const part of copy.querySelectorAll("[data-live-pair]")) part.replaceWith(`[${part.id}]`);
+        for (const part of copy.querySelectorAll("[data-live][id], [data-live-pair]")) part.replaceWith(`[${part.id}]`);
         return copy.outerHTML.replace(/<input name="__RequestVerificationToken"[^>]*>/g, "");
     };
     const withheld = el => el.matches("[data-live-withheld]");
@@ -416,8 +427,10 @@ function livePage() {
     };
     const swap = (was, fresh) => {
         const now = document.importNode(fresh, true);
-        // A pair part the refetch left out keeps what this page shows of it.
-        for (const part of all(now, "[data-live-pair][data-live-withheld]")) {
+        // A pair part the refetch left out keeps what this page shows of it, and a conversation
+        // stays the box it is (scrolled where it was); the regions pass brings it up to date.
+        for (const part of all(now, "[data-live-pair][data-live-withheld], [data-thread][id]")) {
+            if (part === now) continue;
             const shown = was.querySelector(`#${CSS.escape(part.id)}`);
             if (shown) part.replaceWith(shown);
         }
@@ -452,6 +465,10 @@ function livePage() {
             if (!region.isConnected) continue; // inside one already replaced
             const fresh = page.getElementById(region.id);
             if (!fresh || withheld(fresh) || html(fresh) === sent.get(region.id) || editing(region)) continue;
+            if (region.matches("[data-thread]") && addMessages(region, fresh)) {
+                sent.set(region.id, html(fresh));
+                continue;
+            }
             swap(region, fresh);
         }
     };
@@ -484,12 +501,39 @@ function livePage() {
         pageParts(now);
     };
 
-    // Threads (the questions page and the giver's question box): what's new after a patch, kept
-    // in view if the view was at the bottom, otherwise pointed to, and said politely.
-    const lastMessage = thread => [...thread.querySelectorAll(".message")].at(-1);
+    // Threads (the questions page and the giver's question box, spec §16): each conversation is
+    // its own scrolling box. New messages are added inside it, never by replacing the box, so the
+    // page itself never moves. Read at the bottom, the box scrolls smoothly to them (at once under
+    // reduce motion); scrolled up, a quiet "New message below" link points to them. Said politely.
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const box = thread => thread.querySelector(".thread-scroll");
     const atBottom = thread => {
-        const last = lastMessage(thread);
-        return !last || last.getBoundingClientRect().bottom <= window.innerHeight + 48;
+        const b = box(thread);
+        return !b || b.scrollHeight - b.scrollTop - b.clientHeight <= 24;
+    };
+    const toBottom = (thread, smooth) => {
+        const b = box(thread);
+        if (b) b.scrollTo({ top: b.scrollHeight, behavior: smooth && !still.matches ? "smooth" : "auto" });
+    };
+    // The same messages first, then more: those are added to the list in the box, and a message
+    // whose "new" changed takes its new line; false (the whole region is replaced) otherwise.
+    const addMessages = (region, fresh) => {
+        const list = region.querySelector("ol.conversation");
+        const freshList = fresh.querySelector("ol.conversation");
+        if (!list || !freshList) return false;
+        const have = [...list.querySelectorAll(".message")];
+        const now = [...freshList.querySelectorAll(".message")];
+        const same = (a, b) => a.querySelector("time")?.getAttribute("datetime") === b.querySelector("time")?.getAttribute("datetime")
+            && a.querySelector(".bubble-body")?.textContent === b.querySelector(".bubble-body")?.textContent;
+        if (now.length < have.length || have.some((m, i) => !same(m, now[i]))) return false;
+        have.forEach((m, i) => {
+            const isNew = now[i].querySelector(".message-new") !== null;
+            if ((m.querySelector(".message-new") !== null) !== isNew)
+                m.querySelector(".message-meta")?.replaceWith(document.importNode(now[i].querySelector(".message-meta"), true));
+        });
+        for (const m of now.slice(have.length)) list.append(document.importNode(m, true));
+        conversations(region);
+        return true;
     };
     // A thread inside a tied gift isn't on screen: nothing scrolls to it or reads it out.
     const shown = thread => !thread.closest("[data-gift]:not(.untied)");
@@ -500,17 +544,19 @@ function livePage() {
         const a = document.createElement("a");
         a.href = `#${thread.id}`;
         a.textContent = "New message below";
+        const gone = () => {
+            if (p.isConnected && !atBottom(thread)) return;
+            p.remove();
+            box(thread)?.removeEventListener("scroll", gone);
+        };
         a.addEventListener("click", event => {
             event.preventDefault();
-            lastMessage(thread)?.scrollIntoView({ block: "end" });
+            toBottom(thread, true);
             p.remove();
         });
         p.append(a);
         thread.append(p);
-        const gone = () => {
-            if (!p.isConnected || atBottom(thread)) { p.remove(); window.removeEventListener("scroll", gone); }
-        };
-        window.addEventListener("scroll", gone, { passive: true });
+        box(thread)?.addEventListener("scroll", gone, { passive: true });
     };
     const watchThreads = () => {
         const before = new Map(all(main, "[data-thread][id]").map(t => [t.id, { count: t.querySelectorAll(".message").length, bottom: atBottom(t) }]));
@@ -521,7 +567,7 @@ function livePage() {
                 if (!thread || !shown(thread)) continue;
                 const messages = [...thread.querySelectorAll(".message")];
                 if (messages.length <= was.count) continue;
-                if (was.bottom) messages.at(-1).scrollIntoView({ block: "end" });
+                if (was.bottom) toBottom(thread, true);
                 else below(thread);
                 for (const m of messages.slice(was.count))
                     said.push(`New message: ${m.querySelector(".bubble-body")?.textContent.trim() ?? ""}`);
@@ -731,6 +777,33 @@ function liveConnection() {
     open();
 }
 
+// A conversation's box starts at its newest message: on load, and when one comes in whole. Once
+// set, live updates scroll it (livePage), so a box brought along by a swap stays where it was.
+function threadBoxes(root = document) {
+    for (const box of all(root, ".thread-scroll")) {
+        if ("placed" in box.dataset) continue;
+        box.dataset.placed = "";
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
+// The message boxes (the giver's question box and the recipient's reply box, spec §7): Enter
+// sends at once and Shift+Enter starts a new line, the same on both sides. Not while an input
+// method is composing a character. An empty box is stopped by "required", as the button is.
+// Without the script, the button sends.
+function composers(root = document) {
+    for (const form of all(root, "form[data-composer]")) {
+        const box = form.querySelector("textarea");
+        if (!box || "enterSends" in box.dataset) continue;
+        box.dataset.enterSends = "";
+        box.addEventListener("keydown", event => {
+            if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+            event.preventDefault();
+            form.requestSubmit();
+        });
+    }
+}
+
 // "12 / 1,000" under a message box as it fills.
 function counters(root = document) {
     for (const el of all(root, "[data-counter]")) {
@@ -790,6 +863,8 @@ function pageParts(root = document) {
     addPeople(root);
     gifts(root);
     conversations(root);
+    threadBoxes(root);
+    composers(root);
     counters(root);
     saveOnChange(root);
     foldLinks(root);
