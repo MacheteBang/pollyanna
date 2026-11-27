@@ -10,9 +10,15 @@ namespace Pollyanna.Tests.Support;
 /// A tiny browser: keeps Pollyanna's cookies, follows redirects by hand across Pollyanna and the
 /// mock issuers (keyed by issuer URL), and fills in an issuer's sign-in form.
 /// </summary>
-public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, HttpClient> issuers) : IDisposable
+public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, HttpClient> issuers, TestLive live) : IDisposable
 {
     public HttpClient App => app;
+
+    /// <summary>
+    /// Opens a live stream as a page of this browser would (spec §16): one per tab, so call it
+    /// twice for two tabs. Returns once the stream's opening frame is in.
+    /// </summary>
+    public Task<LiveReader> OpenLiveAsync() => LiveReader.OpenAsync(app, live);
 
     /// <summary>The redirect Pollyanna sent to the issuer during the last sign-in.</summary>
     public Uri? LastAuthorizeRequest { get; private set; }

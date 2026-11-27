@@ -4,6 +4,7 @@ using Pollyanna.Data;
 using Pollyanna.Events;
 using Pollyanna.Happenings;
 using Pollyanna.Infrastructure;
+using Pollyanna.Live;
 using Pollyanna.Notifications;
 using Pollyanna.People;
 using Pollyanna.WhatsNew;
@@ -47,9 +48,15 @@ services.AddScoped<IHappeningListener, EmailOnHappening>();
 services.AddScoped<StoredNotifications>();
 services.AddScoped<IHappeningListener, WhatsNewOnHappening>();
 services.AddScoped<WhatsNewList>();
+// Live pages (spec §16): the open /live streams, in memory, and the hints sent once a change commits.
+services.AddSingleton<LiveConnections>();
+services.AddSingleton<LiveAfterCommit>();
+services.AddScoped<LiveSignals>();
+services.AddScoped<IHappeningListener, LiveOnHappening>();
 
 services.AddDbContext<PollyannaDb>((sp, options) => options
     .UseSqlite($"Data Source={sp.GetRequiredService<PollyannaSettings>().DatabasePath}")
+    .AddInterceptors(sp.GetRequiredService<LiveAfterCommit>())
     // SQLite rebuilds a table with foreign keys off, outside the migration's transaction. Expected
     // and harmless (spec §8); every other EF warning still logs.
     .ConfigureWarnings(w => w.Ignore(RelationalEventId.NonTransactionalMigrationOperationWarning)));
@@ -121,6 +128,7 @@ try
     app.MapGet("/healthz", () => Results.Text("ok")).AllowAnonymous();
     app.MapPictures();
     app.MapProviderIcons();
+    app.MapLive();
     app.MapRazorPages();
 
     // Check the settings before the host starts: a failure inside a hosted service would have
