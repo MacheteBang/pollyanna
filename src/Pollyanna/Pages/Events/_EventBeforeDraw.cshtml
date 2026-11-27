@@ -1,0 +1,24 @@
+@model Pollyanna.Pages.Events.EventModel
+@using Pollyanna.Events
+@* The event page before the draw (draft or open; spec §7 Event page, before the draw): the notes
+   editor is the one panel on the cloth, with one line saying what happens next; then the people
+   taking part, and "Leave this event" as a small link at the very bottom. No status block. *@
+<div class="cloth">
+    <div class="panel" id="your-notes">
+        <p>@(Model.Event.Redrawn
+            ? "Names are being drawn again. You'll see who you're giving to once they are."
+            : "Write your notes so your giver knows what you'd like. You'll see who you're giving to once names are drawn.")</p>
+        <form method="post" asp-page-handler="notes" class="field">
+            <label for="notes">Likes, sizes, no-gos. Everyone taking part can read them.</label>
+            <textarea id="notes" name="notes" rows="5" maxlength="@EventManager.NotesMax">@Model.MyNotes</textarea>
+            <button type="submit" class="button button-fill">Save notes</button>
+        </form>
+    </div>
+</div>
+<div class="column below">
+    <partial name="_TakingPart" model="Model" />
+    @if (Model.Membership.CanLeave)
+    {
+        <p class="small"><a href="/events/@Model.Event.Id/leave">Leave this event</a></p>
+    }
+</div>

@@ -271,7 +271,7 @@ public sealed class DrawFlowTests : IAsyncLifetime
         Assert.Equal(0, await AssignmentCountAsync(ev));
         Assert.Contains("back in the hat", await NoticeAsync(Manage(ev)));
         Assert.False(await app.WithDbAsync(db => db.Participants.AnyAsync(p => p.EventId == ev && p.DoneShopping)));
-        Assert.Contains("went back in the hat", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
+        Assert.Contains("Names are being drawn again.", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
 
         await ActAsync(ev, "draw");
         var card = (await browser.GetPageAsync($"/events/{ev}")).QuerySelector(".reveal")!;

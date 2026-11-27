@@ -540,3 +540,120 @@ strong, b { font-weight: 800; }
 }
 
 .link-button.small { font: var(--type-small); font-weight: 600; }
+
+/* ---------- Event page (#72): countdown, the two-way switch, the notes field, people rows ---------- */
+
+/* The countdown in the page head: the prominent part of the date line. Filled in by site.js;
+   without the script it stays hidden and the date line says the date alone. */
+.page-countdown { font: var(--type-action); }
+
+/* "My page" / "Organizing" (_EventSwitch): two halves of one outlined control, the current one in ink. */
+.switch {
+    display: inline-flex;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.switch a {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 14px;
+    font: var(--type-small);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.switch a[aria-current="page"] {
+    background: var(--ink);
+    color: var(--white);
+}
+
+/* The switch clips its halves, so their focus ring goes inside. */
+.switch a:focus-visible { outline-offset: -5px; }
+.switch a[aria-current="page"]:focus-visible { outline-color: var(--white); }
+
+/* A labeled form field: the label in 800 above a 2px ink field. */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.field label { font-weight: 800; }
+
+.field textarea,
+.field input[type="text"] {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    background: var(--white);
+    color: var(--ink);
+    font: var(--type-body);
+}
+
+.field textarea { resize: vertical; }
+
+.field .button { margin-top: var(--space-1); }
+
+/* A heading for a group on white, under the cloth. */
+.section-title { font: var(--type-body); font-weight: 800; }
+
+/* Quiet rows on white, split by pale-blue lines. */
+.rows {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-2);
+}
+
+.rows > li {
+    padding: var(--space-3) 0;
+    border-top: var(--line) solid var(--pale);
+}
+
+.rows > li:first-child { border-top: 0; }
+
+/* A person: their picture beside their name, their notes under the name. */
+.person {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+.person-body { min-width: 0; }
+.person-name { font-weight: 800; overflow-wrap: anywhere; }
+.notes { white-space: pre-line; overflow-wrap: anywhere; }
+
+/* A picture or initials: 40px, with the one corner, never a circle. */
+.avatar {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: var(--corner);
+    object-fit: cover;
+}
+
+.avatar-initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--pale);
+    color: var(--ink);
+    font: var(--type-small);
+    font-weight: 800;
+}
+
+/* A link standing alone as a way out, such as "Stay in": tall enough to tap. */
+.tap-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+}
+
+/* A confirmation (leave): plain text on white, then the button and the way out. */
+.confirm { padding-top: 0; gap: var(--space-3); }
+.confirm .actions { margin-top: var(--space-3); align-items: stretch; }
