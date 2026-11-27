@@ -1,0 +1,590 @@
+<title>Pollyanna Remaining Layouts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE, throwaway. Answers map ticket #59: what the screens beyond home and the event page
+  look like in direction D, "Tablecloth".
+  The direction, tokens, words and content order are already decided (#53, #54, #57, #58, #60), so this is
+  one layout per screen, at phone width, with selects that walk each screen through its states. Two
+  layout choices that are still open have live switches (empty home; the girl on pages with nothing to do).
+  Published as a page, so there is no doctype or body tag here. Fonts come from Google Fonts for
+  the mockup only; the app would serve its own copies.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&family=Playpen+Sans:wght@500&display=swap">
+<style>
+/* Layout: a column of screens; each is a phone frame on the left with its state control and notes beside it. */
+:root {
+  --bg: #EEF1F3; --card: #FFFFFF; --fg: #1E1A16; --soft: #5B5650; --line: #C9D3DA;
+  --white: #FFFFFF; --ink: #1E1A16; --muted: #5B5650; --blue: #3F6E8C; --pale: #DCE7EE; --red: #9E2019;
+  --ui: Figtree, system-ui, sans-serif; --hand: "Playpen Sans", "Comic Sans MS", cursive;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14181B; --card: #1E2428; --fg: #EEF1F3; --soft: #A9B4BB; --line: #3A444B; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #14181B; --card: #1E2428; --fg: #EEF1F3; --soft: #A9B4BB; --line: #3A444B; color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--ui) }
+.page { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 80px; display: flex; flex-direction: column; gap: 28px }
+.page > header { display: flex; flex-direction: column; gap: 8px }
+.page h1 { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; text-wrap: balance }
+.page h2 { margin: 0; font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15 }
+.page p { margin: 0; max-width: 65ch }
+.softer { color: var(--soft) } .sm { font-size: .875rem }
+.jump { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .9rem; font-weight: 600 }
+.jump a { color: var(--fg) }
+.shot { display: grid; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); gap: 32px; align-items: start; padding-top: 28px; border-top: 1px solid var(--line); scroll-margin-top: 12px }
+.shot.full { grid-template-columns: minmax(0, 1fr) }
+@media (max-width: 800px) { .shot { grid-template-columns: minmax(0, 1fr) } }
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0 }
+.side ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: .9rem; max-width: 60ch }
+.ctl { display: flex; flex-wrap: wrap; gap: 10px 16px }
+.ctl label { display: flex; flex-direction: column; gap: 4px; font-size: .875rem; font-weight: 600; flex: 1; min-width: 170px; max-width: 320px }
+.ctl select { font: inherit; font-weight: 400; padding: 8px 10px; border: 2px solid var(--fg); border-radius: 10px; background: var(--card); color: var(--fg); min-height: 44px }
+.ask { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px }
+.ask ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; max-width: 70ch }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px }
+
+/* ================= the design under test (always light) ================= */
+.phone { background: var(--white); color: var(--ink); border: 2px solid var(--line); border-radius: 22px; overflow: hidden; width: 100%; max-width: 390px; color-scheme: light; font: 16px/1.5 var(--ui) }
+.phone.wide { max-width: none; border-radius: 12px }
+.wide .head, .wide .body, .wide .cloth > * { max-width: 560px; margin-inline: auto }
+.wide .head, .wide .body { padding-inline: 0 }
+.phone a { color: var(--ink); font-weight: 600; text-decoration-color: var(--blue); text-decoration-thickness: 2px; text-underline-offset: 3px }
+.phone p, .phone h3, .phone h4, .phone h5 { margin: 0 }
+.phone .soft { color: var(--muted) } .phone .small { font-size: 14px }
+.gingham { background-color: var(--white); background-image: linear-gradient(90deg, rgb(63 110 140 / .5) 50%, transparent 50%), linear-gradient(rgb(63 110 140 / .5) 50%, transparent 50%); background-size: 28px 28px }
+.mast { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; gap: 12px }
+.brand { display: flex; align-items: center; gap: 6px; font-weight: 800 !important; font-size: 1.35rem; letter-spacing: -.02em; text-decoration: none }
+.girl-w { --g-gap: var(--white); --g-shirt: var(--pale); display: block }
+.mast-r { display: flex; align-items: center; gap: 4px }
+.mast-r a { min-height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; font-size: 14px }
+.mast-r svg { width: 24px; height: 24px; display: block }
+.head { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start }
+.head .back { font-size: 14px }
+.head h3 { font-size: 29px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; text-wrap: balance }
+.head .when { font-size: 14px; color: var(--muted) }
+.seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; font-weight: 600; font-size: 14px; margin-bottom: 6px }
+.seg a, .seg span { padding: 9px 14px; min-height: 40px; text-decoration: none } .seg .on { background: var(--ink); color: var(--white) }
+.steps { align-self: stretch; display: grid; grid-template-columns: repeat(4, auto); margin: 10px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--muted) }
+.steps li { padding: 0 8px 8px 0; border-bottom: 2px solid var(--pale) }
+.steps .done { border-color: var(--blue) }
+.steps .now { border-color: var(--blue); color: var(--ink); font-weight: 800 }
+.cloth { padding: 24px 16px 56px; display: flex; flex-direction: column; gap: 16px }
+.panel { background: var(--white); border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 12px; align-items: stretch }
+.panel h4 { font-size: 23px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; text-wrap: balance }
+.panel .split { border-top: 2px solid var(--pale); margin: 12px 0 0; padding-top: 24px; display: flex; flex-direction: column; gap: 12px }
+.body { padding: 20px 16px 28px; display: flex; flex-direction: column; gap: 24px }
+.body h5 { font-size: 16px; font-weight: 800 }
+.grp { display: flex; flex-direction: column; gap: 4px }
+.grp.loose { gap: 12px }
+.rows { display: flex; flex-direction: column }
+.rows > * { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; border-top: 2px solid var(--pale); min-height: 48px }
+.rows > :first-child { border-top: 0 }
+.rows b { font-weight: 800 }
+.rows .stack { display: flex; flex-direction: column; min-width: 0 }
+.rows .stack span { overflow-wrap: anywhere }
+.btn { font: inherit; font-weight: 800; font-size: 18px; line-height: 1.3; border-radius: 10px; padding: 12px 18px; min-height: 48px; cursor: pointer; border: 2px solid var(--ink); text-align: center; text-decoration: none !important; display: inline-flex; align-items: center; justify-content: center; gap: 10px }
+.btn.fill { background: var(--ink); color: var(--white) !important }
+.btn.line { background: var(--white); color: var(--ink); font-size: 16px; font-weight: 600 }
+.btn.red { background: var(--white); color: var(--red); border-color: var(--red); font-size: 16px; font-weight: 600 }
+.btn.start { align-self: flex-start }
+.btn .logo { width: 20px; height: 20px; border-radius: 4px; background: var(--pale); flex: none }
+.plainbtn { font: inherit; font-weight: 600; background: none; border: 0; padding: 0; min-height: 44px; color: var(--ink); text-decoration: underline; text-decoration-color: var(--blue); text-decoration-thickness: 2px; text-underline-offset: 3px; cursor: pointer }
+.field { display: flex; flex-direction: column; gap: 4px }
+.field label { font-weight: 800 }
+.field input, .field select, .field textarea { font: inherit; width: 100%; border: 2px solid var(--ink); border-radius: 10px; padding: 10px 12px; min-height: 48px; background: var(--white); color: var(--ink) }
+.field textarea { resize: vertical }
+.check { display: flex; gap: 10px; align-items: center; min-height: 44px } .check input { width: 20px; height: 20px; accent-color: var(--blue); flex: none }
+.copyline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px }
+.copyline b { font-weight: 800; overflow-wrap: anywhere; min-width: 0 }
+.fold { border-top: 2px solid var(--pale) }
+.fold:last-of-type { border-bottom: 2px solid var(--pale) }
+.fold summary { list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; min-height: 48px; cursor: pointer; font-weight: 800 }
+.fold summary::-webkit-details-marker { display: none }
+.fold summary span { font-weight: 400; color: var(--muted); font-size: 14px; text-align: right }
+.fold summary span::after { content: ""; display: inline-block; width: 8px; height: 8px; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); margin: 0 3px 3px 10px }
+.fold[open] summary span::after { transform: rotate(-135deg); margin-bottom: -1px }
+.fold .in { padding: 0 0 16px; display: flex; flex-direction: column; gap: 10px }
+.risky { display: flex; flex-direction: column; gap: 16px }
+.risky > div { display: flex; flex-direction: column; gap: 6px; align-items: flex-start }
+.msg { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-top: 2px solid var(--pale) }
+.msg:first-child { border-top: 0; padding-top: 0 }
+.msg .who { font-weight: 800 } .msg .who span { font-weight: 400; color: var(--muted); font-size: 14px }
+.lone { padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start }
+.lone h3 { font-size: 29px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; text-wrap: balance }
+.lone .girl-big { --g-gap: var(--white); --g-shirt: var(--pale); width: 132px; height: 132px; margin: 8px 0 4px -14px }
+.nogirl .girl-big { display: none }
+.err { color: var(--red); font-weight: 600; font-size: 14px }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="girl" viewBox="448 494 1150 1150"><path style="fill:var(--g-ink,#1E1A16)" d="M 737 821 C 740 774 752 727 773 685 C 806 617 864 562 937 538 C 980 524 1061 504 1017 581 C 1022 578 1027 573 1032 570 C 1027 595 1025 604 1013 626 C 1019 621 1022 618 1028 613 C 1022 638 1020 647 1004 667 L 1004 669 C 1013 665 1020 658 1026 652 C 1024 669 1020 691 1010 705 L 1014 706 L 1021 697 L 1024 699 C 1020 717 1018 727 1009 744 L 1012 745 C 1016 741 1020 737 1023 732 C 1023 752 1023 776 1011 792 L 1013 794 L 1022 784 C 1022 783 1024 780 1025 780 C 1025 782 1024 799 1024 801 C 1026 836 1023 884 1006 914 C 1014 905 1018 901 1023 891 C 1022 916 1017 933 1004 953 C 1010 949 1012 946 1017 941 L 1022 943 C 1019 964 1016 975 1005 992 C 1012 987 1016 982 1021 975 L 1025 977 C 1025 1013 1028 1055 996 1079 C 978 1093 948 1098 925 1094 C 833 1078 793 993 777 909 C 776 901 774 892 773 884 C 770 858 771 824 737 821 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1022 784 C 1022 783 1024 780 1025 780 C 1025 782 1024 799 1024 801 C 1023 795 1025 789 1022 784 z"/><path style="fill:var(--g-gap,#fff)" d="M 1002 754 C 1004 752 1007 746 1009 744 L 1012 745 C 1009 749 1006 751 1002 754 z"/><path style="fill:var(--g-gap,#fff)" d="M 1011 792 L 1013 794 C 1008 799 1007 798 1011 792 z"/><path style="fill:var(--g-gap,#fff)" d="M 1010 705 L 1014 706 C 1010 709 1008 710 1010 705 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1065 583 C 1061 573 1047 545 1052 537 C 1067 509 1144 539 1160 547 C 1227 579 1276 643 1301 712 C 1313 748 1320 785 1321 822 C 1293 833 1293 852 1289 879 C 1276 963 1242 1060 1158 1095 C 1112 1114 1068 1104 1051 1055 C 1047 1046 1045 1037 1044 1028 C 1045 1026 1045 1025 1046 1023 C 1052 1034 1055 1039 1064 1048 C 1044 1014 1042 987 1042 948 C 1046 956 1048 960 1054 967 L 1056 966 C 1048 949 1047 935 1047 916 C 1046 914 1045 898 1047 897 C 1048 898 1049 901 1050 902 C 1056 911 1060 915 1069 922 C 1050 896 1045 872 1044 839 C 1043 837 1042 824 1044 823 C 1045 822 1045 825 1045 825 C 1048 830 1051 834 1054 838 C 1049 824 1045 811 1044 796 C 1043 793 1043 787 1043 783 L 1044 780 C 1045 782 1045 784 1046 786 C 1049 794 1052 799 1057 807 C 1053 795 1048 779 1047 766 C 1046 763 1045 741 1047 740 L 1048 740 C 1048 741 1048 741 1048 742 C 1053 757 1056 763 1067 775 C 1057 752 1055 741 1052 717 L 1055 716 C 1061 723 1064 725 1071 729 C 1054 700 1052 688 1050 654 L 1050 650 C 1050 643 1050 643 1054 648 C 1058 653 1062 657 1066 661 C 1055 637 1054 631 1052 604 C 1058 611 1060 613 1068 619 C 1058 602 1053 590 1050 570 C 1056 576 1058 578 1065 583 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1047 766 C 1046 763 1045 741 1047 740 L 1048 740 C 1048 741 1048 741 1048 742 C 1046 750 1048 758 1047 766 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1047 916 C 1046 914 1045 898 1047 897 C 1048 898 1049 901 1050 902 C 1046 906 1047 910 1047 916 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1050 654 L 1050 650 C 1050 643 1050 643 1054 648 L 1053 650 C 1052 651 1051 652 1050 654 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 839 C 1043 837 1042 824 1044 823 C 1045 822 1045 825 1045 825 C 1044 830 1044 834 1044 839 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 780 C 1045 782 1045 784 1046 786 C 1042 791 1045 790 1044 796 C 1043 793 1043 787 1043 783 L 1044 780 z"/><path style="fill:var(--g-gap,#fff)" d="M 1054 967 L 1056 966 C 1061 975 1058 971 1054 967 z"/><path style="fill:var(--g-shirt,#E3EBF0)" d="M 900 1104 C 903 1106 906 1111 907 1114 C 949 1192 1063 1200 1126 1145 C 1136 1137 1147 1120 1154 1110 C 1160 1121 1166 1131 1173 1141 C 1203 1181 1254 1211 1304 1218 C 1306 1271 1235 1302 1194 1318 C 1153 1333 1109 1342 1065 1345 C 1044 1346 1022 1345 1001 1345 C 932 1342 746 1313 748 1221 C 756 1217 781 1210 793 1205 C 848 1180 869 1152 900 1104 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 693 971 C 674 921 647 860 716 835 C 732 829 751 829 757 850 C 761 870 768 908 766 928 C 765 937 762 946 758 954 C 747 976 720 1000 703 1018 L 705 1020 C 717 1009 732 996 745 986 C 761 1009 766 1032 762 1061 C 757 1094 720 1128 695 1152 L 696 1154 C 708 1145 725 1131 736 1121 C 775 1187 734 1229 688 1273 L 690 1275 C 701 1267 713 1257 723 1248 C 732 1272 733 1296 722 1320 C 709 1352 681 1361 658 1381 L 647 1380 C 633 1363 626 1343 628 1321 C 629 1307 634 1293 642 1281 C 651 1290 659 1298 668 1306 L 669 1304 C 638 1266 613 1235 641 1186 C 652 1196 664 1205 675 1215 L 677 1213 C 627 1164 592 1118 642 1052 C 655 1066 668 1079 682 1092 L 684 1091 C 672 1079 649 1048 641 1034 C 619 996 627 950 667 928 C 675 942 684 958 692 972 L 693 971 z"/><path style="fill:var(--g-gap,#fff)" d="M 677 1213 C 683 1219 685 1222 689 1229 C 685 1224 679 1220 675 1215 L 677 1213 z"/><path style="fill:var(--g-gap,#fff)" d="M 688 1273 L 690 1275 C 686 1279 681 1282 676 1286 C 680 1281 684 1277 688 1273 z"/><path style="fill:var(--g-gap,#fff)" d="M 669 1304 C 673 1309 676 1313 680 1317 C 674 1313 672 1311 668 1306 L 669 1304 z"/><path style="fill:var(--g-gap,#fff)" d="M 695 1152 L 696 1154 C 692 1158 690 1160 685 1162 C 688 1158 691 1155 695 1152 z"/><path style="fill:var(--g-gap,#fff)" d="M 684 1091 C 687 1094 690 1098 693 1102 L 689 1098 C 686 1096 684 1094 682 1092 L 684 1091 z"/><path style="fill:var(--g-gap,#fff)" d="M 703 1018 L 705 1020 C 704 1021 700 1026 699 1025 C 698 1024 702 1019 703 1018 z"/><path style="fill:var(--g-gap,#fff)" d="M 693 971 L 694 972 C 696 977 694 976 692 972 L 693 971 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1347 1018 C 1329 998 1293 968 1288 940 C 1287 934 1294 911 1296 902 C 1301 880 1299 823 1337 835 C 1353 841 1367 854 1374 869 C 1390 899 1369 939 1358 969 L 1360 970 C 1369 954 1375 943 1385 928 C 1427 956 1432 1001 1404 1042 C 1393 1059 1378 1075 1365 1092 L 1367 1093 C 1380 1081 1395 1064 1409 1053 C 1420 1066 1426 1076 1431 1094 C 1443 1144 1409 1177 1376 1211 L 1379 1212 L 1409 1186 C 1440 1230 1410 1268 1382 1304 L 1385 1305 L 1408 1281 C 1410 1284 1413 1288 1415 1292 C 1424 1311 1427 1333 1420 1353 C 1417 1362 1406 1386 1393 1381 C 1388 1378 1383 1373 1379 1370 C 1357 1356 1338 1341 1328 1316 C 1320 1294 1320 1270 1329 1249 L 1364 1278 L 1366 1276 C 1316 1227 1276 1194 1315 1120 C 1328 1131 1340 1142 1353 1152 L 1354 1150 C 1302 1102 1262 1057 1306 987 C 1313 992 1332 1009 1341 1016 C 1343 1017 1345 1017 1347 1018 z"/><path style="fill:var(--g-gap,#fff)" d="M 1376 1211 L 1379 1212 C 1373 1218 1368 1222 1362 1226 C 1365 1222 1372 1214 1376 1211 z"/><path style="fill:var(--g-gap,#fff)" d="M 1382 1304 L 1385 1305 C 1381 1310 1378 1313 1373 1317 C 1375 1313 1379 1307 1382 1304 z"/><path style="fill:var(--g-gap,#fff)" d="M 1341 1016 C 1343 1017 1345 1017 1347 1018 C 1350 1022 1353 1025 1355 1029 C 1351 1025 1345 1021 1341 1016 z"/><path style="fill:var(--g-gap,#fff)" d="M 1354 1150 C 1358 1153 1361 1157 1365 1161 C 1360 1158 1357 1156 1353 1152 L 1354 1150 z"/><path style="fill:var(--g-gap,#fff)" d="M 1366 1276 C 1370 1280 1370 1282 1374 1286 C 1371 1284 1367 1281 1364 1278 L 1366 1276 z"/><path style="fill:var(--g-gap,#fff)" d="M 1365 1092 L 1367 1093 L 1367 1094 C 1366 1095 1363 1098 1362 1098 C 1360 1097 1365 1092 1365 1092 z"/><path style="fill:var(--g-gap,#fff)" d="M 1360 970 C 1360 971 1358 976 1357 976 L 1356 976 C 1356 975 1358 970 1358 969 L 1360 970 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1397 1420 C 1424 1444 1452 1472 1454 1512 C 1455 1524 1453 1535 1449 1546 C 1440 1574 1420 1598 1456 1619 C 1457 1620 1458 1620 1458 1621 C 1457 1623 1449 1621 1448 1621 C 1433 1618 1424 1612 1419 1597 L 1418 1596 L 1417 1596 C 1412 1610 1414 1620 1418 1634 C 1405 1623 1397 1612 1395 1594 L 1392 1592 C 1391 1610 1391 1617 1398 1634 C 1340 1586 1335 1514 1373 1452 C 1379 1443 1385 1434 1392 1425 C 1394 1423 1395 1421 1397 1420 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1456 1619 C 1457 1620 1458 1620 1458 1621 C 1457 1623 1449 1621 1448 1621 C 1448 1621 1448 1620 1448 1619 C 1449 1619 1450 1619 1450 1619 C 1451 1620 1452 1620 1453 1620 L 1456 1619 z"/><path style="fill:var(--g-gap,#fff)" d="M 1392 1592 C 1395 1582 1395 1589 1395 1594 L 1392 1592 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 596 1618 C 629 1599 611 1570 601 1544 C 588 1505 605 1467 633 1440 C 639 1433 645 1426 653 1421 C 654 1421 654 1422 655 1423 C 712 1489 724 1574 652 1635 C 659 1617 662 1605 658 1586 C 657 1587 657 1587 656 1587 C 655 1609 647 1620 632 1635 C 639 1618 637 1610 632 1594 C 627 1612 621 1615 602 1621 C 600 1621 589 1623 596 1618 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 596 1618 C 598 1620 600 1620 602 1621 C 600 1621 589 1623 596 1618 z"/><path style="fill:var(--g-gap,#fff)" d="M 656 1587 C 656 1586 656 1584 657 1583 C 658 1583 658 1584 658 1585 L 658 1586 C 657 1587 657 1587 656 1587 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1312 1357 C 1337 1356 1369 1371 1385 1389 C 1385 1395 1386 1400 1386 1406 C 1377 1411 1372 1414 1363 1418 C 1344 1424 1310 1433 1300 1411 C 1291 1392 1290 1367 1312 1357 z"/><path style="fill:var(--g-gap,#fff)" d="M 1332 1379 C 1353 1378 1363 1388 1381 1397 C 1382 1397 1383 1397 1384 1398 C 1383 1400 1378 1401 1376 1401 C 1365 1403 1348 1406 1337 1403 C 1326 1399 1318 1386 1332 1379 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 665 1390 C 665 1389 665 1388 667 1387 C 693 1365 761 1329 756 1395 C 752 1444 692 1423 665 1407 C 665 1406 665 1401 665 1400 C 665 1397 665 1394 665 1390 z"/><path style="fill:var(--g-gap,#fff)" d="M 668 1398 C 681 1391 691 1383 705 1379 C 723 1374 736 1392 717 1401 C 705 1408 680 1404 668 1399 L 668 1398 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 665 1390 L 665 1392 C 666 1396 666 1396 668 1398 L 668 1399 L 665 1400 C 665 1397 665 1394 665 1390 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 563 1347 C 594 1346 615 1368 638 1387 C 636 1396 636 1396 637 1405 C 629 1407 622 1409 614 1411 C 602 1414 579 1415 567 1411 C 539 1401 533 1360 563 1347 z"/><path style="fill:var(--g-gap,#fff)" d="M 581 1370 C 606 1369 615 1384 634 1396 C 629 1397 627 1397 622 1398 C 608 1400 581 1399 574 1385 C 569 1377 575 1373 581 1370 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1477 1347 C 1507 1345 1514 1381 1499 1400 C 1487 1417 1462 1415 1444 1413 C 1439 1412 1406 1407 1415 1396 C 1416 1394 1414 1391 1413 1389 L 1412 1387 C 1433 1370 1449 1353 1477 1347 z"/><path style="fill:var(--g-gap,#fff)" d="M 1459 1370 C 1489 1368 1484 1400 1438 1399 C 1431 1398 1425 1397 1419 1396 L 1417 1396 C 1431 1386 1442 1374 1459 1370 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 637 1409 C 641 1411 633 1418 630 1420 C 609 1443 592 1470 573 1495 C 573 1485 572 1478 572 1467 C 570 1464 546 1465 540 1464 C 575 1442 596 1419 637 1409 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1411 1410 C 1443 1412 1482 1446 1509 1464 C 1499 1465 1489 1465 1479 1465 C 1478 1477 1478 1483 1476 1495 C 1453 1462 1438 1441 1411 1410 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1387 1411 C 1387 1411 1388 1412 1388 1412 C 1371 1436 1343 1480 1329 1503 C 1328 1494 1327 1484 1325 1475 C 1323 1473 1302 1475 1297 1475 C 1329 1449 1348 1428 1387 1411 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 662 1412 C 683 1416 737 1458 753 1474 C 748 1474 728 1473 726 1475 C 726 1483 724 1491 723 1498 L 723 1503 C 711 1480 689 1449 674 1428 C 670 1423 662 1417 662 1412 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1393 1387 C 1402 1387 1409 1385 1410 1397 C 1410 1403 1410 1406 1406 1410 C 1390 1413 1389 1408 1390 1394 C 1390 1390 1390 1390 1393 1387 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 645 1387 C 662 1387 662 1390 660 1408 C 660 1409 657 1409 657 1410 C 653 1410 641 1411 641 1406 C 641 1399 637 1390 645 1387 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1017 941 C 1018 940 1021 934 1022 934 C 1023 935 1022 942 1022 943 L 1017 941 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 1028 C 1044 1026 1042 1018 1043 1018 C 1044 1018 1044 1018 1044 1019 L 1044 1018 C 1045 1020 1045 1021 1046 1023 C 1045 1025 1045 1026 1044 1028 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1052 717 C 1051 716 1050 712 1051 711 C 1052 710 1054 715 1055 716 L 1052 717 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1021 975 C 1022 974 1023 970 1024 970 C 1025 970 1025 976 1025 977 L 1021 975 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1021 697 C 1021 697 1023 693 1024 694 C 1024 695 1024 698 1024 699 L 1021 697 z"/><path style="fill:var(--g-gap,#fff)" d="M 1043 783 C 1041 775 1044 773 1044 780 L 1043 783 z"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M12 3.5a6 6 0 0 0-6 6v3.8L4 16.5v1h16v-1l-2-3.2V9.5a6 6 0 0 0-6-6ZM9.8 20.2a2.3 2.3 0 0 0 4.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="page">
+  <header>
+    <h1>Layouts of the remaining screens</h1>
+    <p class="softer">Every screen beyond home and the event page, in the tablecloth direction, at phone width. What each screen shows, its words, the colors and the type were settled in earlier tickets; this page settles where things sit. Use the selects beside a screen to walk it through its states. Six things I had to choose are listed at the end.</p>
+    <nav class="jump" aria-label="Screens">
+      <a href="#empty-home">Empty home</a><a href="#organizing">Organizing</a><a href="#questions">Questions for you</a><a href="#new-event">New event</a><a href="#sign-in">Sign-in and signed out</a><a href="#past">Past events</a><a href="#account">Account</a><a href="#confirm">Leave and delete</a><a href="#errors">Errors</a><a href="#wide">Wider screens</a><a href="#choices">Choices for you</a>
+    </nav>
+  </header>
+
+  <!-- ================= Empty home ================= -->
+  <section class="shot" id="empty-home">
+    <div class="phone">
+      <div data-mast></div>
+      <div class="head"><h3>No events yet</h3></div>
+      <div class="cloth gingham">
+        <div class="panel" data-show="empty:a">
+          <h4>I was invited</h4>
+          <p>Give the organizer this address so they can add you. The event shows up here once they do.</p>
+          <div class="copyline"><b>sam@pollyanna.example</b><button type="button" class="btn line" data-copy="sam@pollyanna.example">Copy</button></div>
+          <div class="split">
+            <h4>I'm organizing one</h4>
+            <p>Set a date and a budget, add your people, then draw names.</p>
+            <a class="btn line start" href="#new-event">New event</a>
+          </div>
+        </div>
+        <div class="panel" data-show="empty:b">
+          <h4>I was invited</h4>
+          <p>Give the organizer this address so they can add you. The event shows up here once they do.</p>
+          <div class="copyline"><b>sam@pollyanna.example</b><button type="button" class="btn line" data-copy="sam@pollyanna.example">Copy</button></div>
+        </div>
+        <div class="panel" data-show="empty:b">
+          <h4>I'm organizing one</h4>
+          <p>Set a date and a budget, add your people, then draw names.</p>
+          <a class="btn line start" href="#new-event">New event</a>
+        </div>
+      </div>
+      <div class="body">
+        <p class="small soft">Every family has a version of this: names on folded slips, a hat going round the table, someone squinting at the handwriting. Around Philadelphia they call it a Pollyanna. This is that, minus the squinting.</p>
+        <div class="rows"><a href="#past">Past events</a></div>
+      </div>
+    </div>
+    <div class="side">
+      <h2>Empty home</h2>
+      <div class="ctl"><label for="c-empty">Layout
+        <select id="c-empty" data-ctl="empty"><option value="a">A · One panel, two halves</option><option value="b">B · Two panels on the cloth</option></select></label></div>
+      <ul>
+        <li>The two ways in carry the same weight: same heading size, and both buttons outlined. This is the one screen with no filled button, because neither path is "the" thing to do.</li>
+        <li>A keeps the rule of one white panel per screen. B matches a home with two events, where each event is its own panel.</li>
+        <li>The about paragraph sits below the cloth in small type, then the link to past events.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= Organizing ================= -->
+  <section class="shot" id="organizing">
+    <div class="phone" id="manage">
+      <div data-mast></div>
+      <div class="head">
+        <span class="seg" data-show="part:yes"><a href="#organizing">My page</a><span class="on">Organizing</span></span>
+        <a class="back" href="#empty-home" data-show="part:no">Home</a>
+        <h3>Book club swap</h3>
+        <p class="when">Saturday, January 9 · $20 budget</p>
+        <ol class="steps" aria-label="Where this event stands"><li>Draft</li><li>Open</li><li>Names drawn</li><li>Revealed</li></ol>
+      </div>
+      <div class="cloth gingham">
+        <div class="panel" data-show="manage:draft">
+          <p>Only organizers can see this event. Open it so the people you've added can write their notes.</p>
+          <button type="button" class="btn fill">Open the event</button>
+        </div>
+        <div class="panel" data-show="manage:blocked">
+          <p>Can't draw yet: at least 3 people need to take part.</p>
+          <button type="button" class="btn fill">Add people</button>
+        </div>
+        <div class="panel" data-show="manage:open">
+          <p>All 7 people are in and 5 have written notes. Draw names whenever you're ready.</p>
+          <button type="button" class="btn fill">Draw names</button>
+        </div>
+        <div class="panel" data-show="manage:leave">
+          <p>Ana wants to leave, and that needs a redraw. Drawing names again takes them out.</p>
+          <button type="button" class="btn fill">Draw names again</button>
+          <a href="#organizing" class="small">Keep Ana in instead</a>
+        </div>
+        <div class="panel" data-show="manage:drawn">
+          <p>Names are drawn, and 4 of 7 people have looked. Reveal who drew whom once the gifts are opened.</p>
+          <button type="button" class="btn fill">Reveal who drew whom</button>
+        </div>
+        <div class="panel" data-show="manage:revealed">
+          <p>Everyone can see who drew whom. Archive the event when you're done with it, and it moves to past events.</p>
+          <button type="button" class="btn fill">Archive this event</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="grp" data-show="manage:revealed">
+          <h5>Who drew whom</h5>
+          <div class="rows"><p><b>Ana</b><span>gave to Kofi</span></p><p><b>Dee</b><span>gave to Raj</span></p><p><b>Kofi</b><span>gave to Mel</span></p><p><b>Lena</b><span>gave to Sam</span></p><p><b>Mel</b><span>gave to Ana</span></p><p><b>Raj</b><span>gave to Lena</span></p><p><b>Sam</b><span>gave to Dee</span></p></div>
+        </div>
+        <div class="grp" data-show="manage:draft open leave drawn">
+          <h5>Taking part (7)</h5>
+          <div class="rows">
+            <p><b>Ana</b><span class="soft small" data-show="manage:draft open">no notes yet</span><span class="soft small" data-show="manage:leave">wants to leave</span><span class="soft small" data-show="manage:drawn">hasn't looked yet</span></p>
+            <p><b>Dee</b><span class="soft small" data-show="manage:drawn leave">done shopping</span></p>
+            <p><b>Kofi</b></p>
+            <p><b>Lena</b><span class="soft small" data-show="manage:draft open">no notes yet</span><span class="soft small" data-show="manage:drawn leave">hasn't looked yet</span></p>
+            <p><b>Mel</b><span class="soft small" data-show="manage:drawn">hasn't looked yet</span></p>
+            <p><b>Raj</b></p>
+            <p><b>Sam (you)</b></p>
+          </div>
+        </div>
+        <div class="grp" data-show="manage:blocked">
+          <h5>Taking part (2)</h5>
+          <div class="rows"><p><b>Dee</b><span class="soft small">no notes yet</span></p><p><b>Sam (you)</b></p></div>
+        </div>
+        <div class="grp" data-show="manage:draft blocked open">
+          <h5>Invited, not signed in yet (1)</h5>
+          <div class="rows"><p><span class="stack"><span>jo@pollyanna.example</span></span><button type="button" class="plainbtn small">Take back</button></p></div>
+          <button type="button" class="btn line start" data-show="manage:draft open">Add people</button>
+        </div>
+        <p class="small soft" data-show="manage:drawn leave">Invitations by email wait until names are drawn again.</p>
+        <div>
+          <details class="fold"><summary>Who can't draw whom<span>2 households, 1 rule</span></summary>
+            <div class="in">
+              <div class="rows"><p><span class="stack"><b>The Okafors</b><span class="small soft">Dee, Kofi</span></span></p><p><span class="stack"><b>Ana and Raj</b><span class="small soft">household</span></span></p><p><span class="stack"><b>Mel can't draw Lena</b><span class="small soft">extra rule</span></span></p></div>
+              <p class="small soft" data-show="manage:drawn leave revealed">Names are drawn, so these can't change unless you draw names again.</p>
+              <button type="button" class="btn line start" data-show="manage:draft blocked open">Add a household or rule</button>
+            </div>
+          </details>
+          <details class="fold"><summary>Details and organizers<span>2 organizers</span></summary>
+            <div class="in">
+              <div class="rows"><p><span>Name</span><b>Book club swap</b></p><p><span>Exchange date</span><b>January 9, 2027</b></p><p><span>Budget</span><b>$20</b></p><p><span>Organizers</span><b>Sam (you), Dee</b></p></div>
+              <p class="small soft">Organizers manage the event but don't see who drew whom. Being one doesn't make them a participant.</p>
+              <button type="button" class="btn line start">Edit details</button>
+            </div>
+          </details>
+        </div>
+        <div class="grp loose">
+          <h5>Bigger changes</h5>
+          <div class="risky">
+            <div data-show="manage:drawn leave"><button type="button" class="btn line">Someone is dropping out</button><p class="small soft">Only that one person's recipient changes, and nobody, you included, is told whose.</p></div>
+            <div data-show="manage:drawn leave"><button type="button" class="btn line">Someone is joining late</button><p class="small soft">One person gives to someone new to make room. Nobody else changes.</p></div>
+            <div data-show="manage:drawn"><button type="button" class="btn line">Draw names again</button><p class="small soft">Every assignment is deleted and the event goes back to open. Everyone is told names were drawn again.</p></div>
+            <div data-show="manage:drawn leave"><button type="button" class="btn line">Archive this event</button><p class="small soft">Pairings that haven't been revealed stay hidden for good.</p></div>
+            <div data-show="manage:draft blocked open leave drawn"><button type="button" class="btn red">Cancel this event</button><p class="small soft">Everyone's assignments go, and any question-box messages are deleted. This can't be undone.</p></div>
+            <div data-show="manage:revealed"><p class="small soft">Nothing to change now that everyone's been revealed.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="side">
+      <h2>Organizing an event</h2>
+      <div class="ctl">
+        <label for="c-manage">Where the event stands
+          <select id="c-manage" data-ctl="manage"><option value="draft">Draft</option><option value="blocked">Open, too few people to draw</option><option value="open" selected>Open, ready to draw</option><option value="drawn">Names drawn</option><option value="leave">Names drawn, someone wants to leave</option><option value="revealed">Revealed</option></select></label>
+        <label for="c-part">The organizer
+          <select id="c-part" data-ctl="part"><option value="yes">Takes part too</option><option value="no">Only organizes</option></select></label>
+      </div>
+      <ul>
+        <li>Top to bottom: the two-way switch, the title, the row of steps, then the one next step on the cloth. Whatever blocks that step replaces the sentence and the button.</li>
+        <li>People are a plain list. A row only says something when something is missing.</li>
+        <li>"Who can't draw whom" and "Details and organizers" are closed rows with a summary on the right. Tap one to open it in place.</li>
+        <li>"Bigger changes" is always open at the bottom: real outlined buttons, each with one line on what it does. Only "Cancel this event" is red.</li>
+        <li>Once revealed, the full "who drew whom" list takes the place of the people list.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= Questions ================= -->
+  <section class="shot" id="questions">
+    <div class="phone">
+      <div data-mast></div>
+      <div class="head"><a class="back" href="#questions">Cousins' gift swap</a><h3>Questions for you</h3><p class="when">Your giver asks, you answer. Their name stays a secret.</p></div>
+      <div class="cloth gingham" data-show="q:new">
+        <div class="panel">
+          <p class="small soft">new · today, 9:14 AM</p>
+          <h4>What's your favorite kind of tea?</h4>
+          <div class="field"><label for="q-reply">Your reply</label><textarea id="q-reply" rows="3"></textarea></div>
+          <button type="button" class="btn fill">Send reply</button>
+        </div>
+      </div>
+      <div class="body" data-show="q:new quiet">
+        <div class="grp">
+          <h5 data-show="q:new">Earlier</h5>
+          <div>
+            <div class="msg" data-show="q:quiet"><p class="who">You <span>· today, 9:40 AM</span></p><p>Earl Grey, or anything smoky.</p></div>
+            <div class="msg" data-show="q:quiet"><p class="who">Your giver <span>· today, 9:14 AM</span></p><p>What's your favorite kind of tea?</p></div>
+            <div class="msg"><p class="who">You <span>· December 2</span></p><p>Yes, a small one that folds away.</p></div>
+            <div class="msg"><p class="who">Your giver <span>· December 1</span></p><p>Do you have a table for jigsaw puzzles?</p></div>
+          </div>
+        </div>
+        <div class="grp loose" data-show="q:quiet">
+          <div class="field"><label for="q-more">Add to your reply</label><textarea id="q-more" rows="2"></textarea></div>
+          <button type="button" class="btn line start">Send</button>
+        </div>
+        <button type="button" class="plainbtn small" style="align-self:flex-start">Close this conversation</button>
+      </div>
+      <div class="body" data-show="q:none"><p>No questions yet. When your giver asks you something, it shows up here and you can reply.</p></div>
+    </div>
+    <div class="side">
+      <h2>Questions for you</h2>
+      <div class="ctl"><label for="c-q">State
+        <select id="c-q" data-ctl="q"><option value="new">A new question is waiting</option><option value="quiet">Nothing new</option><option value="none">No questions yet</option></select></label></div>
+      <ul>
+        <li>A question you haven't answered goes on the cloth with the reply box under it: someone is waiting on you. Earlier messages sit below as plain rows, newest first.</li>
+        <li>With nothing new there is no cloth; the page is the conversation and a quiet box to add more.</li>
+        <li>Messages are rows with a name and a time, not chat bubbles, so they read like the rest of the app.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= New event ================= -->
+  <section class="shot" id="new-event">
+    <div class="phone">
+      <div data-mast></div>
+      <div class="head"><a class="back" href="#empty-home">Home</a><h3>New event</h3></div>
+      <div class="cloth gingham">
+        <form class="panel" onsubmit="return false">
+          <div class="field"><label for="n-name">Name</label><input id="n-name" type="text" value="Book club swap"></div>
+          <div class="field"><label for="n-date">Exchange date</label><input id="n-date" type="text" value="January 9, 2027"></div>
+          <div class="field"><label for="n-budget">Budget</label><input id="n-budget" type="text" value="$20"><p class="small soft">Optional. Shown to everyone taking part.</p></div>
+          <label class="check" for="n-part"><input id="n-part" type="checkbox" checked> Yes, I'm taking part too</label>
+          <div class="field"><label for="n-group">Same group as an earlier event</label>
+            <select id="n-group" data-ctl="group"><option value="no">No, start with nobody</option><option value="yes">Book club swap, January 2026</option></select>
+            <p class="small soft" data-show="group:no">Optional. Brings the same people and households along.</p></div>
+          <div class="field" data-show="group:yes"><label for="n-repeat">Don't repeat who gave to whom</label>
+            <select id="n-repeat"><option>From the last event</option><option>From the last 2 events</option><option>Repeats are fine</option></select></div>
+          <button type="submit" class="btn fill">Create event</button>
+          <p class="small soft">It starts as a draft only organizers can see. You add people next.</p>
+        </form>
+      </div>
+    </div>
+    <div class="side">
+      <h2>New event</h2>
+      <ul>
+        <li>The whole form is the one white panel. Five things to fill in, one button.</li>
+        <li>Pick an earlier event under "Same group as an earlier event" to see the don't-repeat choice appear. It stays hidden until then.</li>
+        <li>No adding people here. "Create event" lands on the organizing page as a draft.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= Sign-in ================= -->
+  <section class="shot" id="sign-in">
+    <div class="phone">
+      <div data-mast="out"></div>
+      <div class="cloth gingham">
+        <div class="panel">
+          <h4 data-show="auth:several one">Sign in to Pollyanna</h4>
+          <h4 data-show="auth:out">You're signed out</h4>
+          <h4 data-show="auth:deleted">Your account is deleted</h4>
+          <p data-show="auth:several one out">Pollyanna is your family's gift exchange: everyone draws one name and nobody sees who drew whom. Around Philadelphia, that's what they call it.</p>
+          <p data-show="auth:deleted">You're signed out of Pollyanna. Your sign-in provider account isn't affected; signing in again starts a new, empty Pollyanna account.</p>
+          <a class="btn line" href="#sign-in" data-show="auth:several"><span class="logo"></span>Continue with Google</a>
+          <a class="btn line" href="#sign-in" data-show="auth:several"><span class="logo"></span>Continue with Example ID</a>
+          <a class="btn fill" href="#sign-in" data-show="auth:one"><span class="logo"></span>Continue with Example ID</a>
+          <a class="btn fill" href="#sign-in" data-show="auth:out">Sign in again</a>
+          <p class="small soft" data-show="auth:out">You're still signed in to your sign-in provider, so signing in again may not ask for a password.</p>
+        </div>
+      </div>
+    </div>
+    <div class="side">
+      <h2>Sign-in and signed-out pages</h2>
+      <div class="ctl"><label for="c-auth">Page
+        <select id="c-auth" data-ctl="auth"><option value="several">Sign-in, several providers</option><option value="one">Sign-in, one provider</option><option value="out">Signed out</option><option value="deleted">Account deleted</option></select></label></div>
+      <ul>
+        <li>The masthead has only the mark and wordmark: no bell and no account until you're in.</li>
+        <li>One panel on the cloth: what Pollyanna is first, then the buttons. With several providers every button is outlined, since none is the main one; a single button is filled.</li>
+        <li>The gray square is where each provider's own logo goes.</li>
+        <li>With one provider the app normally goes straight to it; that state shows what the page would look like if it ever stops there.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= Past events ================= -->
+  <section class="shot" id="past">
+    <div class="phone">
+      <div data-mast></div>
+      <div class="head"><a class="back" href="#empty-home">Home</a><h3>Past events</h3></div>
+      <div class="body" data-show="past:some" style="padding-top:0">
+        <div class="rows">
+          <a href="#past" style="text-decoration:none"><span class="stack"><b style="font-size:18px">Cousins' gift swap</b><span class="small soft" style="font-weight:400">December 19, 2025 · $40 budget</span><span class="small soft" style="font-weight:400">You took part · 9 people · pairings revealed</span></span></a>
+          <a href="#past" style="text-decoration:none"><span class="stack"><b style="font-size:18px">Book club swap</b><span class="small soft" style="font-weight:400">January 10, 2026 · $20 budget</span><span class="small soft" style="font-weight:400">You organized · 7 people</span></span></a>
+          <a href="#past" style="text-decoration:none"><span class="stack"><b style="font-size:18px">Office Pollyanna</b><span class="small soft" style="font-weight:400">December 12, 2024</span><span class="small soft" style="font-weight:400">You took part · 14 people · pairings revealed</span></span></a>
+        </div>
+      </div>
+      <div class="body" data-show="past:none" style="padding-top:0"><p>No past events yet. Events move here once an organizer archives them.</p></div>
+    </div>
+    <div class="side">
+      <h2>Past events</h2>
+      <div class="ctl"><label for="c-past">State
+        <select id="c-past" data-ctl="past"><option value="some">Three past events</option><option value="none">None yet</option></select></label></div>
+      <ul>
+        <li>No cloth: nothing here is waiting on you.</li>
+        <li>Each row is the event's name, then its date and budget, then your part in it. The whole row opens the event. No status word, since everything here is over.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= Account ================= -->
+  <section class="shot" id="account">
+    <div class="phone">
+      <div data-mast></div>
+      <div class="head"><a class="back" href="#empty-home">Home</a><h3>Your account</h3><p class="when">Sam Whitlock · sam@pollyanna.example</p></div>
+      <div class="body" style="padding-top:4px">
+        <div class="grp">
+          <h5>Ways to sign in</h5>
+          <div class="rows">
+            <p><span class="stack"><b>Google</b><span class="small soft">sam@pollyanna.example</span></span><button type="button" class="plainbtn small">Remove</button></p>
+            <p><span class="stack"><b>Example ID (no longer set up)</b><span class="small soft">sam@work.example</span></span><button type="button" class="plainbtn small">Remove</button></p>
+          </div>
+          <button type="button" class="btn line start"><span class="logo"></span>Add Example ID</button>
+          <p class="small soft" style="margin-top:8px">Your name, email and picture come from your latest sign-in. A removed way to sign in whose verified email matches yours is added back the next time you use it.</p>
+        </div>
+        <div class="grp">
+          <h5>Emails</h5>
+          <label class="check" for="a-mail"><input id="a-mail" type="checkbox" checked> Email me about Pollyanna events</label>
+          <p class="small soft">Pollyanna emails you when something in an event needs you, such as an event opening or names being drawn. Turning this off stops all of them, including any not sent yet.</p>
+        </div>
+        <div class="grp loose" style="align-items:flex-start">
+          <button type="button" class="btn line">Sign out</button>
+          <button type="button" class="btn red">Delete my account</button>
+        </div>
+      </div>
+    </div>
+    <div class="side">
+      <h2>Account</h2>
+      <ul>
+        <li>No cloth. Three groups under plain headings: ways to sign in, emails, then leaving.</li>
+        <li>The email switch saves when it's flipped, so the "Save" button goes. If you'd rather keep an explicit Save, say so.</li>
+        <li>"Sign out" lives here only. "Delete my account" is drawn in red, which stretches the rule that red is for errors and "Cancel this event" (see the choices at the end).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= Confirmations ================= -->
+  <section class="shot" id="confirm">
+    <div class="phone">
+      <div data-mast></div>
+      <div class="head" data-show="conf:before after"><a class="back" href="#confirm">Cousins' gift swap</a><h3>Leave this event?</h3></div>
+      <div class="head" data-show="conf:delete blocked"><a class="back" href="#account">Your account</a><h3>Delete your account?</h3></div>
+      <div class="body" style="padding-top:0">
+        <div class="grp loose" data-show="conf:before"><p>Your notes for this event are deleted. An organizer can add you back before names are drawn.</p></div>
+        <div class="grp loose" data-show="conf:after"><p>Your notes for this event are deleted.</p><p>Names are drawn, so one other person will be giving to someone new.</p><p class="small soft">If the draw rules don't allow that, or too few people would be left, you stay in until the organizers draw names again.</p></div>
+        <div class="grp loose" data-show="conf:delete"><p>Your name, email, picture and notes are deleted, and you're signed out. In events that are over, you stay in the lists as "Former participant", and anything you wrote in a question thread stays for the other person.</p><p>You leave Book club swap.</p><p class="small soft">Signing in again later starts a new, empty account.</p></div>
+        <div class="grp loose" data-show="conf:blocked"><h5>Hand over first</h5><p>You're the only organizer of Book club swap. Add another organizer on its organizing page, then come back.</p></div>
+        <div class="grp loose" style="align-items:stretch">
+          <button type="button" class="btn fill" data-show="conf:before after">Leave this event</button>
+          <button type="button" class="btn red" data-show="conf:delete" style="font-size:18px;font-weight:800">Delete my account</button>
+          <a href="#confirm" style="align-self:flex-start;padding:10px 0" data-show="conf:before after">Stay in</a>
+          <a href="#account" style="align-self:flex-start;padding:10px 0" data-show="conf:delete">Keep my account</a>
+          <a href="#account" style="align-self:flex-start;padding:10px 0" data-show="conf:blocked">Back to your account</a>
+        </div>
+      </div>
+    </div>
+    <div class="side">
+      <h2>Leave and delete confirmations</h2>
+      <div class="ctl"><label for="c-conf">Page
+        <select id="c-conf" data-ctl="conf"><option value="before">Leave, before names are drawn</option><option value="after">Leave, after names are drawn</option><option value="delete">Delete account</option><option value="blocked">Delete account, blocked</option></select></label></div>
+      <ul>
+        <li>No cloth. The cloth marks a happy thing that is yours to do; a confirmation is plain white so it reads as a pause.</li>
+        <li>The question is the page title. What it costs comes next, then the button that repeats the action's name, then the way out as a link.</li>
+        <li>Deleting the account uses the same layout. When it's blocked there is no action button at all, only what to do first.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= Errors ================= -->
+  <section class="shot" id="errors">
+    <div class="phone" id="err-phone">
+      <div data-mast data-show="err:missing broke unreadable"></div>
+      <div data-mast="out" data-show="err:signin unknown"></div>
+      <div class="lone">
+        <svg class="girl-big" aria-hidden="true"><use href="#girl"/></svg>
+        <h3 data-show="err:missing">We can't find that page</h3>
+        <p data-show="err:missing">It may have moved, or the event may have been canceled.</p>
+        <h3 data-show="err:broke">Something went wrong</h3>
+        <p data-show="err:broke">That one's on Pollyanna, not you. Nothing was changed. Try again in a minute.</p>
+        <h3 data-show="err:unreadable">We can't show who you're giving to</h3>
+        <p data-show="err:unreadable">Names have been drawn, but yours can't be read any more. Ask an organizer to draw names again.</p>
+        <h3 data-show="err:signin">Sign-in didn't work</h3>
+        <p data-show="err:signin">Nothing was changed. Try again, or sign in another way.</p>
+        <h3 data-show="err:unknown">Pollyanna doesn't know you yet</h3>
+        <p data-show="err:unknown">Pollyanna doesn't know jo@pollyanna.example yet. Ask whoever organizes your family's event to invite that address, or sign in another way.</p>
+        <a href="#empty-home" data-show="err:missing broke unreadable" style="padding:10px 0">Back to your events</a>
+        <div data-show="err:signin unknown" style="display:flex;flex-direction:column;gap:12px;align-self:stretch;margin-top:8px">
+          <a class="btn line" href="#sign-in"><span class="logo"></span>Continue with Google</a>
+          <a class="btn line" href="#sign-in"><span class="logo"></span>Continue with Example ID</a>
+        </div>
+      </div>
+    </div>
+    <div class="side">
+      <h2>Error and sign-in failure pages</h2>
+      <div class="ctl">
+        <label for="c-err">Page
+          <select id="c-err" data-ctl="err"><option value="missing">Page not found</option><option value="broke">Something went wrong</option><option value="unreadable">Assignment can't be read</option><option value="signin">Sign-in didn't work</option><option value="unknown">Sign-in refused: not invited</option></select></label>
+        <label for="c-girl">The girl
+          <select id="c-girl"><option value="on">Shown</option><option value="off">Left out</option></select></label>
+      </div>
+      <ul>
+        <li>No cloth, so without something these pages are black text on white and could belong to any app. The girl, seen from behind as always, is the one large thing on them. She appears large nowhere else in the app.</li>
+        <li>Heading, one or two sentences, one way out. Sign-in failures offer the provider buttons again.</li>
+        <li>The words for "page not found" and "something went wrong" are mine and are placeholders; the other three use the wording already decided or already in the app.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= Wide ================= -->
+  <section class="shot full" id="wide">
+    <div class="side">
+      <h2>Wider screens</h2>
+      <p class="softer sm">Same page, one 560px column. The masthead and the cloth run the full width; the panel and everything under it stay in the column. Shown: organizing, ready to draw.</p>
+    </div>
+    <div class="phone wide">
+      <div data-mast></div>
+      <div class="head"><span class="seg"><a href="#wide">My page</a><span class="on">Organizing</span></span><h3>Book club swap</h3><p class="when">Saturday, January 9 · $20 budget</p>
+        <ol class="steps" aria-label="Where this event stands"><li class="done">Draft</li><li class="now">Open</li><li>Names drawn</li><li>Revealed</li></ol></div>
+      <div class="cloth gingham"><div class="panel"><p>All 7 people are in and 5 have written notes. Draw names whenever you're ready.</p><button type="button" class="btn fill">Draw names</button></div></div>
+      <div class="body"><div class="grp"><h5>Taking part (7)</h5><div class="rows"><p><b>Ana</b><span class="soft small">no notes yet</span></p><p><b>Dee</b></p><p><b>Kofi</b></p></div></div></div>
+    </div>
+  </section>
+
+  <!-- ================= Choices ================= -->
+  <section class="shot full" id="choices">
+    <div class="ask">
+      <h2>Choices for you</h2>
+      <ol>
+        <li><b>Empty home:</b> A (one panel, two halves) or B (two panels). I'd pick A: it keeps one panel per screen, and the dividing line makes the two ways in read as a pair.</li>
+        <li><b>The girl on error and sign-in failure pages:</b> shown or left out. I'd show her; it's the only thing on those pages that is Pollyanna's.</li>
+        <li><b>Red on "Delete my account":</b> the system says red is for errors and "Cancel this event" only. I'd extend it to this one button, since it's the same kind of act, and to nothing else. "Leave this event" stays ink.</li>
+        <li><b>No cloth on confirmations</b> (leave, delete account), and none on questions when nothing is new. Cloth appears on: home, the event page, organizing, a new question, new event, sign-in and signed out.</li>
+        <li><b>"Bigger changes"</b> as the name of the rare-and-risky group on the organizing page, always open at the bottom rather than folded shut.</li>
+        <li><b>Sign-in with several providers:</b> every provider button outlined, none filled.</li>
+      </ol>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var girl = '<svg class="girl-w" width="40" height="40" aria-hidden="true"><use href="#girl"/></svg>';
+  var inMast = '<div class="mast"><a class="brand" href="#empty-home">' + girl + '<span>pollyanna</span></a><span class="mast-r"><a href="#choices" aria-label="Notifications"><svg aria-hidden="true"><use href="#bell"/></svg></a><a href="#account" style="padding:0 6px">Sam</a></span></div>';
+  var outMast = '<div class="mast"><a class="brand" href="#sign-in">' + girl + '<span>pollyanna</span></a></div>';
+  document.querySelectorAll('[data-mast]').forEach(function (el) { el.innerHTML = el.dataset.mast === 'out' ? outMast : inMast; });
+
+  var state = {};
+  function apply() {
+    document.querySelectorAll('[data-show]').forEach(function (el) {
+      var parts = el.dataset.show.split(':');
+      el.hidden = parts[1].split(' ').indexOf(state[parts[0]]) < 0;
+    });
+    var at = { draft: 0, blocked: 1, open: 1, drawn: 2, leave: 2, revealed: 3 }[state.manage];
+    document.querySelectorAll('#manage .steps li').forEach(function (li, i) { li.className = i < at ? 'done' : i === at ? 'now' : ''; if (i === at) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
+  }
+  document.querySelectorAll('[data-ctl]').forEach(function (sel) {
+    state[sel.dataset.ctl] = sel.value;
+    sel.addEventListener('change', function () { state[sel.dataset.ctl] = sel.value; apply(); });
+  });
+  apply();
+
+  var g = document.getElementById('c-girl');
+  g.addEventListener('change', function () { document.getElementById('err-phone').classList.toggle('nogirl', g.value === 'off'); });
+
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); };
+      try { navigator.clipboard.writeText(b.dataset.copy).then(done, done); } catch (e) { done(); }
+    });
+  });
+})();
+</script>
