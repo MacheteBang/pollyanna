@@ -113,9 +113,16 @@ public sealed class HtmlEmailTests
             foreach (var paragraph in Paragraphs(mail.Body))
                 Assert.True(text.Contains(paragraph), $"Missing \"{paragraph}\" in {because}");
 
-            // Nothing remote (spec §15).
-            Assert.Empty(doc.QuerySelectorAll("img, link, script, iframe, object, embed, video, audio, source"));
-            Assert.Empty(doc.QuerySelectorAll("[src], [background]"));
+            // Nothing remote (spec §15): one image, the bow, carried inside the message.
+            var img = Assert.Single(doc.QuerySelectorAll("img"));
+            Assert.Equal("cid:" + mail.Image.ContentId, img.GetAttribute("src"));
+            Assert.Equal("", img.GetAttribute("alt"));
+            Assert.Equal(("26", "26"), (img.GetAttribute("width"), img.GetAttribute("height")));
+            Assert.Equal(EmailBow.Image, mail.Image);
+            Assert.Empty(doc.QuerySelectorAll("link, script, iframe, object, embed, video, audio, source, svg, picture"));
+            Assert.Equal([img], doc.QuerySelectorAll("[src]"));
+            Assert.Empty(doc.QuerySelectorAll("[background], [srcset]"));
+            Assert.DoesNotContain("data:", mail.Html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("url(", mail.Html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("@import", mail.Html, StringComparison.OrdinalIgnoreCase);
             var links = doc.QuerySelectorAll("a").Select(a => a.GetAttribute("href")).ToList();
@@ -170,28 +177,66 @@ public sealed class HtmlEmailTests
         }
     }
 
-    /// <summary>The event's status during each step of the every-kind run, as the app's stamps label it.</summary>
-    static readonly Dictionary<string, string> StatusWhenSent = new()
-    {
-        ["draft"] = "DRAFT", ["open"] = "OPEN", ["added"] = "OPEN", ["notes"] = "OPEN",
-        ["drawn"] = "DRAWN", ["redraw"] = "OPEN", ["drawn again"] = "DRAWN", ["questions"] = "DRAWN",
-        ["late joiner"] = "DRAWN", ["request to leave"] = "DRAWN", ["revealed"] = "REVEALED",
-    };
+    /// <summary>The six "Tablecloth" colors (spec §12), and the only ones an email may use.</summary>
+    static readonly string[] Palette = ["#FFFFFF", "#1E1A16", "#5B5650", "#3F6E8C", "#DCE7EE", "#9E2019"];
+
+    const string PaleBlue = "#DCE7EE", White = "#FFFFFF";
+
+    /// <summary>An element's own background color, from its inline style, or null.</summary>
+    static string? Background(IElement element) =>
+        System.Text.RegularExpressions.Regex.Match(element.GetAttribute("style") ?? "", @"background-color:\s*(#[0-9A-Fa-f]{6})") is { Success: true } m
+            ? m.Groups[1].Value.ToUpperInvariant() : null;
 
     [Fact]
-    public async Task Every_kind_wears_a_stamp_with_the_events_status_when_it_was_sent()
+    public async Task Every_kind_is_the_panel_on_the_band_with_no_stamp()
     {
         await using var app = await TestApp.StartAsync(mail: true, providers: NotificationSecrecyTests.OpenProvider);
         var run = await NotificationSecrecyTests.EveryKindAsync(app);
 
-        // Every status the run passes through shows up on some email.
-        Assert.Equal(["DRAFT", "DRAWN", "OPEN", "REVEALED"],
-            run.Mail.Select(s => StatusWhenSent[s.Step]).Distinct().Order());
         foreach (var (step, mail) in run.Mail)
         {
-            var stamp = Parse(mail.Html).QuerySelectorAll(".stamp");
-            Assert.True(stamp.Length == 1, $"One stamp in the {step} email to {mail.To}:\n{mail.Html}");
-            Assert.Equal(StatusWhenSent[step], Normalize(stamp[0].TextContent));
+            var because = $"the {step} email to {mail.To}:\n{mail.Html}";
+            var doc = Parse(mail.Html);
+
+            // Only the six colors, all solid; the email-only softened ink is gone (spec §15).
+            var colors = System.Text.RegularExpressions.Regex.Matches(mail.Html, @"(?<!&)#[0-9A-Fa-f]{3,8}\b")
+                .Select(m => m.Value.ToUpperInvariant()).Distinct().ToList();
+            Assert.True(colors.All(Palette.Contains), $"Colors {string.Join(", ", colors)} in {because}");
+            Assert.DoesNotContain("rgba(", mail.Html, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("gradient", mail.Html, StringComparison.OrdinalIgnoreCase);
+
+            // The system font stack everywhere (Figtree can't be loaded).
+            var fonts = doc.QuerySelectorAll("[style*='font-family']")
+                .Select(e => System.Text.RegularExpressions.Regex.Match(e.GetAttribute("style")!, "font-family:([^;]+)").Groups[1].Value.Trim())
+                .Distinct().ToList();
+            Assert.True(fonts.Count == 1 && fonts[0].StartsWith("-apple-system,", StringComparison.Ordinal)
+                && fonts[0].EndsWith("Arial, sans-serif", StringComparison.Ordinal), $"Fonts {string.Join(" | ", fonts)} in {because}");
+
+            // The wordmark on white: the bow, then "pollyanna" in lowercase text.
+            var bow = doc.QuerySelector("img")!;
+            var wordmark = bow.Closest("table")!;
+            Assert.True(Normalize(wordmark.TextContent) == "pollyanna", because);
+            Assert.True(wordmark.Ancestors<IElement>().Select(Background).First(b => b is not null) == White, because);
+
+            // One pale-blue band, holding one white panel and no text of its own.
+            var band = Assert.Single(doc.QuerySelectorAll("td"), td => Background(td) == PaleBlue);
+            var panel = Assert.Single(band.QuerySelectorAll("td"), td => Background(td) == White);
+            Assert.True(Normalize(band.TextContent) == Normalize(panel.TextContent), $"Text on the band in {because}");
+            // The panel: the event's name as its heading, the text, the button and the URL.
+            Assert.True(Normalize(panel.QuerySelector("h1")!.TextContent) == "Gifts 2026", because);
+            Assert.True(panel.QuerySelector("a")!.GetAttribute("href") == PlainLink(mail.Body), because);
+            Assert.True(Assert.Single(doc.QuerySelectorAll("h1")) == panel.QuerySelector("h1"), because);
+
+            // The footer sits on white under the band, outside the panel.
+            var footer = doc.QuerySelectorAll("p").Last();
+            Assert.False(band.Contains(footer), because);
+            Assert.True(footer.Ancestors<IElement>().Select(Background).First(b => b is not null) == White, because);
+
+            // No status stamp, in any case or form.
+            Assert.Empty(doc.QuerySelectorAll(".stamp"));
+            foreach (var status in new[] { "DRAFT", "OPEN", "DRAWN", "REVEALED" })
+                Assert.False(doc.Body!.TextContent.Contains(status, StringComparison.Ordinal), $"Stamp {status} in {because}");
+            Assert.DoesNotContain("rotate", mail.Html);
         }
     }
 
