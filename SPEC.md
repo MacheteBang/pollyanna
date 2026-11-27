@@ -331,17 +331,13 @@ no-repeat rule), `no_repeat_depth` (N, default 1), `pairings_revealed`
 - An organizer can link an event only to a previous event they also
   organize, and never to a canceled one.
 - When an event is created linked to a previous one, its participants are
-  pre-filled from that event; the organizer unticks anyone not joining.
+  pre-filled from that event.
   The new-event form preselects the most recent event the creator organizes.
   The form itself adds nobody else (decided on #53, 2026-11-26, user,
   replacing the add-people control the form carried): it creates the draft
   with the linked event's participants, if one is picked, and lands on the
   manage page, where the add-people control lives (Participant, below) and
   anyone not joining is taken out.
-  - When the typed address became an invitation, the "Draft created" notice
-    adds "<address> is invited; they'll get an email when the event opens."
-    It says nothing more when the address added a person, or when none was
-    typed. (Decided on November 26, 2026.)
 - The previous-event link can never form a loop (an event whose own chain
   leads back to this one isn't offered). It and `no_repeat_depth` (1 to 3)
   can't change after the draw.
