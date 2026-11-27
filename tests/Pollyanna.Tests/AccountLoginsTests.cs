@@ -23,7 +23,7 @@ public sealed class AccountLoginsTests : IAsyncLifetime
             .Select(l => new { l.Issuer, l.Subject }).ToListAsync()).Select(l => (l.Issuer, l.Subject)).ToList());
 
     static List<string> Rows(IHtmlDocument page) =>
-        [.. page.QuerySelectorAll("#logins li.person .person-body").Select(r => string.Join(" ", r.TextContent.Split((char[])[' ', '\n'], StringSplitOptions.RemoveEmptyEntries)))];
+        [.. page.QuerySelectorAll("#logins li.row .row-stack").Select(r => string.Join(" ", r.TextContent.Split((char[])[' ', '\n'], StringSplitOptions.RemoveEmptyEntries)))];
 
     static List<string> AddButtons(IHtmlDocument page) =>
         [.. page.QuerySelectorAll("#logins form[action='/account/addlogin'] button").Select(b => b.TextContent.Trim())];
@@ -81,7 +81,7 @@ public sealed class AccountLoginsTests : IAsyncLifetime
 
         Assert.Equal(["Add issuer.test", "Add Google", "Add Work account"], AddButtons(page));
         Assert.All(page.QuerySelectorAll("#logins form[action='/account/addlogin'] button"),
-            b => Assert.Contains("button-outline", b.ClassList));
+            b => Assert.DoesNotContain("button-fill", b.ClassList));
     }
 
     [Fact]

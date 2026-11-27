@@ -70,7 +70,7 @@ public sealed class EventCreationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Linking_an_earlier_event_copies_the_ticked_people_and_their_households()
+    public async Task Linking_an_earlier_event_brings_its_people_and_their_households()
     {
         var (browser, me) = await app.SignInAsync(Pat);
         using var _b = browser;
@@ -83,46 +83,58 @@ public sealed class EventCreationTests : IAsyncLifetime
         {
             var parents = new Household { EventId = last, Name = "Mom & Dad" };
             var parks = new Household { EventId = last, Name = "The Parks" };
-            var gone = new Household { EventId = last, Name = "Only Carol" };
-            db.Households.AddRange(parents, parks, gone);
+            var single = new Household { EventId = last, Name = "Only Carol" };
+            db.Households.AddRange(parents, parks, single);
             foreach (var p in await db.Participants.Where(p => p.EventId == last).ToListAsync())
                 p.HouseholdId = p.PersonId == ann || p.PersonId == bob ? parents.Id
                     : p.PersonId == lee || p.PersonId == me ? parks.Id
-                    : gone.Id;
+                    : single.Id;
             await db.SaveChangesAsync();
         });
 
         var form = await browser.GetPageAsync("/events/new");
-        // The most recent event they organize is picked, with everyone else ticked.
+        // The most recent event they organize is picked.
         Assert.Equal(last.ToString(), form.QuerySelector("select[name='PreviousEventId'] option[selected]")!.GetAttribute("value"));
-        Assert.Equal(4, form.QuerySelectorAll($"input[name='copy-{last}'][checked]").Length);
 
-        // Carol isn't joining this year.
-        var response = await browser.SubmitAsync(form, "/events/new", Fields(previous: last.ToString(), depth: "2",
-            more: [($"copy-{last}", ann.ToString()), ($"copy-{last}", bob.ToString()), ($"copy-{last}", lee.ToString())]));
+        var response = await browser.SubmitAsync(form, "/events/new", Fields(previous: last.ToString(), depth: "2"));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 
         var ev = await OnlyNewEventAsync(me, last);
         Assert.Equal(last, ev.PreviousEventId);
         Assert.Equal(2, ev.NoRepeatDepth);
-        Assert.Equal(new[] { me, ann, bob, lee }.Order(), ev.Participants.Select(p => p.PersonId).Order());
-        Assert.Equal(["Mom & Dad", "The Parks"], ev.Households.Select(h => h.Name).Order());
+        Assert.Equal(new[] { me, ann, bob, lee, carol }.Order(), ev.Participants.Select(p => p.PersonId).Order());
+        Assert.Equal(["Mom & Dad", "Only Carol", "The Parks"], ev.Households.Select(h => h.Name).Order());
         string HouseholdOf(Guid person) => ev.Households.Single(h => h.Id == ev.Participants.Single(p => p.PersonId == person).HouseholdId).Name;
         Assert.Equal("Mom & Dad", HouseholdOf(ann));
         Assert.Equal("Mom & Dad", HouseholdOf(bob));
         Assert.Equal("The Parks", HouseholdOf(lee));
         Assert.Equal("The Parks", HouseholdOf(me));
+        Assert.Equal("Only Carol", HouseholdOf(carol));
     }
 
     [Fact]
-    public async Task Starting_fresh_ignores_ticks_under_an_earlier_event()
+    public async Task Not_taking_part_leaves_the_creator_out_of_the_linked_events_people()
     {
         var (browser, me) = await app.SignInAsync(Pat);
         using var _b = browser;
         var ann = await app.PersonAsync("Ann");
         var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann]);
 
-        await browser.SubmitOnAsync("/events/new", "/events/new", Fields(previous: "", more: [($"copy-{last}", ann.ToString())]));
+        await browser.SubmitOnAsync("/events/new", "/events/new", Fields(previous: last.ToString(), takePart: "false"));
+
+        var ev = await OnlyNewEventAsync(me, last);
+        Assert.Equal([ann], ev.Participants.Select(p => p.PersonId));
+    }
+
+    [Fact]
+    public async Task Starting_fresh_brings_nobody_along()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+        var ann = await app.PersonAsync("Ann");
+        var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann]);
+
+        await browser.SubmitOnAsync("/events/new", "/events/new", Fields(previous: ""));
 
         var ev = await OnlyNewEventAsync(me, last);
         Assert.Null(ev.PreviousEventId);
@@ -140,28 +152,14 @@ public sealed class EventCreationTests : IAsyncLifetime
         var form = await browser.GetPageAsync("/events/new");
         Assert.Null(form.QuerySelector("select[name='PreviousEventId']"));
 
-        var response = await browser.SubmitAsync(form, "/events/new", Fields(previous: notMine.ToString(), more: [($"copy-{notMine}", other.ToString())]));
+        var response = await browser.SubmitAsync(form, "/events/new", Fields(previous: notMine.ToString()));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("an earlier event you organize", (await TestBrowser.ParseAsync(response)).QuerySelector(".notice-error")!.TextContent);
         Assert.Equal(1, await app.WithDbAsync(db => db.Events.CountAsync()));
     }
 
     [Fact]
-    public async Task People_ticked_from_the_earlier_event_must_have_been_in_it()
-    {
-        var (browser, me) = await app.SignInAsync(Pat);
-        using var _b = browser;
-        var stranger = await app.PersonAsync("Stranger");
-        var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me]);
-
-        await browser.SubmitOnAsync("/events/new", "/events/new", Fields(previous: last.ToString(), more: [($"copy-{last}", stranger.ToString())]));
-
-        var ev = await OnlyNewEventAsync(me, last);
-        Assert.Equal([me], ev.Participants.Select(p => p.PersonId));
-    }
-
-    [Fact]
-    public async Task Ticked_people_and_an_address_join_the_new_draft_with_the_prefilled_people()
+    public async Task The_form_adds_nobody_else_and_invites_nobody()
     {
         var (browser, me) = await app.SignInAsync(Pat);
         using var _b = browser;
@@ -171,83 +169,125 @@ public sealed class EventCreationTests : IAsyncLifetime
         var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann]);
         await app.EventAsync("Cousins", EventStatus.Revealed, [bob], [me, bob]);
 
-        var form = await browser.GetPageAsync("/events/new");
-        var response = await browser.SubmitAsync(form, "/events/new", Fields(previous: last.ToString(),
-            more: [($"copy-{last}", ann.ToString()), ("personIds", bob.ToString()), ("email", "Sue@Example.com")]));
+        var form = (await browser.GetPageAsync("/events/new")).QuerySelector("form[action='/events/new']")!;
+        // No add-people control: no ticklist of known people, no address field.
+        Assert.Empty(form.QuerySelectorAll("[data-add-people], input[name=personIds], input[name=email], input[type=email]"));
+        Assert.Empty(form.QuerySelectorAll("input[type=checkbox]:not([name=TakePart])"));
+
+        // Fields the old form sent are ignored.
+        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(previous: last.ToString(),
+            more: [("personIds", bob.ToString()), ("email", "carol@example.com"), ($"copy-{last}", ann.ToString())]));
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         var ev = await OnlyNewEventAsync(me, last);
-        Assert.Equal(EventStatus.Draft, ev.Status);
-        Assert.Equal(new[] { me, ann, bob }.Order(), ev.Participants.Select(p => p.PersonId).Order());
-        var invitation = await app.WithDbAsync(db => db.Invitations.SingleAsync());
-        Assert.Equal(ev.Id, invitation.EventId);
-        Assert.Equal("Sue@Example.com", invitation.Email);
-        Assert.Equal(me, invitation.InvitedBy);
-        // A draft's invitations are emailed when it opens (spec §15).
-        Assert.Equal(0, await app.WithDbAsync(db => db.Notifications.CountAsync()));
+        Assert.Equal(new[] { me, ann }.Order(), ev.Participants.Select(p => p.PersonId).Order());
         Assert.DoesNotContain(carol, ev.Participants.Select(p => p.PersonId));
+        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
+        Assert.Equal(0, await app.WithDbAsync(db => db.Notifications.CountAsync()));
     }
 
     [Fact]
-    public async Task The_form_lists_the_people_Pat_shares_an_event_with_as_plain_controls_without_emails()
+    public async Task Creating_lands_on_the_organizing_page_with_a_notice()
     {
-        var (browser, me) = await app.SignInAsync(Pat);
+        var (browser, _) = await app.SignInAsync(Pat);
         using var _b = browser;
-        var ann = await app.PersonAsync("Ann", "ann@example.com");
-        var bob = await app.PersonAsync("Bob", "bob@example.com");
-        var eve = await app.PersonAsync("Eve", "eve@example.com");
-        var stranger = await app.PersonAsync("Stranger", "stranger@example.com");
-        var gone = new Person { CreatedAt = DateTime.UtcNow };
-        await app.WithDbAsync(async db => { db.People.Add(gone); await db.SaveChangesAsync(); });
-        await app.EventAsync("Old", EventStatus.Archived, [me], [me, ann, gone.Id]);
-        await app.EventAsync("Bob's", EventStatus.Draft, [bob], [me]);
-        await app.EventAsync("Elsewhere", EventStatus.Open, [stranger], [stranger, eve]);
-        await app.EventAsync("Pat's", EventStatus.Revealed, [eve], [me]);
 
-        var form = (await browser.GetPageAsync("/events/new")).QuerySelector("form[action='/events/new']")!;
+        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields());
 
-        // Plain form controls inside the "Create draft" form, so it works without the script.
-        var ticks = form.QuerySelectorAll("input[type=checkbox][name=personIds]");
-        Assert.Equal(new[] { ann, bob, eve }.Select(g => g.ToString()), ticks.Select(i => i.GetAttribute("value")));
-        Assert.Equal(["Ann", "Bob", "Eve"], ticks.Select(i => form.QuerySelector($"label[for='{i.Id}']")!.TextContent.Trim()));
-        Assert.NotNull(form.QuerySelector("input[type=email][name=email]:not([disabled])"));
-        foreach (var name in new[] { "ann", "bob", "eve", "stranger", "pat" })
-            Assert.DoesNotContain($"{name}@example.com", form.OuterHtml);
+        var manage = await browser.GetPageAsync(response.Headers.Location!.OriginalString);
+        Assert.Equal("Draft created. Add people below, then open it when you're ready.", manage.QuerySelector(".notice")!.TextContent.Trim());
     }
 
     [Fact]
-    public async Task People_prefilled_from_the_linked_event_are_hidden_from_the_ticklist()
+    public async Task The_form_is_one_panel_on_the_cloth_with_create_event_filled()
     {
         var (browser, me) = await app.SignInAsync(Pat);
         using var _b = browser;
-        var ann = await app.PersonAsync("Ann");
-        var bob = await app.PersonAsync("Bob");
-        var dee = await app.PersonAsync("Dee");
-        await app.EventAsync("Book club", EventStatus.Archived, [me], [me, dee], date: new DateOnly(2024, 12, 24));
-        var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann], date: new DateOnly(2025, 12, 24));
-        await app.EventAsync("Cousins", EventStatus.Revealed, [bob], [me, bob]);
+        await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me], date: new DateOnly(2025, 12, 24));
 
-        var form = (await browser.GetPageAsync("/events/new")).QuerySelector("form[action='/events/new']")!;
+        var page = await browser.GetPageAsync("/events/new");
 
-        // Ann is already ticked under the linked event, so the ticklist hides her and sends nothing for her.
-        Assert.NotNull(form.QuerySelector($"input[name='copy-{last}'][value='{ann}'][checked]"));
-        var annRow = form.QuerySelector($"input[name=personIds][value='{ann}']")!;
-        Assert.True(annRow.HasAttribute("disabled"));
-        Assert.True(annRow.ParentElement!.HasAttribute("hidden"));
-        Assert.Equal("true", annRow.ParentElement!.GetAttribute("data-prefilled"));
-        // Bob isn't in an event Pat organizes, and Dee is only in an earlier event that isn't linked.
-        // The script hides a row whose data-prefilled is "true", so theirs must say "false".
-        foreach (var shown in new[] { bob, dee })
+        Assert.Equal("New event", page.QuerySelector(".page-head h1")!.TextContent.Trim());
+        var back = page.QuerySelector(".page-head a.page-head-back")!;
+        Assert.Equal(("Home", "/"), (back.TextContent.Trim(), back.GetAttribute("href")));
+        var form = Assert.Single(page.QuerySelectorAll(".cloth > form.panel[action='/events/new'][method=post]"));
+        string LabelOf(string name)
         {
-            var row = form.QuerySelector($"input[name=personIds][value='{shown}']")!;
-            Assert.False(row.HasAttribute("disabled"));
-            Assert.False(row.ParentElement!.HasAttribute("hidden"));
-            Assert.Equal("false", row.ParentElement!.GetAttribute("data-prefilled"));
+            var control = form.QuerySelector($"[name='{name}']:not([type=hidden])")!;
+            return (form.QuerySelector($"label[for='{control.Id}']") ?? control.Closest("label"))!.TextContent.Trim();
         }
+        string[] names = ["Name", "ExchangeDate", "BudgetText", "TakePart", "PreviousEventId", "NoRepeatDepth"];
+        Assert.Equal(["Name", "Exchange date", "Budget", "Yes, I'm taking part too", "Same group as an earlier event", "Don't repeat who gave to whom"],
+            names.Select(LabelOf));
+        // The controls come in that order too.
+        Assert.Equal(names, form.QuerySelectorAll("input:not([type=hidden]), select").Select(c => c.GetAttribute("name")));
+        var takePart = form.QuerySelector("input[name=TakePart][type=checkbox]")!;
+        Assert.Equal("true", takePart.GetAttribute("value"));
+        Assert.True(takePart.HasAttribute("checked"));
+        Assert.Equal(["No, start with nobody", "Stockings 2025, December 2025"],
+            form.QuerySelectorAll("select[name=PreviousEventId] option").Select(o => o.TextContent.Trim()));
+        Assert.Equal(["From the last event", "From the last 2 events", "From the last 3 events"],
+            form.QuerySelectorAll("select[name=NoRepeatDepth] option").Select(o => o.TextContent.Trim()));
+        // The script hides the don't-repeat choice until an earlier event is picked; without it, it shows.
+        Assert.NotNull(form.QuerySelector("select[name=PreviousEventId][data-previous-select]"));
+        var depth = form.QuerySelector("select[name=NoRepeatDepth]")!.Closest("[data-needs-previous]")!;
+        Assert.False(depth.HasAttribute("hidden"));
+
+        var create = Assert.Single(form.QuerySelectorAll(".button"));
+        Assert.Equal("Create event", create.TextContent.Trim());
+        Assert.Equal("submit", create.GetAttribute("type"));
+        Assert.True(create.ClassList.Contains("button-fill"));
+        Assert.Equal("It starts as a draft only organizers can see. You add people next.",
+            create.NextElementSibling!.TextContent.Trim());
+        Assert.DoesNotContain("slip", form.TextContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(" hat", form.TextContent, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task The_manage_pages_ticklist_marks_nobody_as_prefilled()
+    public async Task Without_an_earlier_event_there_is_no_group_choice()
+    {
+        var (browser, _) = await app.SignInAsync(Pat);
+        using var _b = browser;
+
+        var form = (await browser.GetPageAsync("/events/new")).QuerySelector("form.panel")!;
+
+        Assert.Null(form.QuerySelector("select[name=PreviousEventId]"));
+        Assert.Null(form.QuerySelector("select[name=NoRepeatDepth]"));
+        Assert.Equal("Create event", form.QuerySelector(".button-fill")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task An_unticked_take_part_box_sends_false()
+    {
+        var (browser, me) = await app.SignInAsync(Pat);
+        using var _b = browser;
+
+        var form = (await browser.GetPageAsync("/events/new")).QuerySelector("form.panel")!;
+        // A browser sends nothing for an unticked box, so a hidden "false" follows it.
+        Assert.Equal("false", form.QuerySelector("input[type=hidden][name=TakePart]")!.GetAttribute("value"));
+        await browser.SubmitOnAsync("/events/new", "/events/new",
+        [
+            new("Name", "Stockings"), new("BudgetText", ""), new("ExchangeDate", "2026-12-24"), new("TakePart", "false"),
+        ]);
+
+        var ev = await OnlyNewEventAsync(me);
+        Assert.Empty(ev.Participants);
+    }
+
+    [Fact]
+    public async Task The_page_is_on_the_tablecloth_look()
+    {
+        var (browser, _) = await app.SignInAsync(Pat);
+        using var _b = browser;
+
+        var page = await browser.GetPageAsync("/events/new");
+
+        Assert.Equal("light", page.QuerySelector("meta[name=color-scheme]")!.GetAttribute("content"));
+        Assert.Empty(page.QuerySelectorAll("[style], style"));
+    }
+
+    [Fact]
+    public async Task The_manage_pages_ticklist_shows_everyone_the_organizer_knows_unticked()
     {
         var (browser, me) = await app.SignInAsync(Pat);
         using var _b = browser;
@@ -257,90 +297,9 @@ public sealed class EventCreationTests : IAsyncLifetime
 
         var page = await browser.GetPageAsync($"/events/{draft}/manage");
 
-        // The script hides a row whose data-prefilled is "true", so a row here must say "false".
-        var annRow = page.QuerySelector($"input[name=personIds][value='{ann}']")!;
-        Assert.Equal("false", annRow.ParentElement!.GetAttribute("data-prefilled"));
-        Assert.False(annRow.ParentElement!.HasAttribute("hidden"));
-    }
-
-    [Fact]
-    public async Task An_address_several_people_use_refuses_the_form_and_creates_nothing()
-    {
-        var (browser, me) = await app.SignInAsync(Pat);
-        using var _b = browser;
-        var ann = await app.PersonAsync("Ann");
-        var last = await app.EventAsync("Stockings 2025", EventStatus.Archived, [me], [me, ann]);
-        await app.PersonAsync("Carol", "family@example.com");
-        await app.PersonAsync("Carl", "Family@example.com");
-
-        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(previous: last.ToString(),
-            more: [($"copy-{last}", ann.ToString()), ("personIds", ann.ToString()), ("email", "family@example.com")]));
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var page = await TestBrowser.ParseAsync(response);
-        var notice = page.QuerySelector(".notice-error")!.TextContent;
-        Assert.Contains("More than one person uses that address", notice);
-        Assert.DoesNotContain("Carol", notice);
-        Assert.DoesNotContain("Carl", notice);
-        // What was ticked and typed comes back.
-        Assert.NotNull(page.QuerySelector($"input[name=personIds][value='{ann}'][checked]"));
-        Assert.Equal("family@example.com", page.QuerySelector("input[type=email][name=email]")!.GetAttribute("value"));
-        Assert.Equal(1, await app.WithDbAsync(db => db.Events.CountAsync()));
-        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
-    }
-
-    [Fact]
-    public async Task An_address_one_person_uses_adds_them_even_if_Pat_doesnt_know_them()
-    {
-        var (browser, me) = await app.SignInAsync(Pat);
-        using var _b = browser;
-        var carol = await app.PersonAsync("Carol", "carol@example.com");
-
-        await browser.SubmitOnAsync("/events/new", "/events/new", Fields(more: [("email", "CAROL@example.com")]));
-
-        var ev = await OnlyNewEventAsync(me);
-        Assert.Equal(new[] { me, carol }.Order(), ev.Participants.Select(p => p.PersonId).Order());
-        Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
-    }
-
-    [Theory]
-    [InlineData("carol@example.com", "Draft created. Add people below, then open it when you're ready. carol@example.com is invited; they'll get an email when the event opens.")]
-    [InlineData("", "Draft created. Add people below, then open it when you're ready.")]
-    public async Task The_notice_says_when_the_typed_address_was_invited(string email, string notice)
-    {
-        var (browser, _) = await app.SignInAsync(Pat);
-        using var _b = browser;
-
-        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(more: [("email", email)]));
-
-        var manage = await browser.GetPageAsync(response.Headers.Location!.OriginalString);
-        Assert.Equal(notice, manage.QuerySelector(".notice")!.TextContent.Trim());
-    }
-
-    [Fact]
-    public async Task An_address_one_person_uses_gets_the_plain_notice()
-    {
-        var (browser, _) = await app.SignInAsync(Pat);
-        using var _b = browser;
-        await app.PersonAsync("Carol", "carol@example.com");
-
-        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(more: [("email", "carol@example.com")]));
-
-        var manage = await browser.GetPageAsync(response.Headers.Location!.OriginalString);
-        Assert.Equal("Draft created. Add people below, then open it when you're ready.", manage.QuerySelector(".notice")!.TextContent.Trim());
-    }
-
-    [Fact]
-    public async Task Ticking_someone_outside_the_list_is_refused_and_creates_nothing()
-    {
-        var (browser, me) = await app.SignInAsync(Pat);
-        using var _b = browser;
-        var stranger = await app.PersonAsync("Stranger");
-
-        var response = await browser.SubmitOnAsync("/events/new", "/events/new", Fields(more: [("personIds", stranger.ToString())]));
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(0, await app.WithDbAsync(db => db.Events.CountAsync()));
+        var annBox = page.QuerySelector($"input[name=personIds][value='{ann}']")!;
+        Assert.False(annBox.HasAttribute("checked") || annBox.HasAttribute("disabled"));
+        Assert.False(annBox.ParentElement!.HasAttribute("hidden"));
     }
 
     [Fact]
@@ -351,9 +310,9 @@ public sealed class EventCreationTests : IAsyncLifetime
         await browser.SubmitOnAsync("/events/new", "/events/new", Fields(name: "Cousins' Swap", budget: "$15", date: "2026-12-20"));
 
         var home = await browser.GetPageAsync("/");
-        var slip = home.QuerySelector("a.slip")!;
-        Assert.Equal("Cousins' Swap", slip.QuerySelector(".slip-title")!.TextContent);
-        Assert.Equal("DRAFT", slip.QuerySelector(".stamp")!.TextContent);
+        var slip = home.QuerySelector(".cloth .panel")!;
+        Assert.Equal("Cousins' Swap", slip.QuerySelector(".panel-title")!.TextContent);
+        Assert.Contains("draft, only organizers can see it", slip.TextContent);
         Assert.Equal("2026-12-20", slip.QuerySelector("time")!.GetAttribute("datetime"));
         Assert.Equal("Dec 20, 2026", slip.QuerySelector("time")!.TextContent);
         var countdown = slip.QuerySelector("[data-countdown]")!;

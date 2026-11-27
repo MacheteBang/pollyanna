@@ -9,7 +9,7 @@ for people who run it, and DEPLOYMENT.md the full operator guide.
 - SPEC.md is the source of truth. Don't make product or technology decisions on your own:
   ask one question at a time, then write the answer into SPEC.md.
 - Before starting work, read the relevant SPEC.md sections, including §14
-  (implementation status) and §12 (the "Paper slips" visual design) for UI changes.
+  (implementation status) and §12 (the "Tablecloth" visual design) for UI changes.
 - Run `dotnet test` before calling anything done.
 - Keep the repo free of anyone's deployment specifics (hosts, paths, proxies, backups).
   Pollyanna ships as an image plus an example Compose file; where it runs is the

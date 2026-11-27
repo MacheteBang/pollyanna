@@ -1,0 +1,1113 @@
+/* Pollyanna, "Tablecloth" (spec §12). A table laid for the family: one white panel holding the
+   one thing to do, on a full-width band of blue gingham, with quiet rows on white beneath it.
+   Loaded by Pages/Shared/_Tablecloth.cshtml, the layout of every page.
+   Six colors and no others; light only; everything served by the app. */
+
+/* ---------- Fonts (served by the app; SIL Open Font License, see /fonts/*-OFL.txt) ---------- */
+
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/figtree-latin-400-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/figtree-latin-ext-400-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/figtree-latin-600-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/figtree-latin-ext-600-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("/fonts/figtree-latin-800-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("/fonts/figtree-latin-ext-800-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* Playpen Sans is for the revealed name only (.revealed-name). */
+@font-face {
+    font-family: "Playpen Sans";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("/fonts/playpen-sans-latin-500-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Playpen Sans";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("/fonts/playpen-sans-latin-ext-500-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------- Tokens: the one place colors, type, space and shape are defined ---------- */
+
+:root {
+    /* Color, six and no others. */
+    --white: #FFFFFF;      /* ground and panels, text on ink */
+    --ink: #1E1A16;        /* text, the filled button, field borders */
+    --soft-ink: #5B5650;   /* secondary text */
+    --ribbon: #3F6E8C;     /* bows, the cloth's thread, the focus ring, link underlines */
+    --pale: #DCE7EE;       /* row dividers, the girl's shirt, the other side's bubbles */
+    --red: #9E2019;        /* error text, "Cancel this event" and "Delete my account" only */
+    --thread: color-mix(in srgb, var(--ribbon) 50%, transparent); /* ribbon blue at 50%: one gingham thread */
+
+    /* Type. */
+    --font: Figtree, system-ui, sans-serif;
+    --font-hand: "Playpen Sans", Figtree, system-ui, sans-serif;
+    --type-title: 800 29px/1.1 var(--font);        /* page title */
+    --type-panel-title: 800 23px/1.15 var(--font); /* panel title */
+    --type-action: 800 18px/1.3 var(--font);       /* action and countdown */
+    --type-body: 400 16px/1.5 var(--font);
+    --type-small: 400 14px/1.5 var(--font);
+    --tight: -0.02em;                              /* titles and the wordmark */
+
+    /* Space and shape. */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;   /* the page gutter */
+    --space-5: 24px;   /* panel padding */
+    --space-6: 32px;
+    --space-7: 56px;   /* the cloth showing below a panel */
+    --corner: 10px;    /* the one corner: panels, buttons, fields */
+    --line: 2px;       /* ink around fields and outlined buttons, pale blue between rows */
+    --column: 560px;   /* the page on wider screens */
+    --tap: 44px;       /* smallest tap target */
+
+    color-scheme: light;
+}
+
+/* ---------- Base ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    background: var(--white);
+    color: var(--ink);
+    font: var(--type-body);
+}
+
+h1, h2, h3, h4, p, ul, ol, dl, dd, figure { margin: 0; }
+
+img, svg { display: block; }
+
+a {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--ribbon);
+    text-decoration-thickness: var(--line);
+    text-underline-offset: 3px;
+}
+
+:focus-visible {
+    outline: 3px solid var(--ribbon);
+    outline-offset: 2px;
+}
+
+strong, b { font-weight: 800; }
+
+/* Every summary draws its own look (a fold row with its chevron, a "Bigger changes" button): no
+   browser marker. */
+summary { list-style: none; }
+summary::-webkit-details-marker { display: none; }
+
+.small { font: var(--type-small); }
+.soft { color: var(--soft-ink); }
+.error { color: var(--red); font-weight: 600; }
+.break { overflow-wrap: anywhere; }
+
+/* ---------- Masthead: one row, full width ---------- */
+
+.masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+}
+
+/* The wordmark: the girl at 40px, then "pollyanna" in lowercase Figtree 800, tightened. */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap);
+    font: var(--type-panel-title);
+    letter-spacing: var(--tight);
+    text-decoration: none;
+}
+
+.masthead-end {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+/* The reserved place for the notification menu: empty until that feature exists. */
+.masthead-slot {
+    width: var(--tap);
+    height: var(--tap);
+    flex: none;
+}
+
+.masthead-account {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding-inline: var(--space-2);
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+/* ---------- The girl: her gaps take the ground, her shirt is pale blue on white ---------- */
+
+.girl { --girl-gap: var(--white); --girl-shirt: var(--pale); flex: none; }
+.girl .g-ink { fill: var(--ink); }
+.girl .g-bow { fill: var(--ribbon); }
+.girl .g-gap { fill: var(--girl-gap); }
+.girl .g-shirt { fill: var(--girl-shirt); }
+
+/* ---------- The column: everything but the masthead and the cloth ---------- */
+
+.column {
+    width: 100%;
+    max-width: calc(var(--column) + 2 * var(--space-4));
+    margin-inline: auto;
+    padding-inline: var(--space-4);
+}
+
+/* ---------- Page head: back link or switch, title, one small soft line ---------- */
+
+.page-head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-4);
+}
+
+.page-head-back { font: var(--type-small); font-weight: 600; }
+
+.page-title {
+    font: var(--type-title);
+    letter-spacing: var(--tight);
+    text-wrap: balance;
+}
+
+.page-head-line { font: var(--type-small); color: var(--soft-ink); }
+
+/* ---------- The cloth: a full-width gingham band under one white panel ---------- */
+
+/* Two layers of ribbon-blue thread at 50% on white, 14px checks (a 28px repeat). Never behind
+   text, links or fields: only a .panel sits on it. */
+.cloth {
+    background-color: var(--white);
+    background-image:
+        linear-gradient(90deg, var(--thread) 50%, transparent 50%),
+        linear-gradient(var(--thread) 50%, transparent 50%);
+    background-size: 28px 28px;
+    padding: var(--space-5) var(--space-4) var(--space-7);
+}
+
+.panel {
+    max-width: var(--column);
+    margin-inline: auto;
+    background: var(--white);
+    border-radius: var(--corner);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+}
+
+.panel-title {
+    font: var(--type-panel-title);
+    letter-spacing: var(--tight);
+    text-wrap: balance;
+}
+
+/* Two halves of one panel, split by a pale-blue line. */
+.panel-split {
+    border-top: var(--line) solid var(--pale);
+    margin-top: var(--space-3);
+    padding-top: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+/* What sits under the cloth, on white. */
+.below {
+    padding-top: var(--space-5);
+    padding-bottom: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+/* ---------- Buttons ---------- */
+
+/* .button is outlined. Add .button-fill to the one thing to do on the screen (one per screen),
+   or .button-red to the action that can't be undone. Works on <a> and <button>. */
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 48px;
+    padding: var(--space-2) var(--space-4);
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    background: var(--white);
+    color: var(--ink);
+    font: var(--type-body);
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.button-fill {
+    background: var(--ink);
+    color: var(--white);
+    font: var(--type-action);
+}
+
+.button-red {
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.button-start { align-self: flex-start; }
+
+/* A stack of full-width buttons, such as the sign-in providers. */
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-1);
+}
+
+.provider-icon {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    object-fit: contain;
+}
+
+/* A form button that reads as a link. */
+.link-button {
+    min-height: var(--tap);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--ribbon);
+    text-decoration-thickness: var(--line);
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+/* ---------- Notices after a form post ---------- */
+
+.notice {
+    margin-block: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: var(--line) solid var(--pale);
+    border-radius: var(--corner);
+}
+
+.notice-error {
+    border-color: var(--red);
+    color: var(--red);
+    font-weight: 600;
+}
+
+/* ---------- The revealed name ---------- */
+
+.revealed-name {
+    font-family: var(--font-hand);
+    font-weight: 500;
+    font-size: 52px;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+}
+
+/* ---------- The row of steps on the organizing page (spec §12 Statuses) ---------- */
+
+/* A trail, in order, joined by chevrons in the 2px line: done steps in ink with ribbon-blue
+   chevrons after them, the current one in ink at 800 over a ribbon-blue line, later steps soft
+   with pale-blue chevrons. One line on a 390px phone; it wraps rather than overflow. */
+.steps {
+    align-self: stretch;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: var(--space-1);
+    margin-top: var(--space-2);
+    padding: 0;
+    list-style: none;
+    font: var(--type-small);
+    color: var(--soft-ink);
+}
+
+.steps li { display: flex; align-items: center; }
+
+.steps li > span { padding-block: var(--space-1); border-bottom: var(--line) solid transparent; }
+
+.steps li + li::before {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-inline: var(--space-2) var(--space-3);
+    border-top: var(--line) solid var(--ribbon);
+    border-right: var(--line) solid var(--ribbon);
+    transform: rotate(45deg);
+}
+
+.steps .step-done { color: var(--ink); font-weight: 600; }
+.steps .step-now { color: var(--ink); font-weight: 800; }
+.steps .step-now > span { border-bottom-color: var(--ribbon); }
+.steps .step-later::before { border-color: var(--pale); }
+
+/* ---------- Questions for you: the conversation (spec §7, §12) ---------- */
+
+/* Read by screen readers, not shown. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Oldest at the top. The giver on the left, the viewer on the right. */
+.conversation {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.day-line {
+    align-self: center;
+    padding-top: var(--space-3);
+    font: var(--type-small);
+    color: var(--soft-ink);
+}
+
+.day-line:first-child { padding-top: 0; }
+
+.message {
+    max-width: 84%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.message-theirs { align-self: flex-start; align-items: flex-start; }
+.message-mine { align-self: flex-end; align-items: flex-end; }
+
+/* A bubble has the one corner, except the bottom corner nearest its speaker: the one exception. */
+.bubble {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--corner);
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+}
+
+.message-theirs .bubble { background: var(--pale); color: var(--ink); border-bottom-left-radius: 2px; }
+.message-mine .bubble { background: var(--ink); color: var(--white); border-bottom-right-radius: 2px; }
+
+.message-meta {
+    font: var(--type-small);
+    color: var(--soft-ink);
+    margin-bottom: var(--space-1);
+}
+
+.message-new { color: var(--ink); }
+
+.conversation-panel { gap: var(--space-5); }
+
+.conversation-quiet {
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-5);
+}
+
+/* The one-line reply box with "Send" beside it. */
+.composer {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-end;
+}
+
+.composer textarea {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    padding: var(--space-2) var(--space-3);
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    background: var(--white);
+    color: var(--ink);
+    font: var(--type-body);
+    resize: none;
+}
+
+.composer textarea::placeholder { color: var(--soft-ink); }
+
+.composer .button { flex: none; font: var(--type-body); font-weight: 800; padding-inline: var(--space-4); }
+
+/* With nothing new: the reply box in a bar under the conversation. */
+.reply-bar {
+    border-top: var(--line) solid var(--pale);
+    padding-block: var(--space-3);
+}
+
+.conversation-closed {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.conversation-closed h2 { font: var(--type-body); font-weight: 800; }
+
+.conversation-foot { padding-block: var(--space-1) var(--space-5); }
+.cloth + .conversation-foot { padding-top: var(--space-2); }
+
+/* ---------- Error and sign-in failure pages: the girl large, no cloth (spec §7, §12) ---------- */
+
+/* One block in the column: the girl at about 130px, the title, one or two sentences, one way out. */
+.lone {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding-top: var(--space-5);
+    padding-bottom: var(--space-6);
+}
+
+/* The girl's drawing has air on its left; pull her back so she lines up with the text. */
+.lone > .girl { margin: var(--space-2) 0 var(--space-1) -14px; }
+
+/* The provider buttons run the full column width. */
+.lone > .actions { align-self: stretch; }
+
+/* ---------- Form fields (new event first; reuse for any form in a panel) ---------- */
+
+/* What the script hides stays hidden, whatever its display. */
+[hidden] { display: none !important; }
+
+/* A label over its control, with an optional small soft line under it. */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.field label { font-weight: 800; }
+
+.field input,
+.field select,
+.field textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: var(--space-2) var(--space-3);
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    background: var(--white);
+    color: var(--ink);
+    font: inherit;
+}
+
+.field textarea { resize: vertical; }
+
+/* A checkbox with its words beside it, the whole row a 44px target (forms and the account page). */
+.check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap);
+    cursor: pointer;
+}
+
+.check input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    flex: none;
+    accent-color: var(--ribbon);
+}
+
+/* The panel's own button runs its full width. */
+.panel > .button { margin-top: var(--space-1); }
+
+/* ---------- Groups and rows on white (account, confirmations) ---------- */
+
+/* Plain groups under the page head, with no cloth: a heading, then rows, buttons or text. */
+.groups {
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+}
+
+.group-loose { gap: var(--space-3); }
+
+.group-title { font: var(--type-body); font-weight: 800; }
+
+.group-note { margin-top: var(--space-2); }
+
+/* Buttons that keep their own width, one under the other. */
+.group-buttons, .group-leave {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+.group-buttons { margin-top: var(--space-2); }
+
+/* Rows split by pale-blue lines: what the row is on the left, its action on the right. */
+.rows {
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-3);
+    border-top: var(--line) solid var(--pale);
+}
+
+.row:first-child { border-top: 0; }
+
+.row-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* A confirmation's action: the size of the one thing to do, whatever its color. */
+.button-strong { font: var(--type-action); }
+
+/* A link standing alone as the way out ("Stay in", "Keep my account", "Back to your events"):
+   tall enough to tap. */
+.way-out {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+}
+
+.link-button.small { font: var(--type-small); font-weight: 600; }
+
+/* ---------- Event page (#72): countdown, the two-way switch, the notes field, people rows ---------- */
+
+/* The countdown in the page head: the prominent part of the date line. Filled in by site.js;
+   without the script it stays hidden and the date line says the date alone. */
+.page-countdown { font: var(--type-action); }
+
+/* "My page" / "Organizing" (_EventSwitch), under the title: two halves of one outlined control,
+   the current one in ink. */
+.switch {
+    display: inline-flex;
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    overflow: hidden;
+    margin-block: var(--space-1);
+}
+
+.switch a {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 var(--space-4);
+    font: var(--type-small);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.switch a[aria-current="page"] {
+    background: var(--ink);
+    color: var(--white);
+}
+
+/* The switch clips its halves, so their focus ring goes inside. */
+.switch a:focus-visible { outline-offset: -5px; }
+.switch a[aria-current="page"]:focus-visible { outline-color: var(--white); }
+
+/* A field's own button (the notes form) sits just under its control. */
+.field .button { margin-top: var(--space-1); }
+
+/* A heading for a group on white, under the cloth. */
+.section-title { font: var(--type-body); font-weight: 800; }
+
+/* The people taking part (_People, .rows above): a little under their heading, each person split
+   by a pale-blue line. The pickers' lists (.choices) have their own rows. */
+.rows.people { margin-top: var(--space-2); }
+
+.rows.people > li {
+    padding-block: var(--space-3);
+    border-top: var(--line) solid var(--pale);
+}
+
+.rows.people > li:first-child { border-top: 0; }
+
+/* A person: their picture beside their name, their notes under the name. */
+.person {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+.person-body { min-width: 0; }
+.person-name { font-weight: 800; overflow-wrap: anywhere; }
+.notes { white-space: pre-line; overflow-wrap: anywhere; }
+
+/* A picture or initials: 40px, with the one corner, never a circle. */
+.avatar {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: var(--corner);
+    object-fit: cover;
+}
+
+.avatar-initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--pale);
+    color: var(--ink);
+    font: var(--type-small);
+    font-weight: 800;
+}
+
+/* A confirmation (leave): plain text on white, then the button and the way out. */
+.confirm { padding-top: 0; gap: var(--space-3); }
+.confirm .actions { margin-top: var(--space-3); align-items: stretch; }
+
+/* ---------- Home, empty home and past events (spec §7) ---------- */
+
+/* Home with events: one panel per event on the same cloth. */
+.home-cloth {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+.home-cloth .panel { width: 100%; gap: var(--space-2); }
+.home-cloth .waiting { margin-top: var(--space-2); }
+.home-event { text-decoration: none; font-weight: 800; }
+.home-event:hover { text-decoration: underline; text-decoration-color: var(--ribbon); text-decoration-thickness: var(--line); }
+
+/* The date, then the countdown: action size, second after the event's name. */
+.home-when { font: var(--type-action); }
+
+.home-more { align-items: flex-start; }
+.home-more > a:not(.button) { display: inline-flex; align-items: center; min-height: var(--tap); }
+
+/* Empty home: the viewer's address with its Copy button. */
+.copy-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+}
+.copy-line .email-address { min-width: 0; }
+
+/* Past events: a plain list, one link per row, pale-blue lines between rows. */
+.past-list { list-style: none; padding: 0; }
+.past-list li + li { border-top: var(--line) solid var(--pale); }
+.past-row {
+    display: flex;
+    flex-direction: column;
+    padding-block: var(--space-3);
+    min-height: var(--tap);
+    text-decoration: none;
+}
+.past-row:hover .past-name { text-decoration: underline; text-decoration-color: var(--ribbon); text-decoration-thickness: var(--line); }
+.past-name { font: var(--type-action); overflow-wrap: anywhere; }
+.past-row .small { font-weight: 400; }
+
+/* ---------- Event page once the event is over (#77): no cloth, nothing left to do ---------- */
+
+/* The viewer's own pairing first: two lines at the size of an action. */
+.over-pairing {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.over-line { font: var(--type-action); overflow-wrap: anywhere; }
+
+/* "Who drew whom": a row per pairing, the giver's picture beside "Ana gave to Kofi". */
+.who-drew-whom { margin-top: var(--space-2); }
+
+.pairing-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-2);
+    border-top: var(--line) solid var(--pale);
+    overflow-wrap: anywhere;
+}
+
+.pairing-row:first-child { border-top: 0; }
+.pairing-row strong { font-weight: 800; }
+.who-drew-whom + .small { margin-top: var(--space-2); }
+
+/* Folds: a row that opens in place, its title on the left, then a small soft hint and a
+   chevron on the right. Pale-blue lines above each fold and under the last one. Anything that
+   only opens in place is a fold, never a button (spec §12 Controls): "Add people", "Add a
+   household", "Edit details" and the like. */
+.fold { border-top: var(--line) solid var(--pale); }
+.fold:last-child { border-bottom: var(--line) solid var(--pale); }
+
+.fold > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-3);
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.fold-hint {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: var(--type-small);
+    color: var(--soft-ink);
+    text-align: right;
+}
+
+/* The chevron: down while folded, up once open. */
+.fold > summary::after {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin: 0 3px 3px auto;
+    border-right: var(--line) solid var(--ink);
+    border-bottom: var(--line) solid var(--ink);
+    transform: rotate(45deg);
+}
+
+.fold[open] > summary::after { transform: rotate(-135deg); margin-bottom: -3px; }
+
+.fold-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+}
+
+/* ---------- Organizing page: people rows, the folds' forms and "Bigger changes" ---------- */
+
+/* A person's row: picture, name, the small words on what is missing, then "Remove". */
+.row-name { flex: 1; min-width: 0; font-weight: 800; overflow-wrap: anywhere; }
+.row-plain { font-weight: 400; }
+.row-words { text-align: right; }
+.row-end { flex: none; }
+.row > .avatar { align-self: center; }
+
+/* Forms inside the folds and "Bigger changes": stacks, hints, field rows, choices, and a household's "Edit". */
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.hint { font: var(--type-small); color: var(--soft-ink); }
+.group-subtitle { font: var(--type-small); font-weight: 800; margin-top: var(--space-3); }
+.field-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.field-row > .field { flex: 1 1 12rem; }
+
+fieldset.choices { border: 0; margin: 0; padding: 0; min-width: 0; }
+.choices legend { padding: 0; font-weight: 800; margin-bottom: var(--space-2); }
+.choices .person { align-items: center; min-height: var(--tap); padding-block: var(--space-1); }
+.choices .person input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--ribbon); }
+.choices .rows, .choices ul { list-style: none; padding: 0; margin: 0; }
+
+details.editor { border-top: var(--line) solid var(--pale); }
+details.editor > summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    font-weight: 600;
+    cursor: pointer;
+}
+details.editor[open] > summary { margin-bottom: var(--space-3); }
+details.editor > form, details.editor > p, details.editor > div { margin-bottom: var(--space-3); }
+
+#people, #invited, #pairings, #details, #organizers {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+#changes { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.household-name { font-weight: 800; }
+
+/* "Bigger changes": each change is an outlined button (a summary) that opens its confirmation in
+   place, with its one small line underneath. */
+.changes { display: flex; flex-direction: column; gap: var(--space-4); }
+.change { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.change > details { display: flex; flex-direction: column; align-self: stretch; }
+.change > details > summary { align-self: flex-start; }
+.change-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-block: var(--space-3) var(--space-2);
+    padding-left: var(--space-4);
+    border-left: var(--line) solid var(--pale);
+}
+.change-costs { padding-left: var(--space-5); }
+
+/* Rows of a label and its value (the event's details). */
+.row-value { text-align: right; overflow-wrap: anywhere; min-width: 0; }
+/* A household's "Edit", tucked under its row. */
+.row-more { margin-top: calc(-1 * var(--space-3)); }
+.row-more + .row { border-top: var(--line) solid var(--pale); }
+#organizers .group-subtitle { margin-top: var(--space-2); }
+
+/* ---------- The reveal (#76): the gift and untying the bow (spec §7, §12 The reveal) ---------- */
+
+/* Above the gift: an unread question from the viewer's giver, and the notice after a redraw or
+   a patch. */
+.gift-asked { padding-bottom: var(--space-4); }
+.asked-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    font: var(--type-action);
+}
+.gift-again { font: var(--type-small); font-weight: 600; padding-bottom: var(--space-4); }
+.gift-leaving { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-5); }
+
+/* The gift. --k scales every beat: 1 the first time, 0.4 on later visits. Tied, the panel is
+   rendered but hidden under the cloth's two halves, with the ribbons and the bow on top. The
+   beats (spec §12) are each element's transition delay and length, so untying is one class. */
+.gift { --k: 1; }
+.gift-later { --k: 0.4; }
+
+.gift-cloth { position: relative; overflow: hidden; }
+
+.gift-panel {
+    position: relative;
+    min-height: 240px;
+    gap: var(--space-1);
+    transition: min-height calc(var(--k) * 350ms) ease-in-out calc(var(--k) * 1250ms);
+}
+.gift:not(.untied) .gift-panel { visibility: hidden; }
+.gift.untied .gift-panel { min-height: 0; }
+
+.gift-to { font: var(--type-small); font-weight: 600; }
+.revealed-name-long { font-size: 35px; }
+
+/* The first time, the name is written left to right once the cloth starts to part. */
+.gift-first .revealed-name { clip-path: inset(-10% 100% -10% 0); }
+.gift-first.untied .revealed-name {
+    clip-path: inset(-10% 0 -10% 0);
+    transition: clip-path calc(var(--k) * 550ms) cubic-bezier(0.4, 0, 0.6, 1) calc(var(--k) * 900ms);
+}
+
+/* Notes, the question box, "Done shopping" and "Hide the name" open below the name. The inner
+   padding leaves room for focus rings inside the clip. */
+.gift-more { display: grid; grid-template-rows: 1fr; }
+.gift:not(.untied) .gift-more { grid-template-rows: 0fr; }
+.gift.untied .gift-more { transition: grid-template-rows calc(var(--k) * 350ms) ease-in-out calc(var(--k) * 1250ms); }
+.gift-more > div { min-height: 0; overflow: hidden; }
+.gift-more-in {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-2) var(--space-2);
+    margin: 0 calc(-1 * var(--space-2)) calc(-1 * var(--space-2));
+}
+.gift-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.gift-group .conversation { margin-block: var(--space-2); }
+.gift-shopping { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.gift-more-in > [data-hide] .link-button { text-align: left; }
+
+/* The cloth's two halves: each carries the whole band's checks, so tied they read as one cloth. */
+.gift-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+    transition: visibility 0s linear calc(var(--k) * 1250ms);
+}
+.gift-cover:focus-visible { outline: none; }
+.gift.untied .gift-cover { visibility: hidden; }
+
+.gift-half {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    overflow: hidden;
+    transition: transform calc(var(--k) * 500ms) cubic-bezier(0.6, 0, 0.3, 1) calc(var(--k) * 750ms);
+}
+.gift-half::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 200%;
+    background-color: var(--white);
+    background-image:
+        linear-gradient(90deg, var(--thread) 50%, transparent 50%),
+        linear-gradient(var(--thread) 50%, transparent 50%);
+    background-size: 28px 28px;
+}
+.gift-half-left { left: 0; }
+.gift-half-left::before { left: 0; }
+.gift-half-right { right: 0; }
+.gift-half-right::before { right: 0; }
+.gift.untied .gift-half-left { transform: translateX(-101%); }
+.gift.untied .gift-half-right { transform: translateX(101%); }
+
+/* Two ribbons, 30px wide with the 3px white edge, edge to edge across the band and top to bottom. */
+.gift-ribbon {
+    position: absolute;
+    z-index: 2;
+    background: var(--ribbon);
+    pointer-events: none;
+    transition:
+        transform calc(var(--k) * 350ms) ease-in calc(var(--k) * 450ms),
+        visibility 0s linear calc(var(--k) * 800ms);
+}
+.gift-ribbon-across {
+    left: 0;
+    right: 0;
+    top: 129px;
+    height: 30px;
+    border-block: 3px solid var(--white);
+    transform-origin: left;
+}
+.gift-ribbon-down {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 30px;
+    margin-left: -15px;
+    border-inline: 3px solid var(--white);
+    transform-origin: top;
+}
+.gift.untied .gift-ribbon { visibility: hidden; }
+.gift.untied .gift-ribbon-across { transform: scaleX(0); }
+.gift.untied .gift-ribbon-down { transform: scaleY(0); }
+
+/* The bow, the kept mark at 150px, its knot on the crossing. Untying: the tails pull longer while
+   the loops shrink into the knot, then the knot lets go and the bow drops away and fades. */
+.gift-bow {
+    position: absolute;
+    z-index: 3;
+    top: 85px;
+    left: 50%;
+    width: 150px;
+    height: 150px;
+    margin-left: -75px;
+    overflow: visible;
+    pointer-events: none;
+    transform-origin: 50% 40%;
+    transition:
+        transform calc(var(--k) * 280ms) cubic-bezier(0.5, 0, 0.9, 0.5) calc(var(--k) * 330ms),
+        opacity calc(var(--k) * 200ms) ease-in calc(var(--k) * 410ms),
+        visibility 0s linear calc(var(--k) * 620ms);
+}
+.gift-bow .bow-ribbon { fill: var(--ribbon); }
+.gift-bow .bow-fold { fill: var(--ink); fill-opacity: 0.3; }
+/* The white edge: about 3px at this size. */
+.gift-bow .bow-edge {
+    fill: none;
+    stroke: var(--white);
+    stroke-width: 1.3;
+    stroke-linejoin: round;
+    transition: opacity calc(var(--k) * 80ms) linear;
+}
+.gift-bow .bow-loop { transform-origin: 16px 12.5px; transition: transform calc(var(--k) * 350ms) cubic-bezier(0.6, 0, 0.3, 1); }
+.gift-bow .bow-tail { transform-origin: 16px 18px; transition: transform calc(var(--k) * 350ms) cubic-bezier(0.6, 0, 0.3, 1); }
+.gift-bow .bow-knot { fill: var(--ink); transform-origin: 16px 12.5px; transition: transform calc(var(--k) * 160ms) ease-in calc(var(--k) * 330ms); }
+.gift.untied .gift-bow { transform: translateY(64px) rotate(-14deg); opacity: 0; visibility: hidden; }
+.gift.untied .bow-edge { opacity: 0; }
+.gift.untied .bow-loop { transform: scale(0.1, 0.45); }
+.gift.untied .bow-tail { transform: translateY(1.5px) scaleY(1.5); }
+.gift.untied .bow-knot { transform: scale(0); }
+
+/* "Untie the bow" sits below the band on white; untied, it goes. */
+.gift-under { padding-top: var(--space-5); display: flex; flex-direction: column; }
+.gift.untied .gift-under { display: none; }
+
+/* Hiding the name, a render that starts untied, and reduce motion: nothing moves. */
+.gift.still, .gift.still * { transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+    .gift, .gift * { transition: none !important; }
+    .gift-first .revealed-name { clip-path: none; }
+}

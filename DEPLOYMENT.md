@@ -258,9 +258,10 @@ provider.
 ### Email notifications (optional)
 
 With a mail relay, Pollyanna emails people when something in an event needs them: "Event is
-open — write your notes" and so on. Emails carry an HTML part and a plain-text part, load
-nothing remote (no images, fonts or tracking), link to the page in Pollyanna, and never
-contain a message, anyone's notes, or who drew whom. Without a relay there are no emails and
+open — write your notes" and so on. Emails carry an HTML part and a plain-text part. The
+HTML's one image, a small bow, travels inside the message as an inline attachment, so
+opening an email loads nothing remote (no images, fonts or tracking). Emails link to the
+page in Pollyanna, and never contain a message, anyone's notes, or who drew whom. Without a relay there are no emails and
 Pollyanna works as before.
 
 | Variable | What it is |
@@ -388,7 +389,7 @@ sudo chown -R 1654:1654 data
 docker compose start
 ```
 
-Use the same draw key as before. Restoring data under a different key makes current slips
+Use the same draw key as before. Restoring data under a different key makes current assignments
 unreadable (section 6). If the backup is from an older Pollyanna version, the newer image
 updates its schema on start.
 
@@ -398,11 +399,11 @@ The draw key seals who drew whom. Pairings are stored so that only someone with 
 database and the key can link a giver to a recipient. The app creates it on first start and
 never shows or logs it.
 
-**If the key is lost, the current draw is lost.** Every slip in an event that has been drawn
-but not yet revealed becomes unreadable: participants see a notice on the event page telling
+**If the key is lost, the current draw is lost.** Every assignment in an event that has been
+drawn but not yet revealed becomes unreadable: participants see a notice on the event page telling
 them to ask an organizer to redraw, and the only recovery is a redraw. Past events lose their
 "who drew whom" givers (shown as "Someone"), and the no-repeat rule can no longer see earlier
-years (the manage page warns about this, and draws still go ahead). Nothing else is affected.
+years (the Organizing page warns about this, and draws still go ahead). Nothing else is affected.
 
 So:
 
@@ -459,11 +460,12 @@ family uses it, do this once with the production provider, with at least three r
    container (`docker compose restart`); you stay signed in.
 5. **Events.** Create an event, add the other accounts (one by email invitation before they
    ever signed in), and check that each of them sees it after signing in.
-6. **The draw.** Draw names. Each participant unfolds their own slip and sees a recipient.
+6. **The draw.** Draw names. Each participant unties the bow on their event page and sees a
+   recipient.
    Nobody, organizers included, sees anyone else's.
-7. **Draw key survives a restart.** Restart the container; slips still unfold.
-8. **Question box.** A giver asks their recipient a question from the slip, and the
-   recipient answers on "Questions from your giver".
+7. **Draw key survives a restart.** Restart the container; the bow still unties to a name.
+8. **Question box.** A giver asks their recipient a question under the untied name, and the
+   recipient answers on "Questions for you".
 9. **Reveal and archive.** Reveal the event (everyone sees who drew whom), then archive it.
    It moves to "Past events". Archived test events stay in the participants' history; use
    test accounts if you don't want that, and delete them afterwards on `/account/delete`.

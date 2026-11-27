@@ -61,9 +61,9 @@ public sealed class OpenProviderTests : IAsyncLifetime
     /// <summary>The refused page's heading, its text, and its buttons (label, href, outlined).</summary>
     static (string Heading, string Text, List<(string Label, string? Href, bool Outlined)> Buttons) Read(IDocument page) =>
     (
-        page.QuerySelector(".empty h1")!.TextContent.Trim(),
-        string.Join(" ", page.QuerySelectorAll(".empty p").Select(p => p.TextContent.Trim())),
-        [.. page.QuerySelectorAll(".actions .button").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"), a.ClassList.Contains("button-outline")))]
+        page.QuerySelector(".lone h1")!.TextContent.Trim(),
+        string.Join(" ", page.QuerySelectorAll(".lone p").Select(p => p.TextContent.Trim())),
+        [.. page.QuerySelectorAll(".actions .button").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"), !a.ClassList.Contains("button-fill")))]
     );
 
     void AssertRefusalLogged(string reason)
@@ -96,7 +96,7 @@ public sealed class OpenProviderTests : IAsyncLifetime
         var (heading, text, buttons) = Read(page);
         Assert.Equal("Pollyanna doesn't know you yet", heading);
         Assert.Equal("Pollyanna doesn't know Sue@Example.com yet. Ask whoever organizes your family's exchange to invite that address, or sign in another way.", text);
-        Assert.Equal("Sue@Example.com", page.QuerySelector(".empty p strong")!.TextContent);
+        Assert.Equal("Sue@Example.com", page.QuerySelector(".lone p strong")!.TextContent);
         Assert.Equal(EveryWayIn, buttons);
         // The provider's icon shows beside its label, as on the chooser.
         var icons = page.QuerySelectorAll(".actions .button img").Select(i => i.GetAttribute("src")).ToList();
@@ -287,7 +287,7 @@ public sealed class OpenProviderTests : IAsyncLifetime
 
         Assert.Equal("Sign-in didn't work", Read(page).Heading);
         Assert.DoesNotContain("evil", page.Body!.TextContent);
-        Assert.Null(page.QuerySelector(".empty strong"));
+        Assert.Null(page.QuerySelector(".lone strong"));
     }
 
     [Fact]

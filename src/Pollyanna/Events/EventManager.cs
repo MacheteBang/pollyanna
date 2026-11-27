@@ -22,10 +22,7 @@ public sealed record NewEvent(
     DateOnly? ExchangeDate,
     Guid? PreviousEventId,
     int NoRepeatDepth,
-    bool TakePart,
-    IReadOnlyCollection<Guid> CopyPeople,
-    IReadOnlyCollection<Guid>? AddPeople = null,
-    string? Email = null);
+    bool TakePart);
 
 /// <summary>
 /// Creating and managing events (spec §4). Callers check who may act (<see cref="Membership"/>);
@@ -92,16 +89,13 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
 
     /// <summary>
     /// Creates a draft with <paramref name="me"/> as its organizer. Linked to an earlier event,
-    /// it takes the ticked people from it and copies their households. The add-people control's
-    /// ticked people and address (spec §4, §7) come in with it: the address adds the one person
-    /// who uses it, or is invited, and one that several people use refuses the whole form. The
-    /// caller checks that the ticked people are ones the creator may pick (<see cref="KnownTo"/>).
-    /// <c>Invited</c> is the address as typed when it became an invitation.
+    /// it takes that event's people and copies their households. Nobody else is added and nobody
+    /// is invited: that is done on the organizing page (spec §4, §7).
     /// </summary>
-    public async Task<(Event? Event, string? Invited, string? Error)> CreateAsync(Guid me, NewEvent input)
+    public async Task<(Event? Event, string? Error)> CreateAsync(Guid me, NewEvent input)
     {
         if (CheckDetails(input.Name, input.BudgetText, input.ExchangeDate, input.NoRepeatDepth) is { } error)
-            return (null, null, error);
+            return (null, error);
 
         Event? previous = null;
         if (input.PreviousEventId is { } previousId)
@@ -110,13 +104,8 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
                 .SingleOrDefaultAsync(e => e.Id == previousId && e.Organizers.Any(o => o.PersonId == me)
                     && EventLifecycle.Standing.Contains(e.Status));
             if (previous is null)
-                return (null, null, "You can only link to an earlier event you organize.");
+                return (null, "You can only link to an earlier event you organize.");
         }
-
-        var email = input.Email?.Trim() ?? "";
-        var address = email == "" ? null : await ResolveAddressAsync(email);
-        if (address?.Error is { } addressError)
-            return (null, null, addressError);
 
         var ev = new Event
         {
@@ -137,12 +126,8 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         {
             var previousPeople = previous.Participants.Select(p => p.PersonId).ToList();
             var alive = await db.People.Living().Where(p => previousPeople.Contains(p.Id)).Select(p => p.Id).ToListAsync();
-            people.UnionWith(input.CopyPeople.Where(id => id != me && alive.Contains(id)));
+            people.UnionWith(alive.Where(id => id != me));
         }
-        if (input.AddPeople is { Count: > 0 } ticked)
-            people.UnionWith(await db.People.Living().Where(p => ticked.Contains(p.Id)).Select(p => p.Id).ToListAsync());
-        if (address?.Person is { } byAddress)
-            people.Add(byAddress.Id);
         foreach (var id in people)
             ev.Participants.Add(new Participant { PersonId = id, JoinedAt = Now });
 
@@ -162,15 +147,8 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         }
 
         db.Events.Add(ev);
-        // The invitation's email waits until the draft opens (spec §4, §15).
-        string? invited = null;
-        if (address?.Invite is { } normalizedEmail)
-        {
-            AddInvitation(ev.Id, email, normalizedEmail, me);
-            invited = email;
-        }
         await db.SaveChangesAsync();
-        return (ev, invited, null);
+        return (ev, null);
     }
 
     public async Task<Outcome> UpdateDetailsAsync(Membership m, Guid me, string? name, string? budget, DateOnly? date, Guid? previousId, int depth)
@@ -238,7 +216,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     async Task<Outcome> AddAsync(Event ev, Guid me, Person person)
     {
         if (await db.Participants.AnyAsync(p => p.EventId == ev.Id && p.PersonId == person.Id))
-            return Outcome.Fail($"{person.DisplayName} is already in the hat.");
+            return Outcome.Fail($"{person.DisplayName} is already taking part.");
         db.Participants.Add(new Participant { EventId = ev.Id, PersonId = person.Id, JoinedAt = Now });
         await outbox.QueueAsync(new AddedToEvent.Cause(ev.Id, person.Id, me));
         await db.SaveChangesAsync();
@@ -283,14 +261,14 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         {
             if (already.Contains(person.Id))
             {
-                messages.Add($"{person.DisplayName} is already in the hat.");
+                messages.Add($"{person.DisplayName} is already taking part.");
                 ok = false;
                 continue;
             }
             db.Participants.Add(new Participant { EventId = m.Event.Id, PersonId = person.Id, JoinedAt = Now });
             await outbox.QueueAsync(new AddedToEvent.Cause(m.Event.Id, person.Id, me));
             if (viaAddress)
-                messages.Add($"{person.DisplayName} has already signed in, so they're in the hat now.");
+                messages.Add($"{person.DisplayName} has already signed in, so they're taking part now.");
             else
                 added.Add(person.DisplayName ?? "");
         }
@@ -370,7 +348,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (m.IsLive)
             return await RemoveDropoutAsync(m, personId, name ?? "them", change);
         return await RemoveAsync(m.Event.Id, personId)
-            ? Outcome.Done($"Took {name ?? "them"} out of the hat.")
+            ? Outcome.Done($"Took {name ?? "them"} out.")
             : Outcome.Fail("They aren't in this event.");
     }
 
@@ -535,7 +513,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
             return Outcome.Fail("Pick two different people.");
         var inEvent = await db.Participants.CountAsync(p => p.EventId == m.Event.Id && (p.PersonId == a || p.PersonId == b));
         if (inEvent != 2)
-            return Outcome.Fail("Pick two people from the hat.");
+            return Outcome.Fail("Pick two people taking part.");
         var exclusion = Exclusion.Between(m.Event.Id, a, b);
         if (await db.Exclusions.AnyAsync(x => x.EventId == m.Event.Id && x.PersonA == exclusion.PersonA && x.PersonB == exclusion.PersonB))
             return Outcome.Fail("That rule is there already.");

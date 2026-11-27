@@ -8,7 +8,7 @@
     <input id="add-people-filter" type="text" autocomplete="off" maxlength="@EventManager.EmailMax">
 </div>
 <fieldset class="choices">
-    <legend>From your exchanges</legend>
+    <legend>People you've shared an event with</legend>
     @if (Model.Known.Count == 0)
     {
         <p class="small">Nobody to list yet. Type their email instead.</p>
@@ -16,12 +16,8 @@
     <ul class="people" role="list">
         @foreach (var p in Model.Known)
         {
-            @* Someone prefilled from the linked earlier event is already ticked there (spec §4). The
-               script shows them again if another earlier event, or none, is picked. *@
-            var groups = Model.GroupsOf(p.Id);
-            var prefilled = Model.Prefilled(p.Id);
-            <li class="person" data-search="@p.Name.ToLowerInvariant()" data-previous-groups="@(groups.Count > 0 ? string.Join(' ', groups) : null)" data-prefilled="@(prefilled ? "true" : "false")" hidden="@prefilled">
-                <input type="checkbox" name="personIds" value="@p.Id" id="add-@p.Id" checked="@Model.Ticked.Contains(p.Id)" disabled="@prefilled">
+            <li class="person" data-search="@p.Name.ToLowerInvariant()">
+                <input type="checkbox" name="personIds" value="@p.Id" id="add-@p.Id" checked="@Model.Ticked.Contains(p.Id)">
                 <partial name="_Avatar" model="p" />
                 <label class="person-body person-name" for="add-@p.Id">@p.Name</label>
             </li>

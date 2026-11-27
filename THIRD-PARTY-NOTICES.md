@@ -1,12 +1,14 @@
 # Third-party notices
 
-## Bow (favicon, apple-touch-icon, empty home page, reveal ribbon, README banner)
+## Bow (favicon, touch icon, the gift on the event page, HTML email)
 
-The bow in `src/Pollyanna/wwwroot/favicon.svg`, `src/Pollyanna/wwwroot/apple-touch-icon.png`,
-`src/Pollyanna/Pages/Index.cshtml`, `src/Pollyanna/Pages/Events/Event.cshtml` and
-`docs/assets/banner.svg` is adapted from
+The bow in `src/Pollyanna/wwwroot/favicon.svg`, `src/Pollyanna/wwwroot/apple-touch-icon.png`
+(drawn from `docs/assets/touch-icon.svg`) and the gift in `src/Pollyanna/Pages/Events/_EventDrawn.cshtml`
+is adapted from
 the "Ribbon" emoji (Flat style) in [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji).
-It has been recoloured to the Pollyanna palette, and the favicon leaves out the inner folds.
+It has been recolored to the Pollyanna palette, and the favicon leaves out the inner folds.
+The bow in every HTML email, `src/Pollyanna/Notifications/bow.png`, is the same bow with its
+folds and a white edge.
 
 ```
 MIT License
@@ -34,6 +36,7 @@ SOFTWARE.
 
 ## Fonts
 
-Courier Prime and Reenie Beanie are under the SIL Open Font License; the licence texts sit
-beside the font files in `src/Pollyanna/wwwroot/fonts`. The wordmark in `docs/assets/banner.svg`
-is Courier Prime Bold converted to outlines.
+Figtree and Playpen Sans are under the SIL Open Font License; the license texts sit beside the
+font files in `src/Pollyanna/wwwroot/fonts`. The files are the latin and latin-ext subsets
+published by Fontsource (5.3.0). The wordmark in `docs/assets/banner.svg` and
+`docs/assets/social-preview.png` is Figtree ExtraBold converted to outlines.

@@ -122,7 +122,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
         // The organizer is told one slip changed, never whose or to whom.
         var notice = await NoticeAsync(Manage(ev));
         Assert.Contains("Took Carol out", notice);
-        Assert.Contains("One person's slip changed", notice);
+        Assert.Contains("One person is now giving to someone new", notice);
         foreach (var name in new[] { "Ann", "Bob", "Dave", "Erin" })
             Assert.DoesNotContain(name, notice);
     }
@@ -145,7 +145,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
         Assert.DoesNotContain(ann, await app.ParticipantsAsync(ev));
         Assert.Equal(EventStatus.Open, await app.StatusAsync(ev));
         Assert.Empty(await RowsAsync(ev));
-        Assert.Contains("Took Ann out and put the names back in the hat", await NoticeAsync(Manage(ev)));
+        Assert.Contains("Took Ann out. The draw is undone.", await NoticeAsync(Manage(ev)));
     }
 
     [Theory]
@@ -338,13 +338,13 @@ public sealed class AfterDrawTests : IAsyncLifetime
         await RemoveAsync(ev, carol, "Patch");
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Contains("Your recipient has changed", page.QuerySelector("main")!.TextContent);
-        Assert.Equal("Ann", page.QuerySelector(".reveal-name")!.TextContent);
-        Assert.Equal("Your recipient has changed", (await browser.GetPageAsync("/")).QuerySelector(".slip-update")!.TextContent.Trim());
+        Assert.Contains("You're giving to someone new.", page.QuerySelector("main")!.TextContent);
+        Assert.Equal("Ann", page.QuerySelector(".revealed-name")!.TextContent);
+        Assert.Equal("You're giving to someone new", (await browser.GetPageAsync("/")).QuerySelector(".waiting")!.TextContent.Trim());
 
         await browser.SubmitAsync(page, $"/events/{ev}/seen");
-        Assert.DoesNotContain("Your recipient has changed", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
-        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".slip-update"));
+        Assert.DoesNotContain("You're giving to someone new.", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
+        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".waiting"));
     }
 
     // ---------- Leaving on one's own ----------
@@ -358,11 +358,11 @@ public sealed class AfterDrawTests : IAsyncLifetime
         var eventPage = await browser.GetPageAsync($"/events/{ev}");
         Assert.NotNull(eventPage.QuerySelector($"a[href='/events/{ev}/leave']"));
 
-        // First confirmation, then the second one explaining someone else's slip changes.
+        // First confirmation, then the second one explaining someone else gives to someone new.
         var second = await browser.SubmitOnAsync($"/events/{ev}/leave", $"/events/{ev}/leave");
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         var page = await TestBrowser.ParseAsync(second);
-        Assert.Contains("Someone else's slip will change", page.Body!.TextContent);
+        Assert.Contains("Names are drawn, so one other person will be giving to someone new.", page.Body!.TextContent);
         Assert.Contains(me, await app.ParticipantsAsync(ev));
 
         var response = await browser.SubmitAsync(page, $"/events/{ev}/leave");
@@ -410,10 +410,10 @@ public sealed class AfterDrawTests : IAsyncLifetime
         var page = await browser.GetPageAsync($"/events/{ev}");
         Assert.Contains("You've asked to leave", page.Body!.TextContent);
         Assert.Null(page.QuerySelector($"a[href='/events/{ev}/leave']"));
-        Assert.NotNull(page.QuerySelector(".reveal"));
+        Assert.NotNull(page.QuerySelector("[data-gift]"));
 
         var manage = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains("Pat wants to leave — redraw needed.", manage.QuerySelector("#status")!.TextContent);
+        Assert.Contains("Pat wants to leave, and that needs a redraw.", manage.QuerySelector("#next-step")!.TextContent);
 
         await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/redraw");
         Assert.DoesNotContain(me, await app.ParticipantsAsync(ev));
@@ -443,7 +443,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
 
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/stay");
         Assert.False(await app.WithDbAsync(db => db.Participants.AnyAsync(p => p.WantsToLeave)));
-        Assert.DoesNotContain("wants to leave", (await browser.GetPageAsync(Manage(ev))).QuerySelector("#status")!.TextContent);
+        Assert.DoesNotContain("wants to leave", (await browser.GetPageAsync(Manage(ev))).QuerySelector("#next-step")!.TextContent);
 
         await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/redraw");
         Assert.Contains(me, await app.ParticipantsAsync(ev));

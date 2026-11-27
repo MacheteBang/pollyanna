@@ -2,58 +2,109 @@
 @model Pollyanna.Pages.Events.QuestionsModel
 @using Pollyanna.Data
 @using Pollyanna.Events
+@using Pollyanna.Infrastructure
 @using Pollyanna.Pages.Shared
+@*
+    "Questions for you" (spec §7, §12), as a conversation: the giver's messages on the left, the
+    viewer's on the right, oldest at the top, a day line between days. While a question is
+    unanswered, the conversation and the reply box are the panel on the cloth and "Send" is
+    filled; otherwise there is no cloth, and the reply box sits in a bar under the conversation.
+    Day lines and times are in UTC on the page ("about 4 PM UTC"); site.js redoes them in the
+    viewer's own time zone (conversations()).
+*@
 @{
-    ViewData["Title"] = "Your giver asks…";
+    ViewData["Title"] = "Questions for you";
     var thread = Model.Thread;
 }
 
-<a class="back" href="/events/@Model.Event.Id">← @Model.Event.Name</a>
-<div class="page-head">
-    <h1>Your giver asks…</h1>
-    <p>The person getting you a gift has a question. Their name stays a secret.</p>
-</div>
+<partial name="_PageHead" model="@(new PageHeadView("Questions for you", "Your giver asks, you answer. Their name stays a secret.", new Pollyanna.Pages.Shared.BackLink(Model.Event.Name, $"/events/{Model.Event.Id}")))" />
+
+@{
+    void Conversation(QuestionThread t)
+    {
+        <ol class="conversation" data-conversation>
+            @{ DateOnly? day = null; }
+            @foreach (var note in t.Notes)
+            {
+                var mine = note.Sender == MessageSender.Recipient;
+                var on = DateOnly.FromDateTime(note.CreatedAt);
+                if (on != day)
+                {
+                    day = on;
+                    <li class="day-line" data-day><time datetime="@Format.IsoDate(on)">@QuestionsModel.DayLine(on, Model.Today)</time></li>
+                }
+                <li class="message @(mine ? "message-mine" : "message-theirs")">
+                    <p class="bubble"><span class="visually-hidden">@(mine ? "You:" : "Your giver:")</span> <span class="bubble-body">@note.Body</span></p>
+                    <p class="message-meta"><time datetime="@Format.IsoHour(note.CreatedAt)" data-said>@QuestionsModel.About(note.CreatedAt.Hour) UTC</time>@if (Model.IsNew(note))
+                        {
+                            <text> · </text><strong class="message-new">new</strong>
+                        }</p>
+                </li>
+            }
+        </ol>
+    }
+
+    async Task Reply(bool fill)
+    {
+        <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "reply" })" />
+        <form method="post" asp-page-handler="reply" id="reply" class="composer">
+            <textarea id="reply-body" name="body" rows="1" maxlength="@EventManager.MessageMax" required
+                      placeholder="Reply to your giver" aria-label="Reply to your giver"></textarea>
+            <button type="submit" class="button @(fill ? "button-fill" : "")">Send</button>
+        </form>
+    }
+
+    async Task Close()
+    {
+        <div class="column conversation-foot">
+            <form method="post" asp-page-handler="close">
+                <button type="submit" class="link-button small">Close this conversation</button>
+            </form>
+        </div>
+    }
+}
 
 @if (thread is not { Notes.Count: > 0 })
 {
-    <section class="slip slip-plain" aria-labelledby="none-heading">
-        <h2 id="none-heading">No questions yet</h2>
-        <p>When your giver asks you something, it shows up here and you can reply.</p>
-    </section>
+    <div class="column below">
+        <p>No questions yet. When your giver asks you something, it shows up here and you can reply.</p>
+    </div>
+}
+else if (Model.Unanswered)
+{
+    <div class="cloth">
+        <div class="panel conversation-panel">
+            @{ Conversation(thread); await Reply(fill: true); }
+        </div>
+    </div>
+    await Close();
 }
 else
 {
-    var notes = new NotesView(thread, MessageSender.Recipient, "Giver");
-    <partial name="_Notes" model="notes" />
-
-    <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "reply" })" />
-
-    if (thread.Closed)
-    {
-        <section class="slip slip-plain" id="reply" aria-labelledby="closed-heading">
-            <h2 id="closed-heading">You closed this conversation</h2>
-            <p>Your giver can't send more questions, and you can't reply, until you reopen it.</p>
-            <form method="post" asp-page-handler="reopen" class="stack">
-                <button type="submit" class="button button-outline">Reopen it</button>
-            </form>
-        </section>
-    }
-    else
-    {
-        <form method="post" asp-page-handler="reply" id="reply" class="slip slip-plain stack">
-            <label for="reply-body">Your reply</label>
-            <textarea id="reply-body" name="body" rows="3" maxlength="@EventManager.MessageMax" required></textarea>
-            <div class="passed-send">
-                <span class="small" data-counter="reply-body">Up to @EventManager.MessageMax.ToString("N0") characters</span>
-                <button type="submit" class="button button-small">Reply</button>
-            </div>
-        </form>
-
-        <div class="thread-close">
-            <form method="post" asp-page-handler="close">
-                <button type="submit" class="link-button tap">Close this conversation</button>
-            </form>
-            <p class="small">Your giver won't be able to send more questions. You can reopen it any time.</p>
+    <div class="column conversation-quiet">
+        @{ Conversation(thread); }
+    </div>
+    <div class="reply-bar">
+        <div class="column">
+            @if (thread.Closed)
+            {
+                <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "reply" })" />
+                <section id="reply" class="conversation-closed" aria-labelledby="closed-heading">
+                    <h2 id="closed-heading">You closed this conversation</h2>
+                    <p class="small soft">Your giver can't send more questions, and you can't reply, until you reopen it.</p>
+                    <form method="post" asp-page-handler="reopen">
+                        <button type="submit" class="button">Reopen it</button>
+                    </form>
+                </section>
+            }
+            else
+            {
+                await Reply(fill: false);
+            }
         </div>
+    </div>
+    if (!thread.Closed)
+    {
+        await Close();
     }
 }

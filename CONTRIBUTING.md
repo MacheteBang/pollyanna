@@ -40,12 +40,12 @@ dotnet run --project src/Pollyanna              # http://localhost:5010
 Open http://localhost:5010. The mock provider shows a form where you choose the `sub`,
 name, email and `email_verified` Pollyanna receives; change the `sub` but keep a verified
 email to try re-linking. Sign in in a second browser profile as someone else to try
-events from both sides: an organizer adds people on the manage page, and an email
+events from both sides: an organizer adds people on the Organizing page, and an email
 invitation turns into a participant when someone signs in with that email. To try the
 draw, open the event with at least 3 participants and no pending invitations, then press
-"Draw names"; each participant unfolds their slip on the event page. Once names are drawn,
-a giver asks their recipient a question from inside the slip, and the recipient replies on
-"Questions from your giver" (`/events/{id}/questions`). An organizer then reveals
+"Draw names"; each participant unties the bow on the event page to see who they're giving
+to. Once names are drawn, a giver asks their recipient a question under the untied name,
+and the recipient replies on "Questions for you" (`/events/{id}/questions`). An organizer then reveals
 the event (everyone sees who drew whom, and threads turn read-only) and archives it, which
 moves it to "Past events" (`/past`). Link a new event to the archived one to try the
 no-repeat rule. `/account/delete` deletes your own account. Development settings
@@ -116,8 +116,9 @@ CI checks that the migrations match the model.
 - `tests/Pollyanna.Tests`: unit and integration tests, including the full OIDC flow against
   the mock issuer hosted in-process.
 - `docs/`: the architecture decisions (`adr/`), the agents' instructions (`agents/`), and the
-  README's banner (`assets/`) and screenshots (`screenshots/`).
+  README's banner, the social preview and the touch icon's source (`assets/`) and the
+  screenshots (`screenshots/`).
 
-Fonts (Courier Prime, Reenie Beanie) are served from `src/Pollyanna/wwwroot/fonts` under the
-SIL Open Font License; the licence texts sit beside them. The bow mark is adapted from
+Fonts (Figtree, Playpen Sans) are served from `src/Pollyanna/wwwroot/fonts` under the
+SIL Open Font License; the license texts sit beside them. The bow mark is adapted from
 Microsoft Fluent Emoji (MIT); see `THIRD-PARTY-NOTICES.md`.

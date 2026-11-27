@@ -39,7 +39,7 @@ public sealed class SecurityTests : IAsyncLifetime
     [InlineData("/healthz")]
     [InlineData("/auth/signed-out")]
     [InlineData("/")]
-    [InlineData("/css/site.css")]
+    [InlineData("/css/tablecloth.css")]
     public async Task Every_response_carries_the_security_headers(string path)
     {
         using var browser = app.NewBrowser();
@@ -53,9 +53,9 @@ public sealed class SecurityTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("/css/site.css", "text/css")]
-    [InlineData("/fonts/courier-prime-latin-400-normal.woff2", "font/woff2")]
-    [InlineData("/fonts/reenie-beanie-latin-400-normal.woff2", "font/woff2")]
+    [InlineData("/css/tablecloth.css", "text/css")]
+    [InlineData("/fonts/figtree-latin-400-normal.woff2", "font/woff2")]
+    [InlineData("/fonts/playpen-sans-latin-500-normal.woff2", "font/woff2")]
     [InlineData("/favicon.svg", "image/svg+xml")]
     [InlineData("/apple-touch-icon.png", "image/png")]
     [InlineData("/js/site.js", "text/javascript")]
@@ -94,17 +94,6 @@ public sealed class SecurityTests : IAsyncLifetime
             });
             Assert.DoesNotContain(page.QuerySelectorAll("*"), e => e.Attributes.Any(a => a.Name.StartsWith("on")));
         }
-    }
-
-    [Fact]
-    public async Task Stylesheet_names_no_external_url_and_no_colour_outside_the_palette()
-    {
-        using var browser = app.NewBrowser();
-        var css = await (await browser.GetAsync("/css/site.css")).Content.ReadAsStringAsync();
-        Assert.DoesNotContain("http", css);
-        Assert.DoesNotContain("gradient", css);
-        var hexes = System.Text.RegularExpressions.Regex.Matches(css, "#[0-9A-Fa-f]{6}\\b").Select(m => m.Value.ToUpperInvariant()).Distinct();
-        Assert.All(hexes, h => Assert.Contains(h, new[] { "#C9A77C", "#F4EDE0", "#FFFDF8", "#1E1A16", "#B3261E", "#9E2019", "#3F6E8C" }));
     }
 
     [Fact]

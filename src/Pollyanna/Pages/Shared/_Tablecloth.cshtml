@@ -1,0 +1,41 @@
+@* The "Tablecloth" layout shell (spec §7, §12), every page's layout (_ViewStart). The masthead
+   runs the full width; the page's body follows it directly, so the page decides where the cloth
+   goes. See notes on the pieces (.column, _PageHead, .cloth > .panel, .below, .button-fill) in
+   tablecloth.css. A page adds a font to preload with a "Preload" section. *@
+@{
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var name = User.Identity?.Name?.Trim();
+    var firstName = string.IsNullOrEmpty(name) ? "Your account" : name.Split(' ', 2)[0];
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>@(ViewData["Title"] is string title ? $"{title} · Pollyanna" : "Pollyanna")</title>
+    <link rel="preload" href="~/fonts/figtree-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="~/fonts/figtree-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+    @await RenderSectionAsync("Preload", required: false)
+    <link rel="stylesheet" href="~/css/tablecloth.css" asp-append-version="true">
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png">
+    <script src="~/js/site.js" asp-append-version="true" defer></script>
+</head>
+<body>
+    <header class="masthead">
+        <a class="brand" href="/"><partial name="_TableclothGirl" model="40" /><span>pollyanna</span></a>
+        @if (signedIn)
+        {
+            <nav class="masthead-end" aria-label="Account">
+                <span class="masthead-slot"></span>
+                <a class="masthead-account" href="/account">@firstName</a>
+            </nav>
+        }
+    </header>
+    <main>
+        <div class="column"><partial name="_Notice" /></div>
+        @RenderBody()
+    </main>
+</body>
+</html>

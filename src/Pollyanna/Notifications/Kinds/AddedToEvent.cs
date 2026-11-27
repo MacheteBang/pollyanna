@@ -29,6 +29,6 @@ sealed class AddedToEvent : NotificationKindDefinition<AddedToEvent.Cause>
         $"You've been added to {context.Event.Name}",
         $"You've been added to \"{context.Event.Name}\" on Pollyanna. " + (context.Event.Status == EventStatus.Open
             ? "Write your notes so your giver knows what to get you: likes, sizes, no-gos."
-            : "Open it to see your slip and write your notes."),
+            : "Open it to see who you're giving to and write your notes."),
         context.EventUrl);
 }

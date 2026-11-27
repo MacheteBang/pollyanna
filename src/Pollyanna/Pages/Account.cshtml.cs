@@ -24,11 +24,16 @@ public sealed class AccountModel(PollyannaDb db, Outbox outbox, EmailSwitch emai
     /// <summary>Whether to show the email switch: only with a mail relay configured.</summary>
     public bool EmailsAvailable => outbox.Enabled;
     public bool EmailsOn { get; private set; }
+    /// <summary>The page head's small line: the person's name and email, whichever they have.</summary>
+    public string? NameAndEmail { get; private set; }
 
     public async Task OnGetAsync()
     {
         var me = User.PersonId();
-        EmailsOn = await db.People.Where(p => p.Id == me).Select(p => p.EmailsOn).SingleAsync();
+        var person = await db.People.Where(p => p.Id == me).Select(p => new { p.EmailsOn, p.DisplayName, p.Email }).SingleAsync();
+        EmailsOn = person.EmailsOn;
+        var parts = new[] { person.DisplayName, person.Email }.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+        NameAndEmail = parts.Count == 0 ? null : string.Join(" · ", parts);
         var logins = await db.Logins.AsNoTracking().Where(l => l.PersonId == me)
             .OrderBy(l => l.CreatedAt).ThenBy(l => l.Issuer).ThenBy(l => l.Subject).ToListAsync();
         Logins = [.. logins.Select(l =>

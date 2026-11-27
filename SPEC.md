@@ -752,6 +752,7 @@ who is asking.
 | `/` | signed in | One panel per event the user takes part in or organizes: its name and the one thing waiting on them; then "New event" and "Past events". With no events, the empty home |
 | `/events/new` | signed in | Create an event as a draft; the creator becomes its organizer and lands on the organizing page, where people are added |
 | `/events/{id}` | participant | Before the draw, the notes editor; after it, the gift that unties to show who the user is giving to, with that person's notes and the question box; once the event is over, the pairings |
+| `/events/{id}/untie` | participant | "Untie the bow" without the script: the event page with the gift already untied and nothing moving (§12 The reveal) |
 | `/events/{id}/questions` | participant | The conversation with the user's giver |
 | `/events/{id}/manage` | organizer | The organizing page: the next step; people and invitations; who can't draw whom; details and organizers; the bigger changes (dropout, late joiner, redraw, archive, cancel); once revealed, the full pairing list |
 | `/past` | signed in | Archived events the user took part in or organized |
@@ -788,10 +789,12 @@ of this spec: its place stays empty until that feature exists. Signed-out
 pages show the mark and wordmark only.
 
 **Page head.** Under the masthead: a small back link ("Home", or the event's
-name on its sub-pages), or the two-way switch; the page title; one small
-soft line. An organizer who also takes part gets the same switch, "My page"
-/ "Organizing", at the top of both the event page and the organizing page.
-An organizer who doesn't take part sees no switch.
+name on its sub-pages); the page title; one small soft line. An organizer
+who also takes part gets the two-way switch, "My page" / "Organizing", on
+both the event page and the organizing page, in place of the back link.
+The event's name comes first there: the switch sits right under the title
+(decided 2026-11-27, user). An organizer who doesn't take part sees no
+switch and keeps the "Home" back link above the title.
 
 **Home, with events.**
 - One panel per event: the event's name and the one thing waiting on the
@@ -864,7 +867,8 @@ archived straight from `drawn` stays sealed (§4): the viewer sees only who
 they were giving to, and no list.
 
 **Organizing an event** (`/events/{id}/manage`).
-1. Head: the switch or a "Home" back link; the title; date and budget; the
+1. Head: a "Home" back link (an organizer who doesn't take part); the
+   title; the switch (an organizer who takes part); date and budget; the
    row of steps (§12 Statuses).
 2. The next step: one sentence on where the event stands and one button.
    - `draft`: "Only organizers can see this event. Open it so the people
@@ -882,13 +886,18 @@ they were giving to, and no list.
      with "Draw names again" and a small "Keep X in instead" link. The
      other reasons a draw is refused (§5.1) are stated in the same place,
      such as "The household X has more than half the people taking part, so
-     they can't all draw someone outside it."
+     they can't all draw someone outside it.", with "Change who can't draw
+     whom", which opens that fold below and moves to it. "Add people" here
+     likewise opens the "Add people" fold and moves to it; without the
+     script both are links to the fold, which the page renders open while
+     the blocker stands.
 3. "Taking part (N)": one row per person. A row says in small words what is
    missing ("no notes yet", "hasn't looked yet", "wants to leave") or
    "done shopping"; a row with nothing to say stays quiet. With nobody:
    "Nobody's taking part yet." Then "Invited, not signed in yet (N)", with
-   "Take back" per row, and "Add people". Once names are drawn: "Invitations
-   by email wait until names are drawn again."
+   "Take back" per row, and "Add people", a fold row (§12 Controls). Once
+   names are drawn: "Invitations by email wait until names are drawn
+   again."
 4. "Who can't draw whom" (households and extra rules) and "Details and
    organizers": closed rows with a summary on the right ("2 households, 1
    rule", "2 organizers") that open in place. The organizers hint reads
@@ -1315,7 +1324,16 @@ is in §14.
   be undone has a red outline. Links are ink at weight 600 with a 2px
   ribbon-blue underline. Keyboard focus is a 3px ribbon-blue ring, offset
   2px. The empty home is the one screen with no filled button: its two
-  halves are equal. With several sign-in providers every provider button is
+  halves are equal. Home with events is the one screen with several: each
+  event's panel has its own waiting line, and that line is the panel's
+  filled button (decided 2026-11-27, user).
+  - A control that only opens something in place is a fold row, the same
+    closed row with a chevron as "Who can't draw whom", never a button:
+    "Add people", "Add a household", "Add a rule", "Edit details" and "Add
+    an organizer" on the organizing page. The form it opens holds the one
+    button, its submit. "Bigger changes" are the exception: each is a real
+    button that opens its confirmation (§7). Every fold opens without the
+    script (decided 2026-11-27, user). With several sign-in providers every provider button is
   outlined, each with its logo (§3); a single button is filled.
 - Wordmark: the girl at 40px, then "pollyanna" in lowercase Figtree 800,
   tightened by 0.02em. There is no separate logo drawing. The product's
@@ -1345,7 +1363,11 @@ is in §14.
     `archived` "over"; `draft` (organizers only) "draft, only organizers can
     see it". Past-event rows carry no status word.
   - The organizing page adds a row of steps, Draft, Open, Names drawn,
-    Revealed, with the current one in ink over a ribbon-blue line.
+    Revealed, read as a trail (decided 2026-11-27, user): the steps in
+    order, joined by chevrons drawn in the 2px line. Done steps are ink at
+    600 with ribbon-blue chevrons after them; the current one is ink at 800
+    over a 2px ribbon-blue line; later steps are soft ink at 400 with
+    pale-blue chevrons. The row fits a 390px phone on one line.
 - The reveal is the one orchestrated motion; nothing else on the page
   moves.
   - Tied: the whole gingham band is the gift, and no white panel shows. A
@@ -1424,34 +1446,127 @@ built. Branch, commit and PR rules are in CLAUDE.md. Questions about anything th
 doesn't cover go to the user one per turn, and each answer is written back into
 this spec.
 
-### Next: the "Tablecloth" identity (specified, not built)
+### Done: the "Tablecloth" identity
 
-Map #50, decided with the user on 2026-11-26 and 27 over tickets #51 to
-#64. §7 (what each screen shows, its words, the about text), §12 and §15
-(**Content**, **Nothing remote**, **Layout**, **Opting out**) now describe
-the new identity, and §9 its tests. **The app on `main` still has "Paper
-slips"** until the work is built; the "Done" entries below describe what
-was built at the time, in the old look and words, and are left as written.
+Spec issue #65 (map #50), decided with the user on 2026-11-26 and 27 over
+#51 to #64 and built as #67 to #80. §7 (what each screen shows, its words,
+the about text), §12 and §15 (**Content**, **Nothing remote**, **Layout**,
+**Opting out**) describe it, and §9 its tests. The "Done" entries below
+describe what was built at the time, in the old "Paper slips" look and
+words, and are left as written.
 
-- What changes: every page's look and layout, the interface words (no
+- What changed: every page's look and layout, the interface words (no
   "hat" or "slip"), the reveal's motion, the HTML email's layout with its
-  one embedded bow, the fonts and icons the app serves, and the README's
-  banner, screenshots and social preview.
-- What doesn't: the page set and paths, the flows, who sees what, the
-  draw, the question box's rules, who is emailed and when, and the emails'
-  words apart from three "slip" phrases (§15 **Content**). No setting, no
-  migration.
-- Decided while writing this spec (2026-11-27, user): the placeholder
-  words left by the mockups stand as drawn (the not-found and server-error
-  pages, "Bigger changes" and the lines under its buttons, "Invited, not
-  signed in yet", "Take back", "Keep X in instead", "Sign in to
-  Pollyanna", "Reply to your giver"), and the README's line under the
-  banner stays as it is.
-- Checked by hand on #64: one sample of the new email layout with the CID
-  bow went over a real relay to a real inbox, and the user reported that
-  it looks good in their mail clients. Which clients was not recorded.
-- The mockups were reviewed in the user's browser at desktop size, not on
-  a real phone.
+  one embedded bow, and the fonts and icons the app serves. What didn't:
+  the page set and paths, the flows, who sees what, the draw, the question
+  box's rules, who is emailed and when, and the emails' words apart from
+  three "slip" phrases (§15 **Content**). No setting, no migration.
+- Decided while writing the spec (2026-11-27, user): the placeholder words
+  left by the mockups stand as drawn (the not-found and server-error pages,
+  "Bigger changes" and the lines under its buttons, "Invited, not signed in
+  yet", "Take back", "Keep X in instead", "Sign in to Pollyanna", "Reply to
+  your giver"), and the README's line under the banner stays as it is.
+- **Foundation (#67).** `Pages/Shared/_Tablecloth.cshtml` is every page's
+  layout (`_ViewStart`): the one-row masthead (the girl, "pollyanna", an
+  empty reserved slot and the first name linking to `/account`, no "Sign
+  out"), then `<main>`; a page decides where the cloth goes. All styles
+  are in `wwwroot/css/tablecloth.css`: the six colors and the gingham's
+  thread as tokens, Figtree and Playpen Sans served from `wwwroot/fonts`
+  (Fontsource 5.3.0), `.cloth > .panel`, `.column`, `.below`, outlined
+  `.button` with `.button-fill` for the one thing to do and `.button-red`
+  for the two destructive actions, `_PageHead`, the girl as
+  `_TableclothGirl`, and the 180px touch icon from
+  `docs/assets/touch-icon.svg`. The signed-out pages carry the short
+  about text (`_AboutShort`); the chooser says "Continue with <label>".
+- **Email (#68).** `EmailLayout.razor` is one white panel on a pale-blue
+  band, with the bow PNG carried in the message as an inline `cid:` image
+  (`EmailBow`, `InlineImage`); `SmtpMailSender.Build` adds
+  `multipart/related`. No stamp.
+- **Error and sign-in failure pages (#69):** the girl large, one or two
+  sentences and one way out (`.lone`).
+- **Home, empty home and past events (#70).** One panel per event, its
+  waiting line (`EventManager.WaitingAsync`) the panel's filled button, so
+  home is the one screen with several (§12 Controls);
+  `Format.StatusLine` gives the status words used everywhere.
+- **Account and delete confirmation (#71).** Three groups; the email switch
+  saves on change (`site.js saveOnChange()`), with a Save button without
+  the script.
+- **Event page (#72, #76, #77).** `Event.cshtml` renders `_EventHead` (the
+  switch "My page" / "Organizing" for an organizer who takes part,
+  `_EventSwitch`; the countdown; date, budget and status) and then
+  `_EventBeforeDraw`, `_EventDrawn` or `_EventOver`. Before the draw the
+  notes editor comes first. Drawn, the gift (`section#gift`) unties with
+  one class, `.gift.untied`, its beats timed by `--k` (`.gift-later`
+  0.4); `/events/{id}/untie` shows it untied without the script; "reduce
+  motion" turns the motion off. The page preloads Playpen Sans while it
+  can write the name. Over, the viewer's own pairing first, then
+  `_WhoDrewWhom`, then folds (`.fold`) for threads and notes.
+- **Organizing (#73, #78).** One next step on the cloth per status, with
+  its blocker and the way to fix it in place, including "Keep X in
+  instead" (`EventManager.KeepInAsync`); the steps row; people rows in
+  words; "Who can't draw whom" and "Details and organizers" as folds with
+  a summary; "Bigger changes" at the bottom, each a button over one line.
+- **New event (#74).** Name, date, budget, taking part and an optional
+  earlier event; the form adds nobody else and lands on the organizing
+  page.
+- **Questions (#75).** Message bubbles (`ol.conversation`), "new" until a
+  reply, on the cloth with a filled "Send" only while unanswered;
+  `site.js conversations()` puts days and times in the viewer's zone.
+- **"Paper slips" removed (#79).** `_Layout`, `site.css`, `_Girl`,
+  `_Notes`/`NotesView`, `Format.Stamp`, Courier Prime and Reenie Beanie,
+  `messageTimes()` and the new-event prefill hooks are deleted. The last
+  "slip" strings were reworded: leaving after the draw says "One other
+  person is now giving to someone new.", and asking without a readable
+  assignment says "We can't find who you're giving to. Ask an organizer to
+  draw names again." The delete-account page's "Hand over first" names the
+  Organizing page instead of the manage page. THIRD-PARTY-NOTICES.md lists
+  Figtree and Playpen Sans.
+- **Tests.** `TableclothTests`, `HomeTests`, `EventPageTests`,
+  `EventOverTests`, `OrganizingPageTests`, `OrganizingChangesTests`,
+  `QuestionConversationTests`, `AccountPageTests`, `ErrorPagesTests`,
+  `EventCreationTests`, `HtmlEmailTests`, and `OneLookTests`, which walks
+  every page a person can reach, as participant and organizer in each
+  status (leaving included), and finds no "hat" or "slip" outside the long
+  about text, no "exchanges", one stylesheet and nothing from another
+  origin; it also checks that the old stylesheet and fonts are gone and
+  the favicon is served. `PairingSecrecyTests` renders every reworked page,
+  the new-event form and the untied gift included.
+- **Checked by hand:** one sample of the new email over a real relay to a
+  real inbox (#64; the user found it good, clients not recorded). Each
+  page was rendered in headless Chromium at 390px and 900px by its ticket.
+  Not yet done: walking every screen on a real phone against the mockups,
+  with and without "reduce motion" and the script, and the #51 checklist
+  on states the mockups didn't cover.
+- **Review fixes (2026-11-27).** The event's name now comes before the
+  switch on the event and organizing pages; the steps row is a chevron
+  trail; "Add people", "Add a household", "Add a rule", "Edit details" and
+  "Add an organizer" are fold rows, not buttons, and a link to a fold
+  (`a[data-opens]`, `site.js foldLinks()`) opens it; a draw refused over
+  households or rules offers "Change who can't draw whom"; "Questions from
+  your giver" shows before the first question too. `tablecloth.css` keeps
+  to the §12 spacing steps, and `PageHeadView` takes one `BackLink`.
+- **README, banner, screenshots and social preview (#80).**
+  `docs/assets/banner.svg` is redrawn as §12 says (the girl from
+  `_TableclothGirl` and the wordmark as Figtree 800 outlines on a 680 × 200
+  panel, its 16px corner the 10px one at the README's 820px, over 20px
+  gingham), and
+  `docs/assets/social-preview.png` is the same at 1280 × 640 (an 880 × 280
+  panel); the owner uploads it in the repository settings. Courier Prime
+  left `THIRD-PARTY-NOTICES.md`, and the bow's credit no longer names the
+  banner. The screenshots were taken with headless Chromium from a locally
+  run app with the demo people (Mary Johnson organizing, James & John and
+  Robert & Linda as households, `example.com` addresses), "Cousins' Swap"
+  drawn and "Book Club Swap" open, after `document.fonts.ready`:
+  `home.png`, `event-tied.png`, `event-untied.png` and
+  `questions-phone.png` at 390 CSS px, `organizing.png` at 640 (cropped
+  under the folds), all at 2×, and `untie.gif`, the first untying slowed
+  ten times through the DevTools animation clock and replayed at its real
+  timing. The old screenshots are gone. The README's alt texts describe the
+  new look, and README, CONTRIBUTING.md and DEPLOYMENT.md no longer speak of
+  slips or the manage page (the README's line under the banner and its
+  "names in the hat" description of the tradition stay). Checked by hand:
+  the rendered banner, social preview, screenshots and frames of the GIF;
+  not the README as GitHub shows it in its light and dark themes.
 
 ### Done: milestone 1 (sign-in)
 

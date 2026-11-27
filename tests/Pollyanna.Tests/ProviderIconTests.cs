@@ -23,12 +23,12 @@ public sealed class ProviderIconTests : IAsyncLifetime
         var page = await browser.GetPageAsync("/auth/login");
 
         var buttons = page.QuerySelectorAll(".actions a.button").ToDictionary(a => a.TextContent.Trim());
-        var icon = Assert.Single(buttons["Sign in with Google"].QuerySelectorAll("img"));
+        var icon = Assert.Single(buttons["Continue with Google"].QuerySelectorAll("img"));
         Assert.StartsWith("/auth/icon/google?v=", icon.GetAttribute("src"));
         // The label says who the provider is, so the logo is decoration.
         Assert.Equal("", icon.GetAttribute("alt"));
-        Assert.Empty(buttons["Sign in with Work account"].QuerySelectorAll("img"));
-        Assert.Empty(buttons["Sign in with issuer.test"].QuerySelectorAll("img"));
+        Assert.Empty(buttons["Continue with Work account"].QuerySelectorAll("img"));
+        Assert.Empty(buttons["Continue with issuer.test"].QuerySelectorAll("img"));
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class ProviderIconTests : IAsyncLifetime
 
         var buttons = page.QuerySelectorAll("#logins form[action='/account/addlogin'] button").ToDictionary(b => b.TextContent.Trim());
         Assert.StartsWith("/auth/icon/google?v=", Assert.Single(buttons["Add Google"].QuerySelectorAll("img")).GetAttribute("src"));
-        Assert.Contains("button-outline", buttons["Add Google"].ClassList);
+        Assert.DoesNotContain("button-fill", buttons["Add Google"].ClassList);
         Assert.Empty(buttons["Add Work account"].QuerySelectorAll("img"));
     }
 

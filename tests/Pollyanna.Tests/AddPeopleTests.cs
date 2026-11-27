@@ -110,7 +110,7 @@ public sealed class AddPeopleTests : IAsyncLifetime
 
         Assert.Equal(new[] { me, carol }.Order(), (await app.ParticipantsAsync(ev)).Order());
         Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
-        Assert.Equal("Carol has already signed in, so they're in the hat now.", await NoticeAsync(ev));
+        Assert.Equal("Carol has already signed in, so they're taking part now.", await NoticeAsync(ev));
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public sealed class AddPeopleTests : IAsyncLifetime
         await app.EventAsync("Last year", EventStatus.Archived, [me], [me, ann]);
         var theirs = await app.EventAsync("Theirs", EventStatus.Open, [org], [me, org]);
 
-        var response = await browser.PostWithTokenAsync("/", AddPeople(theirs), [new("personIds", ann.ToString())]);
+        var response = await browser.PostWithTokenAsync("/account", AddPeople(theirs), [new("personIds", ann.ToString())]);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.DoesNotContain(ann, await app.ParticipantsAsync(theirs));
 

@@ -37,13 +37,13 @@ public sealed class SeveralProvidersTests : IAsyncLifetime
         Assert.All(cookies, c => Assert.Matches("^[^=]+=;", c));
         var page = await TestBrowser.ParseAsync(response);
         Assert.Equal("Sign in to Pollyanna", page.QuerySelector("h1")!.TextContent);
-        Assert.Contains("Choose how you'd like to sign in.", page.Body!.TextContent);
+        Assert.Contains("Pollyanna is your family's gift exchange", page.Body!.TextContent);
         var buttons = page.QuerySelectorAll(".actions a.button").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"))).ToList();
         Assert.Equal(
         [
-            ("Sign in with issuer.test", "/auth/login/default?returnUrl=%2Faccount%3Ftab%3Dx"),
-            ("Sign in with Google", "/auth/login/google?returnUrl=%2Faccount%3Ftab%3Dx"),
-            ("Sign in with Work account", "/auth/login/work?returnUrl=%2Faccount%3Ftab%3Dx"),
+            ("Continue with issuer.test", "/auth/login/default?returnUrl=%2Faccount%3Ftab%3Dx"),
+            ("Continue with Google", "/auth/login/google?returnUrl=%2Faccount%3Ftab%3Dx"),
+            ("Continue with Work account", "/auth/login/work?returnUrl=%2Faccount%3Ftab%3Dx"),
         ], buttons);
     }
 

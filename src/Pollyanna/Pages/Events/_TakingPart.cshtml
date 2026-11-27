@@ -1,0 +1,7 @@
+@model Pollyanna.Pages.Events.EventModel
+@* "Taking part (N)" (spec §7): everyone else in the event (_People). N counts the viewer too.
+   After the draw the same list sits in a fold that opens from the count (_EventDrawn). *@
+<section aria-labelledby="people-heading">
+    <h2 id="people-heading" class="section-title">Taking part (@Model.Participants.Count)</h2>
+    <partial name="_People" model="Model" />
+</section>

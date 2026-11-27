@@ -4,15 +4,15 @@
     ViewData["Title"] = "Sign in";
 }
 
-<div class="empty">
-    <h1>Sign in to Pollyanna</h1>
-    <p>Choose how you'd like to sign in.</p>
+<div class="cloth">
+    <div class="panel">
+        <h1 class="panel-title">Sign in to Pollyanna</h1>
+        <partial name="_AboutShort" />
+        <div class="actions">
+            @foreach (var choice in Model.Choices)
+            {
+                <partial name="_ProviderButton" model="choice" />
+            }
+        </div>
+    </div>
 </div>
-<div class="actions">
-    @foreach (var choice in Model.Choices)
-    {
-        <partial name="_ProviderButton" model="choice" />
-    }
-</div>
-
-<partial name="_About" />

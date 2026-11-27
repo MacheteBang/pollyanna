@@ -7,8 +7,14 @@ using MimeKit;
 
 namespace Pollyanna.Notifications;
 
-/// <summary>One email, ready for the relay: the plain text and the same email as HTML (spec §15).</summary>
-public sealed record OutgoingMail(string To, string Subject, string Body, string Html);
+/// <summary>
+/// One email, ready for the relay: the plain text, the same email as HTML, and the one image the
+/// HTML shows, which travels inside the message (spec §15).
+/// </summary>
+public sealed record OutgoingMail(string To, string Subject, string Body, string Html, InlineImage Image);
+
+/// <summary>A PNG carried inside the message, which the HTML names as <c>cid:</c><see cref="ContentId"/>.</summary>
+public sealed record InlineImage(string ContentId, string FileName, byte[] Png);
 
 /// <summary>The mail relay as the outbox sees it. Tests replace it with an in-memory fake (spec §11).</summary>
 public interface IMailSender
@@ -35,8 +41,9 @@ public sealed class SmtpMailSender(PollyannaSettings settings) : IMailSender
     }
 
     /// <summary>
-    /// The message for <paramref name="mail"/>: <c>multipart/alternative</c>, the plain text first
-    /// and the HTML second, both UTF-8 (spec §9).
+    /// The message for <paramref name="mail"/>: <c>multipart/alternative</c>, the plain text first,
+    /// then <c>multipart/related</c> holding the HTML and its inline image (spec §9, §15). Text
+    /// parts are UTF-8.
     /// </summary>
     public static MimeMessage Build(OutgoingMail mail, MailboxAddress from)
     {
@@ -48,7 +55,14 @@ public sealed class SmtpMailSender(PollyannaSettings settings) : IMailSender
         plain.SetText(System.Text.Encoding.UTF8, mail.Body);
         var html = new TextPart("html");
         html.SetText(System.Text.Encoding.UTF8, mail.Html);
-        message.Body = new MultipartAlternative { plain, html };
+        var image = new MimePart("image", "png")
+        {
+            ContentId = mail.Image.ContentId,
+            Content = new MimeContent(new MemoryStream(mail.Image.Png)),
+            ContentDisposition = new ContentDisposition(ContentDisposition.Inline) { FileName = mail.Image.FileName },
+            ContentTransferEncoding = ContentEncoding.Base64,
+        };
+        message.Body = new MultipartAlternative { plain, new MultipartRelated { html, image } };
         return message;
     }
 

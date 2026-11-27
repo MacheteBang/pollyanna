@@ -40,7 +40,8 @@ public sealed class AccountDeletionTests : IAsyncLifetime
         await app.DisposeAsync();
     }
 
-    Task<HttpResponseMessage> DeleteAsync() => browser.PostWithTokenAsync("/account/delete", "/account/delete");
+    // The form token comes from /account: a blocked confirmation has no form of its own.
+    Task<HttpResponseMessage> DeleteAsync() => browser.PostWithTokenAsync("/account", "/account/delete");
 
     Task<bool> HasLoginsAsync() => app.WithDbAsync(db => db.Logins.AnyAsync(l => l.PersonId == me));
 
@@ -212,12 +213,12 @@ public sealed class AccountDeletionTests : IAsyncLifetime
         await DeleteAsync();
 
         var page = await annBrowser.GetPageAsync($"/events/{ev}");
-        var lines = page.QuerySelectorAll("li.pairing").Select(li => li.TextContent).ToList();
-        Assert.Contains(lines, l => l.Contains("Former participant") && l.Contains("Ann (you)") && l.IndexOf("Former") < l.IndexOf("Ann (you)"));
-        Assert.Contains(lines, l => l.Contains("Carol") && l.Contains("Former participant"));
+        var lines = page.QuerySelectorAll(".who-drew-whom > li").Select(li => li.Children.Last().TextContent.Trim()).ToList();
+        Assert.Contains("Former participant gave to you", lines);
+        Assert.Contains("Carol gave to Former participant", lines);
         Assert.Equal("Former participant asked you", page.QuerySelector("#questions-heading")!.TextContent);
         Assert.Contains("Socks or gloves?", page.QuerySelector("#questions")!.TextContent);
-        Assert.Contains("Former participant", page.QuerySelector("#people-heading")!.ParentElement!.TextContent);
+        Assert.Equal("Former participant gave to you", page.QuerySelector("#slip .over-line:last-child")!.TextContent);
     }
 
     [Fact]
@@ -231,7 +232,7 @@ public sealed class AccountDeletionTests : IAsyncLifetime
         Assert.NotEqual(me, newId);
         Assert.False(await HasLoginsAsync());
         Assert.Equal(HttpStatusCode.NotFound, (await again.GetAsync($"/events/{ev}")).StatusCode);
-        Assert.Contains("Nothing to unwrap yet", (await again.GetPageAsync("/")).QuerySelector("h1")!.TextContent);
+        Assert.Contains("No events yet", (await again.GetPageAsync("/")).QuerySelector("h1")!.TextContent);
     }
 
     [Fact]

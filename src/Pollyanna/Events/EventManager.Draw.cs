@@ -24,9 +24,10 @@ public sealed record DrawCheck(string? Blocker, string? Problem, bool Predictabl
 
 /// <summary>
 /// The signed-in giver's own slip (spec §5.2, §7): their recipient and the markers on the card.
-/// Nothing here says anything about anyone else's assignment.
+/// Nothing here says anything about anyone else's assignment. <paramref name="Viewed"/> is the
+/// assignment's own "viewed" flag: whether the giver has untied it before (spec §12 The reveal).
 /// </summary>
-public sealed record Slip(PersonRow Recipient, string Notes, bool NotesUpdated, bool RecipientChanged, bool DrawnAgain);
+public sealed record Slip(PersonRow Recipient, string Notes, bool NotesUpdated, bool RecipientChanged, bool DrawnAgain, bool Viewed = false);
 
 /// <summary>
 /// The draw, redraw and the changes after it (spec §5). Pairings are held in plaintext only in
@@ -110,17 +111,19 @@ public sealed partial class EventManager
         var invitations = await db.Invitations.CountAsync(i => i.EventId == eventId);
         if (invitations > 0)
             return invitations == 1
-                ? "Can't draw yet: 1 invitation is still waiting for someone to sign in. Cancel it or wait."
-                : $"Can't draw yet: {invitations} invitations are still waiting for someone to sign in. Cancel them or wait.";
+                ? "Can't draw yet: 1 invitation is still waiting for someone to sign in. Take it back or wait."
+                : $"Can't draw yet: {invitations} invitations are still waiting for someone to sign in. Take them back or wait.";
         if (rules.People.Count < Draw.MinPeople)
-            return $"Can't draw yet: the hat needs at least {Draw.MinPeople} people.";
+            return $"Can't draw yet: at least {Draw.MinPeople} people need to take part.";
         return null;
     }
 
-    public async Task<DrawCheck> CheckDrawAsync(Membership m)
+    public Task<DrawCheck> CheckDrawAsync(Membership m) => CheckDrawAsync(m.Event.Id);
+
+    async Task<DrawCheck> CheckDrawAsync(Guid eventId)
     {
-        var (rules, incomplete) = await RulesWithNoRepeatAsync(m.Event.Id);
-        if (await BlockerAsync(m.Event.Id, rules) is { } blocker)
+        var (rules, incomplete) = await RulesWithNoRepeatAsync(eventId);
+        if (await BlockerAsync(eventId, rules) is { } blocker)
             return new DrawCheck(blocker, null, false);
         if (Draw.Problem(rules) is { } problem)
             return new DrawCheck(null, "Can't draw: " + problem, false, incomplete);
@@ -173,7 +176,7 @@ public sealed partial class EventManager
             return Outcome.Fail(refusal);
         return await InTransactionAsync(async () =>
             await ResetToOpenAsync(m.Event.Id) is { } left
-                ? Outcome.Done("The names are back in the hat. Draw again when you're ready." + LeftNote(left))
+                ? Outcome.Done("The draw is undone. Draw again when you're ready." + LeftNote(left))
                 : Outcome.Fail("Names haven't been drawn."));
     }
 
@@ -213,9 +216,9 @@ public sealed partial class EventManager
         if (!people.Contains(personId))
             return Outcome.Fail("They aren't in this event.");
         if (change is null)
-            return Outcome.Fail("Choose whether to patch the draw or redraw everyone.");
+            return Outcome.Fail("Choose whether to patch the draw or draw names again.");
         if (people.Count - 1 < Draw.MinPeople)
-            return Outcome.Fail($"Taking {name} out would leave fewer than {Draw.MinPeople} people in the hat. Redraw first, then take them out.");
+            return Outcome.Fail($"Taking {name} out would leave fewer than {Draw.MinPeople} people taking part. Draw names again first, then take them out.");
 
         return await InTransactionAsync(async () =>
         {
@@ -223,13 +226,13 @@ public sealed partial class EventManager
             {
                 await RemoveAsync(id, personId);
                 return await ResetToOpenAsync(id) is { } left
-                    ? Outcome.Done($"Took {name} out and put the names back in the hat. Draw again when you're ready." + LeftNote(left))
+                    ? Outcome.Done($"Took {name} out. The draw is undone. Draw again when you're ready." + LeftNote(left))
                     : Outcome.Fail("Names haven't been drawn.");
             }
 
             return await TakeOutAfterDrawAsync(id, personId)
-                ? Outcome.Done($"Took {name} out of the hat. One person's slip changed to cover it, and they'll see a notice. Nobody else's changed.")
-                : Outcome.Fail($"A patch isn't possible for {name}: their giver can't take over their recipient under the draw rules. Redraw everyone instead.");
+                ? Outcome.Done($"Took {name} out. One person is now giving to someone new, and they'll see a notice. Nobody else changed.")
+                : Outcome.Fail($"A patch isn't possible for {name}: their giver can't take over their recipient under the draw rules. Draw names again instead.");
         });
     }
 
@@ -259,7 +262,7 @@ public sealed partial class EventManager
         if (await db.Participants.Where(p => p.EventId == id && p.PersonId == me).Select(p => p.WantsToLeave).SingleAsync())
             return Outcome.Done("You've already asked to leave. You'll be taken out when the organizers draw names again.");
         if (await InTransactionAsync(() => TakeOutAfterDrawAsync(id, me), left => left))
-            return Outcome.Done($"You've left {m.Event.Name}. One other person's slip changed to cover it.");
+            return Outcome.Done($"You've left {m.Event.Name}. One other person is now giving to someone new.");
 
         // Rolled back: they stay in, asking for a redraw.
         await InTransactionAsync(async () =>
@@ -284,15 +287,32 @@ public sealed partial class EventManager
         return Outcome.Done("You're staying in. The organizers won't see your request any more.");
     }
 
+    /// <summary>
+    /// An organizer keeps someone in who asked to leave (spec §7, "Keep X in instead"): the request
+    /// is dropped and nothing else changes, as revealing or archiving would do.
+    /// </summary>
+    public async Task<Outcome> KeepInAsync(Membership m, Guid personId)
+    {
+        if (!m.IsLive)
+            return Outcome.Fail("There's nobody to keep in now.");
+        var participant = await db.Participants.SingleOrDefaultAsync(p => p.EventId == m.Event.Id && p.PersonId == personId);
+        if (participant is null || !participant.WantsToLeave)
+            return Outcome.Fail("They haven't asked to leave.");
+        participant.WantsToLeave = false;
+        await db.SaveChangesAsync();
+        var name = await db.People.Where(p => p.Id == personId).Select(p => p.DisplayName).SingleAsync();
+        return Outcome.Done($"Kept {name ?? "them"} in. Their request to leave is dropped.");
+    }
+
     // ---------- Late joiners ----------
 
     async Task<Outcome> AddLateJoinerAsync(Membership m, Guid me, Person person, DrawChange? change, Guid? householdId)
     {
         var id = m.Event.Id;
         if (await db.Participants.AnyAsync(p => p.EventId == id && p.PersonId == person.Id))
-            return Outcome.Fail($"{person.DisplayName} is already in the hat.");
+            return Outcome.Fail($"{person.DisplayName} is already taking part.");
         if (change is null)
-            return Outcome.Fail("Choose whether to patch the draw or redraw everyone.");
+            return Outcome.Fail("Choose whether to patch the draw or draw names again.");
         if (householdId is { } h && !await db.Households.AnyAsync(x => x.Id == h && x.EventId == id))
             return Outcome.Fail("That household is gone already.");
 
@@ -304,12 +324,12 @@ public sealed partial class EventManager
 
             if (change == DrawChange.Redraw)
                 return await ResetToOpenAsync(id) is { } left
-                    ? Outcome.Done($"Added {person.DisplayName} and put the names back in the hat. Draw again when you're ready." + LeftNote(left))
+                    ? Outcome.Done($"Added {person.DisplayName}. The draw is undone. Draw again when you're ready." + LeftNote(left))
                     : Outcome.Fail("Names haven't been drawn.");
 
             return await PatchInAsync(id, person.Id)
-                ? Outcome.Done($"Added {person.DisplayName}. One person's slip changed to make room, and they'll see a notice. Nobody else's changed.")
-                : Outcome.Fail($"A patch isn't possible: no pairing can make room for {person.DisplayName} under the draw rules. Add them with a redraw instead.");
+                ? Outcome.Done($"Added {person.DisplayName}. One person is now giving to someone new to make room, and they'll see a notice. Nobody else changed.")
+                : Outcome.Fail($"A patch isn't possible: no pairing can make room for {person.DisplayName} under the draw rules. Add them and draw names again instead.");
         });
     }
 
@@ -348,7 +368,8 @@ public sealed partial class EventManager
         return new Slip(recipient.Row, recipient.Notes,
             NotesUpdated: live && row.Viewed && recipient.NotesVersion != row.NotesVersionSeen,
             RecipientChanged: live && row.RecipientChanged,
-            DrawnAgain: live && m.Event.Redrawn && !row.Viewed);
+            DrawnAgain: live && m.Event.Redrawn && !row.Viewed,
+            Viewed: row.Viewed);
     }
 
     /// <summary>
@@ -377,37 +398,6 @@ public sealed partial class EventManager
         participant.DoneShopping = done;
         await db.SaveChangesAsync();
         return Outcome.Done(done ? "Marked as done shopping." : "Marked as still shopping.");
-    }
-
-    /// <summary>
-    /// What the home page marks with a dot, per drawn event (spec §5.2, §6): the giver's recipient
-    /// changed or updated their notes, the recipient replied, or the viewer's own giver
-    /// wrote. Each line names nobody: the home page isn't behind "Tap to reveal".
-    /// </summary>
-    public async Task<Dictionary<Guid, List<string>>> SlipUpdatesAsync(Guid me, IEnumerable<Guid> drawnEvents)
-    {
-        var updates = new Dictionary<Guid, List<string>>();
-        foreach (var eventId in drawnEvents)
-        {
-            var lines = new List<string>();
-            var row = await hat.GiverSlipUpdatesAsync(eventId, me);
-            if (row is not null)
-            {
-                if (row.RecipientChanged)
-                    lines.Add("Your recipient has changed");
-                else if (row.Viewed && row.RecipientNotesVersion != row.NotesVersionSeen)
-                    lines.Add("Your recipient updated their notes");
-                if (row.Replies)
-                    lines.Add("Your recipient replied");
-            }
-
-            if (await hat.HasUnreadQuestionAsync(eventId, me))
-                lines.Add("Your giver asked you something");
-
-            if (lines.Count > 0)
-                updates[eventId] = lines;
-        }
-        return updates;
     }
 
     // ---------- What organizers see ----------

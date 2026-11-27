@@ -5,42 +5,50 @@
     var check = Model.Check;
     string List(IReadOnlyList<string> names) => string.Join(", ", names);
 }
+@* A confirmation (spec §7): no cloth. The question is the title, what it costs follows as plain
+   text, then the red button and the way out as a link. Blocked, only what to do first. *@
 
-<a class="back" href="/account">← Your account</a>
-<h1>Delete your account?</h1>
+<partial name="_PageHead" model='new Pollyanna.Pages.Shared.PageHeadView("Delete your account?", Back: new("Your account", "/account"))' />
 
-@if (check.OnlyOrganizerOf.Count > 0)
-{
-    <section class="slip slip-plain" aria-labelledby="organizer-heading">
-        <h2 id="organizer-heading">Hand over first</h2>
-        <p>You're the only organizer of @List(check.OnlyOrganizerOf). Add another organizer on @(check.OnlyOrganizerOf.Count == 1 ? "its" : "each") manage page, then come back.</p>
-    </section>
-}
-@if (check.WaitingForRedraw.Count > 0)
-{
-    <section class="slip slip-plain" aria-labelledby="waiting-heading">
-        <h2 id="waiting-heading">Waiting for a redraw</h2>
-        <p>Taking you out of @List(check.WaitingForRedraw) means drawing names again. The organizers have been asked, and you can delete your account once they have.</p>
-    </section>
-}
+<div class="column groups">
+    @if (check.OnlyOrganizerOf.Count > 0)
+    {
+        <section class="group group-loose" aria-labelledby="organizer-heading">
+            <h2 class="group-title" id="organizer-heading">Hand over first</h2>
+            <p>You're the only organizer of @List(check.OnlyOrganizerOf). Add another organizer on @(check.OnlyOrganizerOf.Count == 1 ? "its" : "each one's") Organizing page, then come back.</p>
+        </section>
+    }
+    @if (check.WaitingForRedraw.Count > 0)
+    {
+        <section class="group group-loose" aria-labelledby="waiting-heading">
+            <h2 class="group-title" id="waiting-heading">Waiting for a redraw</h2>
+            <p>Taking you out of @List(check.WaitingForRedraw) means drawing names again. The organizers have been asked, and you can delete your account once they have.</p>
+        </section>
+    }
 
-<section class="slip slip-plain" aria-labelledby="delete-heading">
-    <h2 id="delete-heading">What deleting does</h2>
-    <p>Your name, email, picture and notes are deleted, and you're signed out. In events that are over, you stay in the lists as "Former participant", and anything you wrote in a question thread stays for the other person.</p>
-    @if (check.Leaves.Count > 0)
+    @if (check.Blocked)
     {
-        <p>You leave @List(check.Leaves).</p>
+        <a class="way-out" href="/account">Back to your account</a>
     }
-    @if (check.SlipChanges.Count > 0)
+    else
     {
-        <p>You also leave @List(check.SlipChanges), where names are drawn: whoever drew you is given your recipient instead. If the draw rules don't allow that, nothing is deleted yet, and the organizers are asked to draw names again.</p>
+        <div class="group group-loose">
+            <p>Your name, email, picture and notes are deleted, and you're signed out. In events that are over, you stay in the lists as "Former participant", and anything you wrote in a question thread stays for the other person.</p>
+            @if (check.Leaves.Count > 0)
+            {
+                <p>You leave @List(check.Leaves).</p>
+            }
+            @if (check.SlipChanges.Count > 0)
+            {
+                <p>You also leave @List(check.SlipChanges), where names are drawn: whoever drew you is given your recipient instead. If the draw rules don't allow that, nothing is deleted yet, and the organizers are asked to draw names again.</p>
+            }
+            <p class="small soft">Signing in again later starts a new, empty account.</p>
+        </div>
+        <div class="group group-loose">
+            <form method="post" action="/account/delete" asp-antiforgery="true" class="group">
+                <button type="submit" class="button button-red button-strong">Delete my account</button>
+            </form>
+            <a class="way-out" href="/account">Keep my account</a>
+        </div>
     }
-    <p>Signing in again later starts a new, empty account.</p>
-    @if (!check.Blocked)
-    {
-        <form method="post" action="/account/delete" asp-antiforgery="true" class="stack">
-            <button type="submit" class="button">Delete my account</button>
-        </form>
-    }
-    <a class="center tap" href="/account">Keep my account</a>
-</section>
+</div>

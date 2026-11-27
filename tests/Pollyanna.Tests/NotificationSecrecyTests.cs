@@ -31,7 +31,9 @@ public sealed class NotificationSecrecyTests
         await app.SendMailAsync();
         var sent = new List<string>();
         while (app.Mail.Sent.TryDequeue(out var m))
-            sent.Add($"To: {m.To}\nSubject: {m.Subject}\n{m.Body}\n{m.Html}".Replace(ev.ToString(), "{event}"));
+            // The whole email, its inline bow included (spec §9, §15).
+            sent.Add(($"To: {m.To}\nSubject: {m.Subject}\n{m.Body}\n{m.Html}\n"
+                + $"{m.Image.ContentId} {m.Image.FileName} {Convert.ToBase64String(m.Image.Png)}").Replace(ev.ToString(), "{event}"));
         return [.. sent.Order(StringComparer.Ordinal)];
     }
 
@@ -237,6 +239,8 @@ public sealed class NotificationSecrecyTests
             var annabel = Id("Annabel");
             Assert.True(await app.WithDbAsync(db => db.Participants.AnyAsync(p => p.EventId == ev && p.PersonId == annabel && p.WantsToLeave)));
             await StepAsync("request to leave");
+            // The page settles a request to leave first ("Keep Annabel in instead"), then reveals.
+            await ManageAsync(org, ev, "keepin");
             await ManageAsync(org, ev, "reveal", Form(("confirmed", "true")));
             Assert.Equal(EventStatus.Revealed, await app.StatusAsync(ev));
             await StepAsync("revealed");

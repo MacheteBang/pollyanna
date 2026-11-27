@@ -50,10 +50,10 @@ public sealed class RevealArchiveTests : IAsyncLifetime
     }
 
     Task<HttpResponseMessage> RevealAsync(Guid ev, bool confirmed = true) =>
-        browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/reveal", confirmed ? Form(("confirmed", "true")) : null);
+        browser.PostWithTokenAsync("/account", $"{Manage(ev)}/reveal", confirmed ? Form(("confirmed", "true")) : null);
 
     Task<HttpResponseMessage> ArchiveAsync(Guid ev, bool keep = false) =>
-        browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/archive", keep ? Form(("keepMessages", "true")) : null);
+        browser.PostWithTokenAsync("/account", $"{Manage(ev)}/archive", keep ? Form(("keepMessages", "true")) : null);
 
     async Task<string?> NoticeAsync(string path)
     {
@@ -61,13 +61,9 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         return (page.QuerySelector(".notice-error") ?? page.QuerySelector(".notice"))?.TextContent;
     }
 
-    /// <summary>The revealed list as "Giver → Recipient" lines; a person's name is the last thing beside their avatar.</summary>
-    static List<string> Lines(AngleSharp.Html.Dom.IHtmlDocument page) =>
-        [.. page.QuerySelectorAll("li.pairing").Select(li =>
-        {
-            var people = li.QuerySelectorAll(".pairing-person").Select(p => (p.Children.LastOrDefault() ?? p).TextContent.Trim()).ToList();
-            return $"{people[0]} → {people[1]}";
-        })];
+    /// <summary>The "Who drew whom" rows (event page or organizing page) as their words ("Ann gave to Bob"), without the picture.</summary>
+    static List<string> Pairs(AngleSharp.Html.Dom.IHtmlDocument page) =>
+        [.. page.QuerySelectorAll(".who-drew-whom > li").Select(li => li.Children.Last().TextContent.Trim())];
 
     Task<int> MessageCountAsync(Guid ev) =>
         app.WithDbAsync(db => db.Messages.CountAsync(x => db.Assignments.Any(a => a.Id == x.AssignmentId && a.EventId == ev)));
@@ -147,15 +143,14 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         await RevealAsync(ev);
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Equal(["Ann → Bob", "Bob → Carol", "Carol → Pat (you)", "Pat (you) → Ann"], Lines(page).Order());
-        Assert.Equal(2, page.QuerySelectorAll("li.pairing-mine").Length);
+        Assert.Equal(["Ann gave to Bob", "Bob gave to Carol", "Carol gave to you", "You gave to Ann"], Pairs(page).Order());
+        Assert.Equal(["You gave to Ann", "Carol gave to you"], page.QuerySelectorAll("#slip .over-line").Select(p => p.TextContent));
         Assert.Null(page.QuerySelector("[data-reveal]"));
 
         // An organizer who isn't in the hat sees it on the manage page.
         var oliveEvent = await oliveBrowser.GetFollowingAsync($"/events/{ev}");
         var manage = await TestBrowser.ParseAsync(oliveEvent);
-        Assert.Equal(4, Lines(manage).Count);
-        Assert.Contains("Pat → Ann", Lines(manage));
+        Assert.Equal(["Ann gave to Bob", "Bob gave to Carol", "Carol gave to Pat", "Pat gave to Ann"], Pairs(manage).Order());
 
         Assert.Equal(HttpStatusCode.NotFound, (await outsiderBrowser.GetAsync($"/events/{ev}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await outsiderBrowser.GetAsync(Manage(ev))).StatusCode);
@@ -169,9 +164,9 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         await RevealAsync(ev);
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        var lines = Lines(page);
+        var lines = Pairs(page);
         Assert.Equal(4, lines.Count);
-        Assert.Equal("Someone → Carol", lines[^1]);
+        Assert.Equal("Someone gave to Carol", lines[^1]);
         Assert.Contains("can't be read any more", page.QuerySelector("#pairings")!.TextContent);
     }
 
@@ -192,7 +187,7 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         Assert.Contains("CAROL ASKED", page.QuerySelector("#questions")!.TextContent.ToUpperInvariant());
         Assert.DoesNotContain("Ann asks Bob privately", page.Source.Text);
         Assert.Null(page.QuerySelector("textarea[name='body']"));
-        Assert.Empty(page.QuerySelectorAll(".passed-new"));
+        Assert.Empty(page.QuerySelectorAll(".message-new"));
         Assert.DoesNotContain("Ann asks Bob privately", (await browser.GetPageAsync(Manage(ev))).Source.Text);
 
         // Posting is refused, and the questions page sends back to the event page.
@@ -228,7 +223,6 @@ public sealed class RevealArchiveTests : IAsyncLifetime
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, true)));
 
         var page = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains("Ann asked to leave", page.QuerySelector("#reveal")!.TextContent);
         Assert.Contains("Ann asked to leave", page.QuerySelector("#archive")!.TextContent);
 
         await RevealAsync(ev);
@@ -251,12 +245,11 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         Assert.Contains("deleted", await NoticeAsync(Manage(ev)));
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Contains("You got", page.QuerySelector("#slip")!.TextContent);
-        Assert.Contains("Ann", page.QuerySelector(".reveal-name")!.TextContent);
-        Assert.Null(page.QuerySelector(".pairings"));
-        Assert.Null(page.QuerySelector(".passed-note"));
+        Assert.Equal("You gave to Ann", page.QuerySelector("#slip .over-line")!.TextContent);
+        Assert.Null(page.QuerySelector(".who-drew-whom"));
+        Assert.Null(page.QuerySelector(".bubble"));
         Assert.Null(page.QuerySelector("#your-notes textarea"));
-        Assert.Null((await browser.GetPageAsync(Manage(ev))).QuerySelector(".pairings"));
+        Assert.Null((await browser.GetPageAsync(Manage(ev))).QuerySelector(".who-drew-whom"));
     }
 
     [Fact]
@@ -288,9 +281,9 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         await ArchiveAsync(ev, keep: true);
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Equal(4, Lines(page).Count);
+        Assert.Equal(4, Pairs(page).Count);
         Assert.Equal("Carol asked you", page.QuerySelector("#questions-heading")!.TextContent);
-        Assert.Equal("ARCHIVED", page.QuerySelector(".stamp")!.TextContent);
+        Assert.EndsWith(" · over", page.QuerySelector(".page-head-line")!.TextContent);
     }
 
     [Theory]
@@ -311,12 +304,12 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         await ArchiveAsync(ev);
 
         var manage = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains("archived", manage.QuerySelector("#status")!.TextContent);
-        Assert.Empty(manage.QuerySelectorAll("#status form"));
+        Assert.Contains("archived", manage.QuerySelector("#archived")!.TextContent);
+        Assert.Null(manage.QuerySelector(".cloth"));
         Assert.Null(manage.QuerySelector($"form[action='{Manage(ev)}/details']"));
 
         await RevealAsync(ev);
-        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/redraw");
+        await browser.PostWithTokenAsync("/account", $"{Manage(ev)}/redraw");
         await ArchiveAsync(ev, keep: true);
         Assert.Equal(EventStatus.Archived, await app.StatusAsync(ev));
         Assert.False(await app.WithDbAsync(db => db.Events.Where(e => e.Id == ev).Select(e => e.PairingsRevealed).SingleAsync()));
@@ -360,12 +353,12 @@ public sealed class RevealArchiveTests : IAsyncLifetime
 
         var home = await browser.GetPageAsync("/");
         Assert.Null(home.QuerySelector($"a[href='/events/{ev}']"));
-        Assert.Equal("Past events (2)", home.QuerySelector("a[href='/past']")!.TextContent);
+        Assert.Equal("Past events", home.QuerySelector("a[href='/past']")!.TextContent);
 
         var past = await browser.GetPageAsync("/past");
-        var links = past.QuerySelectorAll(".slips a").Select(a => a.GetAttribute("href")).ToList();
+        var links = past.QuerySelectorAll("main li a").Select(a => a.GetAttribute("href")).ToList();
         Assert.Equal([$"/events/{ev}", $"/events/{organizedOnly}"], links);
         Assert.DoesNotContain($"/events/{notMine}", past.Source.Text);
-        Assert.Contains("You organized", past.QuerySelectorAll(".slips li")[1].TextContent);
+        Assert.Contains("You organized", past.QuerySelectorAll("main li")[1].TextContent);
     }
 }
