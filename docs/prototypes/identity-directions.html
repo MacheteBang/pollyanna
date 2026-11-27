@@ -1,0 +1,512 @@
+<title>Pollyanna Identity Directions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE, throwaway. Answers map ticket #54: which direction the new identity takes.
+  Three directions on the same two screens (home, event page with the reveal), phone first,
+  switchable from the floating bar or with #ribbon / #ink / #shapes.
+  Published as a page, so there is no doctype or body tag here. Fonts come from Google Fonts
+  for the mockup only; the app would serve its own copies.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,600;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Figtree:wght@400;600;800&family=Shantell+Sans:wght@500&family=Young+Serif&display=swap">
+<style>
+/* Layout: a review board. One direction at a time: notes on the left, two phone screens, then the system strip. */
+:root {
+  --bg: #EFEEF1; --panel: #FFFFFF; --fg: #1B1A20; --muted: #5C5A66; --line: #CFCDD6; --bar: #1B1A20; --bar-fg: #FFFFFF;
+  --chrome: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  /* Direction A: one ribbon */
+  --a-ground: #FFFFFF; --a-ink: #1E1A2B; --a-hero: #FF6A13; --a-muted: #5E5A6B; --a-soft: #F3F2F5;
+  /* Direction B: ink and bows */
+  --b-ground: #FAFBFC; --b-ink: #1D2433; --b-bow: #C8275F; --b-muted: #566074; --b-wash: #EEF1F5;
+  /* Direction C: cut shapes */
+  --c-ground: #FFFFFF; --c-ink: #161331; --c-blue: #2747D8; --c-gold: #FFC02E; --c-pink: #FF8FB8; --c-muted: #55526B;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #16151A; --panel: #212026; --fg: #EEEDF2; --muted: #A9A7B5; --line: #3B3944; --bar: #EEEDF2; --bar-fg: #16151A; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #16151A; --panel: #212026; --fg: #EEEDF2; --muted: #A9A7B5; --line: #3B3944; --bar: #EEEDF2; --bar-fg: #16151A; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--chrome);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 110px }
+.board { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px }
+.board > header h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 6px; text-wrap: balance }
+.board > header p { margin: 0; color: var(--muted); max-width: 65ch }
+.dir { display: none; gap: 28px; flex-direction: column }
+.dir.on { display: flex }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start }
+.brief { flex: 1 1 260px; min-width: 0; max-width: 340px; display: flex; flex-direction: column; gap: 14px }
+.brief h2 { font-size: 1.35rem; margin: 0; line-height: 1.2 }
+.brief p { margin: 0 }
+.brief dl { margin: 0; display: grid; gap: 10px }
+.brief dt { font-weight: 700; font-size: .85rem }
+.brief dd { margin: 0; color: var(--muted); font-size: .95rem }
+.screen { flex: 0 1 375px; min-width: 0; display: flex; flex-direction: column; gap: 8px }
+.screen > figcaption, .cap { font-size: .85rem; color: var(--muted) }
+figure { margin: 0 }
+.phone { width: 100%; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; color-scheme: light }
+.replay { align-self: flex-start; font: inherit; font-size: .85rem; color: var(--fg); background: none; border: 1px dashed var(--muted); border-radius: 6px; padding: 4px 10px; cursor: pointer }
+.strip { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-wrap: wrap; gap: 24px 36px }
+.strip > div { min-width: 0; display: flex; flex-direction: column; gap: 8px }
+.strip h3 { margin: 0; font-size: .85rem; color: var(--muted); font-weight: 700 }
+.sw { display: flex; flex-wrap: wrap; gap: 8px }
+.sw span { width: 74px; font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums }
+.sw i { display: block; height: 44px; border-radius: 6px; border: 1px solid var(--line); margin-bottom: 3px }
+.marks { display: flex; align-items: flex-end; gap: 14px; padding: 10px; border-radius: 8px; color-scheme: light }
+.spec { padding: 10px 12px; border-radius: 8px; max-width: 300px }
+.states { display: flex; gap: 18px; padding: 10px 12px; border-radius: 8px; flex-wrap: wrap }
+
+/* Prototype switcher: not part of any design */
+.switch { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+  display: flex; align-items: center; gap: 4px; background: var(--bar); color: var(--bar-fg); border-radius: 999px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.35); max-width: calc(100% - 32px) }
+.switch button { font: inherit; color: inherit; background: none; border: 0; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 1.2rem }
+.switch button:hover { background: rgba(128,128,128,.3) }
+.switch output { min-width: 11.5em; text-align: center; font-weight: 700; white-space: nowrap }
+:focus-visible { outline: 3px solid #2F7BF6; outline-offset: 2px }
+button, a { -webkit-tap-highlight-color: transparent }
+
+/* Shared reveal mechanics (cover collapses, inside opens); the look is per direction */
+.cover-wrap, .inside-wrap { display: grid; transition: grid-template-rows .55s ease .65s }
+.cover-wrap { grid-template-rows: 1fr } .inside-wrap { grid-template-rows: 0fr }
+.cover-wrap > *, .inside-wrap > * { min-height: 0; overflow: hidden }
+.untied .cover-wrap { grid-template-rows: 0fr } .untied .inside-wrap { grid-template-rows: 1fr }
+.cover { font: inherit; color: inherit; border: 0; padding: 0; margin: 0; width: 100%; cursor: pointer; text-align: center; display: block; transition: visibility 0s 1.2s }
+.untied .cover { visibility: hidden }
+.inside-wrap > * { visibility: hidden; transition: visibility 0s 1.2s }
+.untied .inside-wrap > * { visibility: visible; transition-delay: .6s }
+@media (prefers-reduced-motion: reduce) { .phone *, .phone *::before { transition-duration: .01s !important; transition-delay: 0s !important } }
+
+/* ---------- A: one ribbon ---------- */
+.da { background: var(--a-ground); color: var(--a-ink); font: 16px/1.45 Figtree, system-ui, sans-serif }
+.da a { color: inherit }
+.a-mast { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px }
+.a-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em; text-decoration: none }
+.a-acct { font-weight: 600; font-size: .9rem; border: 2px solid var(--a-ink); padding: 5px 12px; text-decoration: none }
+.a-home { padding: 8px 20px 28px }
+.a-cord { list-style: none; margin: 0 0 0 9px; padding: 6px 0 30px 24px; border-left: 3px solid var(--a-ink); display: flex; flex-direction: column; gap: 30px }
+.a-cord li { position: relative }
+.a-cord li::before { content: ""; position: absolute; left: -33px; top: 7px; width: 15px; height: 15px; border-radius: 50%; background: var(--a-ink) }
+.a-cord h3 { margin: 0 0 8px; font-size: 1.3rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.2 }
+.a-do { display: inline-block; background: var(--a-hero); font-weight: 800; padding: 10px 16px; text-decoration: none }
+.a-when { margin: 10px 0 0; font-weight: 600 }
+.a-meta { margin: 2px 0 0; font-size: .85rem; color: var(--a-muted); display: flex; gap: 12px; flex-wrap: wrap }
+.a-st { display: inline-flex; align-items: center; gap: 6px }
+.a-st::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor }
+.a-st.open::before { background: linear-gradient(90deg, currentColor 50%, transparent 50%) }
+.a-st.drawn::before { background: currentColor }
+.a-end { display: flex; align-items: center; gap: 14px; margin-top: -8px }
+.a-end a { font-weight: 600; font-size: .95rem }
+.a-ev { padding: 4px 20px 22px }
+.a-back { font-size: .9rem; font-weight: 600 }
+.a-ev h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin: 14px 0 6px }
+.a-count { font-size: 1.15rem; font-weight: 800; margin: 0 }
+.a-sub { margin: 0; color: var(--a-muted); font-size: .92rem }
+.a-reveal { margin-top: 20px; background: var(--a-hero) }
+.a-reveal .cover { background: var(--a-hero) }
+.a-reveal .cover svg { display: block; width: 100%; height: 130px; margin-top: 26px }
+.a-reveal .cover b { display: inline-block; background: var(--a-ink); color: #fff; padding: 12px 18px; margin: 14px 0 30px; font-weight: 800 }
+.a-pull { fill: none; stroke: var(--a-ink); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .6s ease-in }
+.a-knot { fill: var(--a-ink); transition: opacity .2s .5s }
+.untied .a-pull { stroke-dashoffset: 1 } .untied .a-knot { opacity: 0 }
+.a-name { padding: 22px 20px 24px; border-top: 7px solid var(--a-ink) }
+.a-name small { font-weight: 600; font-size: .95rem; display: block }
+.a-name strong { font-size: 4rem; font-weight: 800; letter-spacing: -.03em; line-height: 1 }
+.a-in { background: var(--a-ground); padding: 20px 0 4px; display: flex; flex-direction: column; gap: 16px }
+.a-in h4, .a-rest h4 { margin: 0 0 4px; font-size: .95rem; font-weight: 800 }
+.a-notes { margin: 0; border-left: 3px solid var(--a-ink); padding-left: 14px }
+.a-ask textarea { width: 100%; font: inherit; border: 2px solid var(--a-ink); border-radius: 0; padding: 10px; background: #fff; color: inherit; resize: vertical }
+.a-ask button { font: inherit; font-weight: 800; background: var(--a-ink); color: #fff; border: 0; padding: 10px 16px; margin-top: 8px }
+.a-ask p { margin: 0 0 6px; font-size: .85rem; color: var(--a-muted) }
+.a-done { display: flex; gap: 8px; align-items: center; font-size: .95rem }
+.a-done input { width: 18px; height: 18px; accent-color: var(--a-ink) }
+.a-rest { margin-top: 22px; display: flex; flex-direction: column }
+.a-rest > * { border-top: 1px solid var(--a-ink); padding: 13px 0; margin: 0 }
+.a-rest p span { color: var(--a-muted) }
+.a-rest .leave { font-size: .85rem; color: var(--a-muted); border-top: 0 }
+.a-line { display: flex; justify-content: space-between; gap: 12px; align-items: baseline }
+
+/* ---------- B: ink and bows ---------- */
+.db { background: var(--b-ground); color: var(--b-ink); font: 16px/1.55 "Atkinson Hyperlegible Next", system-ui, sans-serif }
+.db a { color: inherit; text-underline-offset: 3px }
+.b-serif, .db h1, .db h3 { font-family: "Young Serif", Georgia, serif; font-weight: 400 }
+.b-mast { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px 0 }
+.b-brand { display: flex; align-items: center; gap: 8px; font-size: 1.45rem; text-decoration: none }
+.b-acct { font-size: .95rem }
+.b-home { padding: 6px 22px 30px }
+.b-top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px }
+.b-top h1 { font-size: 1.9rem; line-height: 1.1; margin: 0 0 22px }
+.b-entry { padding: 20px 0; border-top: 1.5px solid var(--b-ink); border-radius: 60% 40% 0 0 / 3px 2px 0 0 }
+.b-entry h3 { font-size: 1.4rem; line-height: 1.2; margin: 0 0 6px }
+.b-do { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.05rem }
+.b-when { margin: 6px 0 0 } .b-when em { color: var(--b-muted) }
+.b-meta { margin: 2px 0 0; font-size: .88rem; color: var(--b-muted) }
+.b-st { font-family: "Young Serif", Georgia, serif; font-style: italic; color: var(--b-ink) }
+.b-new { display: inline-block; margin-top: 8px; font-size: .95rem }
+.b-ev { padding: 8px 22px 26px }
+.b-back { font-size: .9rem }
+.b-ev h1 { font-size: 2rem; line-height: 1.1; margin: 14px 0 4px }
+.b-count { margin: 0; font-size: 1.1rem; font-weight: 700 }
+.b-sub { margin: 0; color: var(--b-muted); font-size: .92rem }
+.b-reveal { margin-top: 14px }
+.b-reveal .cover { background: none }
+.b-reveal .cover svg { display: block; width: 100%; height: auto }
+.b-reveal .cover b { display: inline-block; margin: 2px 0 18px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px }
+.b-rib { fill: none; stroke: var(--b-bow); stroke-width: 9; stroke-dasharray: 1; transition: stroke-dashoffset .6s ease-in .15s }
+.b-bowg { transition: transform .6s ease-in, opacity .5s ease-in .1s; transform-origin: 160px 100px; transform-box: view-box }
+.untied .b-rib { stroke-dashoffset: 1 } .untied .b-bowg { transform: translateY(46px) rotate(-14deg); opacity: 0 }
+.b-in { padding: 10px 0 0; display: flex; flex-direction: column; gap: 18px }
+.b-in small { display: block; font-size: .95rem; color: var(--b-muted) }
+.b-hand { font-family: "Shantell Sans", "Comic Sans MS", cursive; font-weight: 500; font-size: 3.6rem; line-height: 1.05; display: inline-flex; align-items: center; gap: 12px; clip-path: inset(0 100% 0 0); transition: clip-path .9s ease-out 1.2s }
+.untied .b-hand { clip-path: inset(0 0 0 0) }
+.b-in h4, .b-rest h4 { margin: 0 0 4px; font-size: .95rem; font-weight: 700 }
+.b-notes { margin: 0; font-family: "Young Serif", Georgia, serif; font-size: 1.08rem; line-height: 1.5 }
+.b-box { border: 1.5px solid var(--b-ink); border-radius: 255px 12px 225px 12px / 12px 225px 12px 255px }
+.b-ask textarea { width: 100%; font: inherit; padding: 12px 14px; background: #fff; color: inherit; resize: vertical }
+.b-ask p { margin: 0 0 6px; font-size: .85rem; color: var(--b-muted) }
+.b-ask button { font: inherit; font-weight: 700; background: var(--b-ink); color: #fff; padding: 9px 18px; margin-top: 8px }
+.b-done { display: flex; gap: 8px; align-items: center; font-size: .95rem }
+.b-done input { width: 18px; height: 18px; accent-color: var(--b-bow) }
+.b-rest { margin-top: 24px }
+.b-rest > * { margin: 0; padding: 13px 0; border-top: 1.5px solid var(--b-ink); border-radius: 40% 60% 0 0 / 2px 3px 0 0 }
+.b-rest p span { color: var(--b-muted) }
+.b-rest .leave { font-size: .85rem; color: var(--b-muted); border-top: 0 }
+
+/* ---------- C: cut shapes ---------- */
+.dc { background: var(--c-ground); color: var(--c-ink); font: 16px/1.45 "Bricolage Grotesque", system-ui, sans-serif }
+.dc a { color: inherit }
+.c-mast { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px }
+.c-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.5rem; letter-spacing: -.03em; text-decoration: none }
+.c-acct { background: var(--c-ink); color: #fff !important; font-weight: 600; padding: 7px 14px; border-radius: 14px; text-decoration: none; font-size: .9rem }
+.c-home { padding: 0 12px 20px; display: flex; flex-direction: column; gap: 12px }
+.c-block { border-radius: 28px; padding: 20px; display: flex; flex-direction: column; gap: 14px }
+.c-blue { background: var(--c-blue); color: #fff } .c-gold { background: var(--c-gold) } .c-pink { background: var(--c-pink) }
+.c-headrow { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start }
+.c-block h3 { margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.02 }
+.c-days { text-align: right; font-weight: 600; font-size: .8rem; line-height: 1.1; flex: none }
+.c-days b { display: block; font-size: 2.1rem; font-weight: 800; letter-spacing: -.03em; line-height: .95; font-variant-numeric: tabular-nums }
+.c-do { background: var(--c-ink); color: #fff !important; font-weight: 800; font-size: 1.1rem; text-align: center; padding: 14px; border-radius: 18px; text-decoration: none }
+.c-blue .c-do { background: #fff; color: var(--c-ink) !important }
+.c-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: .88rem; font-weight: 600; align-items: center }
+.c-st { display: inline-flex; align-items: center; gap: 6px }
+.c-st svg { width: 18px; height: 14px }
+.c-st.draft::before { content: ""; width: 12px; height: 12px; border: 2.5px solid currentColor; border-radius: 3px }
+.c-st.open::before { content: ""; width: 13px; height: 13px; background: currentColor; border-radius: 50% }
+.c-new { text-align: center; font-weight: 600; padding: 12px }
+.c-ev { padding: 0 12px 20px; display: flex; flex-direction: column; gap: 12px }
+.c-ev h1 { margin: 6px 0 0; font-size: 2.3rem; font-weight: 800; letter-spacing: -.035em; line-height: 1 }
+.c-big { display: flex; align-items: baseline; gap: 10px; font-weight: 600 }
+.c-big b { font-size: 4.2rem; font-weight: 800; letter-spacing: -.04em; line-height: .9; font-variant-numeric: tabular-nums }
+.c-sub { margin: 0; font-weight: 600; font-size: .92rem }
+.c-back { font-weight: 600; font-size: .9rem; color: #fff !important }
+.c-reveal .cover { background: var(--c-gold); border-radius: 28px; position: relative; padding: 0 }
+.c-band { position: absolute; left: 50%; top: 0; bottom: 0; width: 46px; margin-left: -23px; background: var(--c-pink) }
+.c-reveal .cover svg { position: relative; display: block; width: 210px; height: 140px; margin: 34px auto 0; overflow: visible }
+.c-reveal .cover b { position: relative; display: inline-block; background: var(--c-ink); color: #fff; font-weight: 800; font-size: 1.1rem; padding: 14px 26px; border-radius: 18px; margin: 18px 0 30px }
+.c-pl, .c-pr, .c-kn { transition: transform .6s cubic-bezier(.5,0,.8,.4), opacity .3s .4s; transform-box: view-box; transform-origin: 60px 40px }
+.untied .c-pl { transform: translate(-70px, -30px) rotate(-50deg); opacity: 0 }
+.untied .c-pr { transform: translate(70px, -30px) rotate(50deg); opacity: 0 }
+.untied .c-kn { transform: scale(0) }
+.c-in { display: flex; flex-direction: column; gap: 12px }
+.c-name small { font-weight: 600; font-size: 1rem }
+.c-name strong { font-size: 5rem; font-weight: 800; letter-spacing: -.045em; line-height: .9 }
+.c-soft { background: #EFEEF6; border-radius: 28px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px }
+.c-soft h4 { margin: 0 0 2px; font-size: 1rem; font-weight: 800 }
+.c-soft p { margin: 0 }
+.c-ask textarea { width: 100%; font: inherit; border: 0; border-radius: 16px; padding: 12px 14px; background: #fff; color: inherit; resize: vertical }
+.c-ask small { color: var(--c-muted); font-weight: 600 }
+.c-ask button { font: inherit; font-weight: 800; background: var(--c-ink); color: #fff; border: 0; border-radius: 16px; padding: 11px 20px; margin-top: 8px }
+.c-done { display: flex; gap: 8px; align-items: center; font-weight: 600 }
+.c-done input { width: 20px; height: 20px; accent-color: var(--c-blue) }
+.c-list { display: flex; flex-direction: column; gap: 8px }
+.c-list > * { background: #EFEEF6; border-radius: 18px; padding: 13px 18px; margin: 0; font-weight: 600; display: flex; justify-content: space-between; gap: 12px }
+.c-list span { color: var(--c-muted) }
+.c-list .leave { background: none; font-size: .85rem; color: var(--c-muted); justify-content: center }
+</style>
+
+<!-- Marks. Rough stand-ins drawn as plain SVG so each direction can be judged; not the final bow or girl. -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0">
+  <filter id="wob" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter>
+  <symbol id="a-bow" viewBox="0 0 120 90"><g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"><path d="M60 40C40 8 6 14 10 40c4 24 36 16 50 0Z"/><path d="M60 40c20-32 54-26 50 0-4 24-36 16-50 0Z"/><path d="M60 40c-8 16-14 28-24 42M60 40c8 16 14 28 24 42"/></g><circle cx="60" cy="40" r="8" fill="currentColor"/></symbol>
+  <symbol id="a-girl" viewBox="0 0 64 64"><g fill="currentColor"><circle cx="32" cy="22" r="15"/><path d="M6 64c0-17 13-22 26-22s26 5 26 22Z"/></g><g stroke="currentColor" stroke-width="9" stroke-linecap="round"><path d="M19 30 11 50M45 30l8 20"/></g><path d="M32 7v22" stroke="#fff" stroke-width="2"/><g fill="currentColor"><path d="M11 50 1 44v13ZM11 50l10-6v13ZM53 50l-10-6v13ZM53 50l10-6v13Z"/></g></symbol>
+  <symbol id="b-bow" viewBox="0 0 120 90"><g filter="url(#wob)" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" style="fill:var(--b-bow)"><path d="M56 40C44 24 22 14 10 20c-5 10-4 28 2 38 16 2 34-6 44-18Z"/><path d="M64 40c12-16 34-26 46-20 5 10 4 28-2 38-16 2-34-6-44-18Z"/><path d="M55 46c-4 12-10 22-20 34l14-2c6-8 10-18 12-30Z"/><path d="M65 46c4 12 10 22 20 34l-14-2c-6-8-10-18-12-30Z"/><rect x="52" y="31" width="16" height="18" rx="5"/><path d="M22 30c8 2 18 6 26 10M98 30c-8 2-18 6-26 10" fill="none" stroke-width="2"/></g></symbol>
+  <symbol id="b-girl" viewBox="0 0 120 130"><g filter="url(#wob)" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 12c20 0 31 14 31 30S80 70 60 70 29 58 29 42 40 12 60 12Z"/><path d="M60 13c-1 16 0 30 1 44"/><path d="M12 128c2-26 20-40 48-40s46 14 48 40"/><ellipse cx="30" cy="66" rx="8" ry="7"/><ellipse cx="26" cy="79" rx="8" ry="7"/><ellipse cx="23" cy="92" rx="7" ry="7"/><ellipse cx="90" cy="66" rx="8" ry="7"/><ellipse cx="94" cy="79" rx="8" ry="7"/><ellipse cx="97" cy="92" rx="7" ry="7"/><g style="fill:var(--b-bow)"><path d="M22 103 6 95l2 18ZM22 103l16-8-2 18ZM98 103l-16-8 2 18ZM98 103l16-8-2 18Z"/><circle cx="22" cy="103" r="4"/><circle cx="98" cy="103" r="4"/></g></g></symbol>
+  <symbol id="c-bow" viewBox="0 0 120 80"><g stroke-width="12" stroke-linejoin="round" fill="currentColor" stroke="currentColor"><path class="c-pl" d="M54 40 14 16v48Z"/><path class="c-pr" d="M66 40l40-24v48Z"/></g><circle class="c-kn" cx="60" cy="40" r="13" style="fill:var(--knot,#161331)"/></symbol>
+  <symbol id="c-girl" viewBox="0 0 64 64"><rect x="8" y="42" width="48" height="30" rx="15" style="fill:var(--c-blue)"/><g stroke-width="10" stroke-linecap="round" style="stroke:var(--c-ink)"><path d="M18 28 11 48M46 28l7 20"/></g><circle cx="32" cy="22" r="16" style="fill:var(--c-ink)"/><g stroke-width="4" stroke-linejoin="round" style="fill:var(--c-pink);stroke:var(--c-pink)"><path d="M10 50 3 46v9ZM12 50l7-4v9ZM52 50l-7-4v9ZM54 50l7-4v9Z"/></g></symbol>
+</svg>
+
+<div class="board">
+  <header>
+    <h1>Three directions for Pollyanna's new look</h1>
+    <p>The same two screens in each: home, and the event page with the reveal. Tap the reveal to untie it. The bow and girl are rough stand-ins to show each style, not final drawings. Switch with the bar below or the arrow keys.</p>
+  </header>
+
+  <!-- ================= A ================= -->
+  <section class="dir" id="dir-ribbon" data-name="A · One ribbon">
+    <div class="row">
+      <div class="brief">
+        <h2>A · One ribbon</h2>
+        <p>One hot color, ink, and a single line of cord. Your events hang on the cord in date order; at the reveal you pull the bow out and the ribbon lies flat over the name.</p>
+        <dl>
+          <dt>The one bold thing</dt><dd>The cord. Orange marks only what is waiting on you, and the gift itself.</dd>
+          <dt>Paper metaphor</dt><dd>Gone. Flat color, square corners, no texture or tilt.</dd>
+          <dt>Type</dt><dd>Figtree for everything, heavy for names and actions.</dd>
+          <dt>Main risk</dt><dd>The nearest to an ordinary app. It leans on the orange, the cord and the wordmark to be its own thing.</dd>
+        </dl>
+      </div>
+
+      <figure class="screen"><figcaption>Home</figcaption>
+        <div class="phone da">
+          <div class="a-mast"><a class="a-brand" href="#ribbon"><svg width="30" height="30"><use href="#a-girl"/></svg>pollyanna</a><a class="a-acct" href="#ribbon">Sam</a></div>
+          <div class="a-home">
+            <ol class="a-cord">
+              <li><h3>Office Pollyanna</h3><a class="a-do" href="#ribbon">Write your notes</a>
+                <p class="a-when">Fri, Dec 11 · in 14 days</p><p class="a-meta"><span class="a-st open">Open</span><span>$25</span></p></li>
+              <li><h3>Cousins' gift swap</h3><a class="a-do" href="#ribbon">See who you got</a>
+                <p class="a-when">Sat, Dec 19 · in 22 days</p><p class="a-meta"><span class="a-st drawn">Names drawn</span><span>$40</span></p></li>
+              <li><h3>Book club swap</h3><a class="a-do" href="#ribbon">Add people, then open it</a>
+                <p class="a-when">Sat, Jan 9 · in 43 days</p><p class="a-meta"><span class="a-st">Draft</span><span>$20</span><span>You organize · 7 people</span></p></li>
+            </ol>
+            <div class="a-end"><svg width="22" height="17"><use href="#a-bow"/></svg><a href="#ribbon">New event</a></div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="screen"><figcaption>Event page, after names are drawn</figcaption>
+        <div class="phone da" data-reveal>
+          <div class="a-mast"><a class="a-brand" href="#ribbon"><svg width="30" height="30"><use href="#a-girl"/></svg>pollyanna</a><a class="a-acct" href="#ribbon">Sam</a></div>
+          <div class="a-ev">
+            <a class="a-back" href="#ribbon">All events</a>
+            <h1>Cousins' gift swap</h1>
+            <p class="a-count">22 days to go</p>
+            <p class="a-sub">Saturday, December 19 · $40 budget</p>
+            <div class="a-reveal">
+              <div class="cover-wrap"><button class="cover" type="button">
+                <svg viewBox="0 0 320 130" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                  <path d="M-200 60H520" stroke="#1E1A2B" stroke-width="7"/>
+                  <path class="a-pull" pathLength="1" d="M160 60C132 14 82 24 90 60c8 34 52 22 70 0Z"/>
+                  <path class="a-pull" pathLength="1" d="M160 60c28-46 78-36 70 0-8 34-52 22-70 0Z"/>
+                  <path class="a-pull" pathLength="1" d="M160 60c-10 22-18 38-30 56"/>
+                  <path class="a-pull" pathLength="1" d="M160 60c10 22 18 38 30 56"/>
+                  <circle class="a-knot" cx="160" cy="60" r="9"/>
+                </svg>
+                <b>Untie to see who you got</b>
+              </button></div>
+              <div class="inside-wrap"><div>
+                <div class="a-name"><small>You're giving to</small><strong>Tess</strong></div>
+                <div class="a-in">
+                  <div><h4>Tess's notes</h4><p class="a-notes">Size medium. I like tea, jigsaw puzzles and anything for the garden. No scented candles, please.</p></div>
+                  <div class="a-ask"><h4>Ask Tess something</h4><p>She'll see the question, not who asked.</p><textarea id="a-q" rows="2" aria-label="Your question"></textarea><button type="button">Send</button></div>
+                  <label class="a-done"><input id="a-d" type="checkbox"> I'm done shopping</label>
+                </div>
+              </div></div>
+            </div>
+            <div class="a-rest">
+              <p class="a-line"><a href="#ribbon">Questions from your giver</a><span>None yet</span></p>
+              <div><p class="a-line"><b>Your notes</b><a href="#ribbon">Edit</a></p><p><span>Shoe size 9. I'd love a cookbook or good coffee…</span></p></div>
+              <p class="a-line"><a href="#ribbon">9 people taking part</a></p>
+              <p class="leave"><a href="#ribbon">Leave this event</a></p>
+            </div>
+          </div>
+        </div>
+        <button class="replay" type="button">Tie it back up (prototype control)</button>
+      </figure>
+    </div>
+
+    <div class="strip">
+      <div><h3>Color</h3><div class="sw">
+        <span><i style="background:var(--a-hero)"></i>Ribbon #FF6A13</span><span><i style="background:var(--a-ink)"></i>Ink #1E1A2B</span><span><i style="background:var(--a-ground)"></i>Page #FFFFFF</span><span><i style="background:var(--a-muted)"></i>Quiet text #5E5A6B</span></div>
+        <span class="cap">Orange never carries white text; ink on orange is 6:1.</span></div>
+      <div><h3>Marks</h3><div class="marks" style="background:var(--a-ground);color:var(--a-ink)"><svg width="84" height="63"><use href="#a-bow"/></svg><svg width="32" height="24"><use href="#a-bow"/></svg><svg width="16" height="12"><use href="#a-bow"/></svg><svg width="64" height="64"><use href="#a-girl"/></svg><svg width="28" height="28"><use href="#a-girl"/></svg></div></div>
+      <div><h3>Type</h3><div class="spec" style="background:var(--a-ground);color:var(--a-ink);font-family:Figtree,sans-serif"><div style="font-weight:800;font-size:1.6rem;letter-spacing:-.02em;line-height:1.1">Cousins' gift swap</div><div>See who you got, read their notes, write your own.</div></div></div>
+      <div><h3>Statuses</h3><div class="states da" style="background:var(--a-ground)"><span class="a-st">Draft</span><span class="a-st open">Open</span><span class="a-st drawn">Names drawn</span></div></div>
+    </div>
+  </section>
+
+  <!-- ================= B ================= -->
+  <section class="dir" id="dir-ink" data-name="B · Ink and bows">
+    <div class="row">
+      <div class="brief">
+        <h2>B · Ink and bows</h2>
+        <p>A cool white page, a loose ink line, and color only inside the bows. The girl stands at the top of the page looking in at your exchanges; the name arrives in handwriting.</p>
+        <dl>
+          <dt>The one bold thing</dt><dd>The drawing. Everything else is type on a bare page with no boxes.</dd>
+          <dt>Paper metaphor</dt><dd>A trace of it: ink on a page, and the reveal is a folded note. No kraft, stamps, tears or tilt.</dd>
+          <dt>Type</dt><dd>Young Serif for names and headings, Atkinson Hyperlegible Next for reading, Shantell Sans for the revealed name only.</dd>
+          <dt>Main risk</dt><dd>It needs a real hand. The wobble here is a filter standing in for one, and a weak line looks worse than none. A serif with a warm accent can also drift toward the look §12 bans, so the page stays cool and the bows stay raspberry.</dd>
+        </dl>
+      </div>
+
+      <figure class="screen"><figcaption>Home</figcaption>
+        <div class="phone db">
+          <div class="b-mast"><a class="b-brand b-serif" href="#ink"><svg width="34" height="26"><use href="#b-bow"/></svg>Pollyanna</a><a class="b-acct" href="#ink">Sam</a></div>
+          <div class="b-home">
+            <div class="b-top"><h1>Your exchanges</h1><svg width="104" height="113" aria-hidden="true"><use href="#b-girl"/></svg></div>
+            <div class="b-entry"><h3>Office Pollyanna</h3><a class="b-do" href="#ink"><svg width="20" height="15"><use href="#b-bow"/></svg>Write your notes</a>
+              <p class="b-when">Friday, December 11 <em>· in 14 days</em></p><p class="b-meta"><span class="b-st">open</span> · $25</p></div>
+            <div class="b-entry"><h3>Cousins' gift swap</h3><a class="b-do" href="#ink"><svg width="20" height="15"><use href="#b-bow"/></svg>See who you got</a>
+              <p class="b-when">Saturday, December 19 <em>· in 22 days</em></p><p class="b-meta"><span class="b-st">names drawn</span> · $40</p></div>
+            <div class="b-entry"><h3>Book club swap</h3><a class="b-do" href="#ink"><svg width="20" height="15"><use href="#b-bow"/></svg>Add people, then open it</a>
+              <p class="b-when">Saturday, January 9 <em>· in 43 days</em></p><p class="b-meta"><span class="b-st">draft</span> · $20 · you organize, 7 people</p></div>
+            <a class="b-new" href="#ink">Start a new event</a>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="screen"><figcaption>Event page, after names are drawn</figcaption>
+        <div class="phone db" data-reveal>
+          <div class="b-mast"><a class="b-brand b-serif" href="#ink"><svg width="34" height="26"><use href="#b-bow"/></svg>Pollyanna</a><a class="b-acct" href="#ink">Sam</a></div>
+          <div class="b-ev">
+            <a class="b-back" href="#ink">All events</a>
+            <h1>Cousins' gift swap</h1>
+            <p class="b-count">22 days to go</p>
+            <p class="b-sub">Saturday, December 19 · $40 budget</p>
+            <div class="b-reveal">
+              <div class="cover-wrap"><button class="cover" type="button">
+                <svg viewBox="0 0 320 210" aria-hidden="true">
+                  <g filter="url(#wob)" fill="#fff" stroke="#1D2433" stroke-width="3" stroke-linejoin="round"><path d="M52 34h216v136H52Z"/><path d="M52 34l108 54 108-54" fill="none"/></g>
+                  <g filter="url(#wob)"><path class="b-rib" pathLength="1" d="M52 100h216"/><path class="b-rib" pathLength="1" d="M160 34v136"/></g>
+                  <g class="b-bowg"><use href="#b-bow" x="96" y="56" width="128" height="96" style="color:#1D2433"/></g>
+                </svg>
+                <b>Untie the bow to see who you got</b>
+              </button></div>
+              <div class="inside-wrap"><div><div class="b-in">
+                <div><small>You're giving to</small><span class="b-hand">Tess <svg width="44" height="33"><use href="#b-bow"/></svg></span></div>
+                <div><h4>What Tess wrote</h4><p class="b-notes">Size medium. I like tea, jigsaw puzzles and anything for the garden. No scented candles, please.</p></div>
+                <div class="b-ask"><h4>Ask Tess something</h4><p>She'll see the question, not who asked.</p><textarea class="b-box" id="b-q" rows="2" aria-label="Your question"></textarea><button class="b-box" type="button">Send</button></div>
+                <label class="b-done"><input id="b-d" type="checkbox"> I'm done shopping</label>
+              </div></div></div>
+            </div>
+            <div class="b-rest">
+              <p><a href="#ink">Questions from your giver</a> <span>· none yet</span></p>
+              <p><b>Your notes</b> · <a href="#ink">edit</a><br><span>Shoe size 9. I'd love a cookbook or good coffee…</span></p>
+              <p><a href="#ink">9 people taking part</a></p>
+              <p class="leave"><a href="#ink">Leave this event</a></p>
+            </div>
+          </div>
+        </div>
+        <button class="replay" type="button">Tie it back up (prototype control)</button>
+      </figure>
+    </div>
+
+    <div class="strip">
+      <div><h3>Color</h3><div class="sw">
+        <span><i style="background:var(--b-bow)"></i>Bows #C8275F</span><span><i style="background:var(--b-ink)"></i>Ink #1D2433</span><span><i style="background:var(--b-ground)"></i>Page #FAFBFC</span><span><i style="background:var(--b-muted)"></i>Quiet text #566074</span></div>
+        <span class="cap">Raspberry fills bows and nothing else.</span></div>
+      <div><h3>Marks</h3><div class="marks" style="background:var(--b-ground);color:var(--b-ink)"><svg width="84" height="63"><use href="#b-bow"/></svg><svg width="32" height="24"><use href="#b-bow"/></svg><svg width="16" height="12"><use href="#b-bow"/></svg><svg width="74" height="80"><use href="#b-girl"/></svg><svg width="30" height="32"><use href="#b-girl"/></svg></div></div>
+      <div><h3>Type</h3><div class="spec" style="background:var(--b-ground);color:var(--b-ink)"><div style="font-family:'Young Serif',serif;font-size:1.6rem;line-height:1.1">Cousins' gift swap</div><div style="font-family:'Atkinson Hyperlegible Next',sans-serif">See who you got, read their notes, write your own.</div><div style="font-family:'Shantell Sans',cursive;font-size:1.6rem">Tess</div></div></div>
+      <div><h3>Statuses</h3><div class="states db" style="background:var(--b-ground)"><span class="b-st">draft</span><span class="b-st">open</span><span class="b-st">names drawn</span></div></div>
+    </div>
+  </section>
+
+  <!-- ================= C ================= -->
+  <section class="dir" id="dir-shapes" data-name="C · Cut shapes">
+    <div class="row">
+      <div class="brief">
+        <h2>C · Cut shapes</h2>
+        <p>Three flat colors and big rounded blocks. The bow is two wedges and a dot; the girl is built from the same few shapes. Each event is a block you could pick up, and the gift is the biggest block of all.</p>
+        <dl>
+          <dt>The one bold thing</dt><dd>Scale: huge names, huge countdown numbers, a bow the size of your thumb.</dd>
+          <dt>Paper metaphor</dt><dd>Gone as a material, though flat cut shapes still feel a little like craft paper.</dd>
+          <dt>Type</dt><dd>Bricolage Grotesque for everything, very heavy at large sizes.</dd>
+          <dt>Main risk</dt><dd>The busiest of the three, and it brings back a stack of cards. Bright rounded shapes are widely copied, and three colors can quickly become five.</dd>
+        </dl>
+      </div>
+
+      <figure class="screen"><figcaption>Home</figcaption>
+        <div class="phone dc">
+          <div class="c-mast"><a class="c-brand" href="#shapes"><svg width="34" height="34"><use href="#c-girl"/></svg>pollyanna</a><a class="c-acct" href="#shapes">Sam</a></div>
+          <div class="c-home">
+            <div class="c-block c-gold"><div class="c-headrow"><h3>Office Pollyanna</h3><div class="c-days"><b>14</b>days</div></div>
+              <a class="c-do" href="#shapes">Write your notes</a>
+              <div class="c-meta"><span class="c-st open">Open</span><span>Fri, Dec 11</span><span>$25</span></div></div>
+            <div class="c-block c-blue"><div class="c-headrow"><h3>Cousins' gift swap</h3><div class="c-days"><b>22</b>days</div></div>
+              <a class="c-do" href="#shapes">See who you got</a>
+              <div class="c-meta"><span class="c-st"><svg style="color:var(--c-pink);--knot:#fff"><use href="#c-bow"/></svg>Names drawn</span><span>Sat, Dec 19</span><span>$40</span></div></div>
+            <div class="c-block c-pink"><div class="c-headrow"><h3>Book club swap</h3><div class="c-days"><b>43</b>days</div></div>
+              <a class="c-do" href="#shapes">Add people, then open it</a>
+              <div class="c-meta"><span class="c-st draft">Draft</span><span>Sat, Jan 9</span><span>$20</span><span>You organize · 7 people</span></div></div>
+            <a class="c-new" href="#shapes">New event</a>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="screen"><figcaption>Event page, after names are drawn</figcaption>
+        <div class="phone dc" data-reveal>
+          <div class="c-mast"><a class="c-brand" href="#shapes"><svg width="34" height="34"><use href="#c-girl"/></svg>pollyanna</a><a class="c-acct" href="#shapes">Sam</a></div>
+          <div class="c-ev">
+            <div class="c-block c-blue">
+              <a class="c-back" href="#shapes">All events</a>
+              <h1>Cousins' gift swap</h1>
+              <div class="c-big"><b>22</b>days to go</div>
+              <p class="c-sub">Saturday, December 19 · $40 budget</p>
+            </div>
+            <div class="c-reveal">
+              <div class="cover-wrap"><button class="cover" type="button">
+                <span class="c-band"></span>
+                <svg viewBox="0 0 120 80" aria-hidden="true" style="color:var(--c-blue)"><use href="#c-bow"/></svg>
+                <b>Open it</b>
+              </button></div>
+              <div class="inside-wrap"><div><div class="c-in">
+                <div class="c-block c-pink c-name"><small>You're giving to</small><strong>Tess</strong></div>
+                <div class="c-soft">
+                  <div><h4>Tess's notes</h4><p>Size medium. I like tea, jigsaw puzzles and anything for the garden. No scented candles, please.</p></div>
+                  <div class="c-ask"><h4>Ask Tess something</h4><small>She'll see the question, not who asked.</small><textarea id="c-q" rows="2" aria-label="Your question"></textarea><button type="button">Send</button></div>
+                  <label class="c-done"><input id="c-d" type="checkbox"> I'm done shopping</label>
+                </div>
+              </div></div></div>
+            </div>
+            <div class="c-list">
+              <p><a href="#shapes">Questions from your giver</a><span>None yet</span></p>
+              <p><span style="color:inherit">Your notes</span><a href="#shapes">Edit</a></p>
+              <p><a href="#shapes">9 people taking part</a></p>
+              <p class="leave"><a href="#shapes">Leave this event</a></p>
+            </div>
+          </div>
+        </div>
+        <button class="replay" type="button">Tie it back up (prototype control)</button>
+      </figure>
+    </div>
+
+    <div class="strip">
+      <div><h3>Color</h3><div class="sw">
+        <span><i style="background:var(--c-blue)"></i>Blue #2747D8</span><span><i style="background:var(--c-gold)"></i>Gold #FFC02E</span><span><i style="background:var(--c-pink)"></i>Pink #FF8FB8</span><span><i style="background:var(--c-ink)"></i>Ink #161331</span><span><i style="background:var(--c-ground)"></i>Page #FFFFFF</span></div>
+        <span class="cap">White text on blue only; ink on gold and pink.</span></div>
+      <div><h3>Marks</h3><div class="marks dc" style="background:var(--c-ground);color:var(--c-blue)"><svg width="84" height="56"><use href="#c-bow"/></svg><svg width="32" height="21"><use href="#c-bow"/></svg><svg width="16" height="11"><use href="#c-bow"/></svg><svg width="64" height="64"><use href="#c-girl"/></svg><svg width="28" height="28"><use href="#c-girl"/></svg></div></div>
+      <div><h3>Type</h3><div class="spec" style="background:var(--c-ground);color:var(--c-ink);font-family:'Bricolage Grotesque',sans-serif"><div style="font-weight:800;font-size:1.7rem;letter-spacing:-.03em;line-height:1.05">Cousins' gift swap</div><div>See who you got, read their notes, write your own.</div></div></div>
+      <div><h3>Statuses</h3><div class="states dc" style="background:var(--c-ground)"><span class="c-st draft">Draft</span><span class="c-st open">Open</span><span class="c-st"><svg style="color:var(--c-pink)"><use href="#c-bow"/></svg>Names drawn</span></div></div>
+    </div>
+  </section>
+</div>
+
+<nav class="switch" aria-label="Prototype: switch direction">
+  <button type="button" id="prev" aria-label="Previous direction">‹</button>
+  <output id="which"></output>
+  <button type="button" id="next" aria-label="Next direction">›</button>
+</nav>
+
+<script>
+(function () {
+  var keys = ['ribbon', 'ink', 'shapes'];
+  function current() { var k = location.hash.slice(1); return keys.indexOf(k) < 0 ? 0 : keys.indexOf(k); }
+  function show() {
+    var i = current();
+    keys.forEach(function (k, n) { document.getElementById('dir-' + k).classList.toggle('on', n === i); });
+    document.getElementById('which').textContent = document.getElementById('dir-' + keys[i]).dataset.name;
+  }
+  function go(d) { location.hash = keys[(current() + d + keys.length) % keys.length]; }
+  document.getElementById('prev').onclick = function () { go(-1); };
+  document.getElementById('next').onclick = function () { go(1); };
+  addEventListener('hashchange', show);
+  addEventListener('keydown', function (e) {
+    if (e.target.closest('input, textarea, [contenteditable]')) return;
+    if (e.key === 'ArrowLeft') go(-1);
+    if (e.key === 'ArrowRight') go(1);
+  });
+  // Mock links only switch nothing: keep them from changing the direction.
+  document.querySelectorAll('.phone a').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); }); });
+  document.querySelectorAll('[data-reveal]').forEach(function (p) {
+    p.querySelector('.cover').addEventListener('click', function () { p.classList.add('untied'); });
+    p.parentNode.querySelector('.replay').addEventListener('click', function () { p.classList.remove('untied'); });
+  });
+  show();
+})();
+</script>
