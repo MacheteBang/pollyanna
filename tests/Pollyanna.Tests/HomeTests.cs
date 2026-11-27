@@ -189,4 +189,111 @@ public sealed class HomeTests : IAsyncLifetime
         Assert.Null(page.QuerySelector(".about"));
         Assert.DoesNotContain("Philadelphia", page.Body!.TextContent);
     }
+
+    const string LongAbout = "Every family has a version of this: names on folded slips, a hat going round the table, someone squinting at the handwriting. Around Philadelphia they call it a Pollyanna. This is that, minus the squinting.";
+
+    [Fact]
+    public async Task The_empty_home_is_one_panel_in_two_equal_halves_then_the_long_about_text_and_past_events()
+    {
+        var (browser, _) = await app.SignInAsync(new("sam", "Sam", "sam@pollyanna.example", true, null));
+        using var _b = browser;
+
+        var page = await browser.GetPageAsync("/");
+
+        Assert.Equal("No events yet", page.QuerySelector("h1")!.TextContent.Trim());
+        var panel = Assert.Single(page.QuerySelectorAll(".cloth > .panel"));
+        Assert.Equal(["I was invited", "I'm organizing one"], panel.QuerySelectorAll("h2").Select(h => h.TextContent.Trim()));
+        Assert.Contains("sam@pollyanna.example", panel.TextContent);
+        // Equal weight: both buttons outlined, none filled.
+        Assert.Equal([("Copy", false), ("New event", false)],
+            panel.QuerySelectorAll(".button").Select(x => (x.TextContent.Trim(), x.ClassList.Contains("button-fill"))));
+        Assert.Equal("sam@pollyanna.example", panel.QuerySelector("button[data-copy]")!.GetAttribute("data-copy"));
+        Assert.Equal("/events/new", panel.QuerySelector("a.button")!.GetAttribute("href"));
+        Assert.Empty(page.QuerySelectorAll(".button-fill"));
+
+        Assert.Equal(LongAbout, page.QuerySelector(".about")!.TextContent.Trim());
+        var after = page.QuerySelectorAll(".cloth ~ *").SelectMany(x => x.QuerySelectorAll("a")).Select(a => (a.TextContent.Trim(), a.GetAttribute("href")));
+        Assert.Equal([("Past events", "/past")], after);
+    }
+
+    [Fact]
+    public async Task Without_the_script_the_copy_button_stays_hidden_and_the_address_is_still_there()
+    {
+        var (browser, _) = await app.SignInAsync(new("sam", "Sam", "sam@pollyanna.example", true, null));
+        using var _b = browser;
+
+        var page = await browser.GetPageAsync("/");
+
+        Assert.True(page.QuerySelector("button[data-copy]")!.HasAttribute("hidden"));
+        Assert.Contains("sam@pollyanna.example", page.QuerySelector(".panel")!.TextContent);
+    }
+
+    static List<(string Text, string? Href)> PastRows(IDocument page) =>
+        [.. page.QuerySelectorAll("main li a").Select(a => (string.Join(" | ", a.Children.Select(c => c.TextContent.Trim())), a.GetAttribute("href")))];
+
+    [Fact]
+    public async Task Past_events_is_a_plain_list_of_links_with_name_date_budget_and_the_viewers_part()
+    {
+        var (browser, me, a, b) = await MeAndTwoAsync();
+        using var _b = browser;
+        var swap = await app.EventAsync("Cousins' Swap", EventStatus.Archived, [a], [me, a, b], budget: "$40", date: new DateOnly(2025, 12, 19));
+        await app.WithDbAsync(async db => { (await db.Events.SingleAsync(e => e.Id == swap)).PairingsRevealed = true; await db.SaveChangesAsync(); });
+        var club = await app.EventAsync("Book club", EventStatus.Archived, [me], [a, b], budget: "", date: new DateOnly(2026, 1, 10));
+
+        var page = await browser.GetPageAsync("/past");
+
+        Assert.Equal("Past events", page.QuerySelector("h1")!.TextContent.Trim());
+        Assert.Equal(
+            [
+                ("Book club | Jan 10, 2026 | You organized · 2 people", $"/events/{club}"),
+                ("Cousins' Swap | Dec 19, 2025 · $40 | You took part · 3 people · pairings revealed", $"/events/{swap}"),
+            ],
+            PastRows(page));
+        Assert.Null(page.QuerySelector(".cloth"));
+        Assert.DoesNotContain("over", page.QuerySelector("main ul")!.TextContent);
+        Assert.Empty(page.QuerySelectorAll(".stamp"));
+        Assert.Equal("/", page.QuerySelector(".page-head-back")!.GetAttribute("href"));
+    }
+
+    [Fact]
+    public async Task Past_events_says_so_when_there_are_none()
+    {
+        var (browser, _) = await app.SignInAsync(new("sam", "Sam", "sam@pollyanna.example", true, null));
+        using var _b = browser;
+
+        var page = await browser.GetPageAsync("/past");
+
+        Assert.Contains("No past events yet. Events move here once an organizer archives them.", page.QuerySelector("main")!.TextContent);
+        Assert.Null(page.QuerySelector(".cloth"));
+    }
+
+    [Theory]
+    [InlineData("/", false)]
+    [InlineData("/", true)]
+    [InlineData("/past", true)]
+    public async Task Home_and_past_events_are_on_the_tablecloth_light_only_with_visible_focus(string path, bool withEvents)
+    {
+        var (browser, me, a, b) = await MeAndTwoAsync();
+        using var _b = browser;
+        if (withEvents)
+        {
+            await app.EventAsync("Cousins' Swap", EventStatus.Open, [a], [me, a, b]);
+            await app.EventAsync("Old swap", EventStatus.Archived, [a], [me, a, b]);
+        }
+
+        var page = await browser.GetPageAsync(path);
+
+        Assert.Equal("light", page.QuerySelector("meta[name=color-scheme]")!.GetAttribute("content"));
+        Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/tablecloth.css"));
+        Assert.DoesNotContain(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
+        Assert.Empty(page.QuerySelectorAll("[style], style"));
+        Assert.All(System.Text.RegularExpressions.Regex.Matches(page.DocumentElement.OuterHtml, "#[0-9A-Fa-f]{6}\\b").Select(m => m.Value.ToUpperInvariant()),
+            h => Assert.Contains(h, new[] { "#FFFFFF", "#1E1A16", "#5B5650", "#3F6E8C", "#DCE7EE", "#9E2019" }));
+        // Nothing turns the focus ring off (it is set once, on :focus-visible, in tablecloth.css).
+        Assert.DoesNotContain("tabindex=\"-1\"", page.DocumentElement.OuterHtml);
+        // The words of "Paper slips" are gone.
+        var text = page.QuerySelector("main")!.TextContent;
+        Assert.DoesNotContain("exchanges", text);
+        Assert.DoesNotContain("slip", text.Replace(LongAbout, ""));
+    }
 }
