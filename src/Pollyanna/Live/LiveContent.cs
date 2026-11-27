@@ -35,8 +35,8 @@ public sealed partial class LiveContent(IServiceScopeFactory scopes, EndpointDat
         foreach (var (path, page, values) in new[]
         {
             ("/", "/Index", new RouteValueDictionary()),
-            ($"/events/{eventId}", "/Events/Event", new RouteValueDictionary { ["id"] = eventId.ToString() }),
-            ($"/events/{eventId}/questions", "/Events/Questions", new RouteValueDictionary { ["id"] = eventId.ToString() }),
+            (LiveShape.EventPath(eventId), "/Events/Event", new RouteValueDictionary { ["id"] = eventId.ToString() }),
+            (LiveShape.QuestionsPath(eventId), "/Events/Questions", new RouteValueDictionary { ["id"] = eventId.ToString() }),
         })
             if (await RenderAsync(person, path, page, values) is { } html)
                 pages[path] = html;
@@ -62,7 +62,7 @@ public sealed partial class LiveContent(IServiceScopeFactory scopes, EndpointDat
         context.Request.Scheme = "https";
         context.Request.Host = new HostString("localhost");
         context.Request.Path = path;
-        context.Request.Headers[LiveRefetch.Header] = LiveRefetch.Value;
+        context.Request.Headers[LiveRefetch.Header] = LiveRefetch.CatchUp;
         values["page"] = page;
         context.Request.RouteValues = values;
         using var body = new MemoryStream();

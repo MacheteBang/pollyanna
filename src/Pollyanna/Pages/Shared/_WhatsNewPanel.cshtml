@@ -1,7 +1,9 @@
 @model Pollyanna.Pages.Shared.WhatsNewPanelView
 @using Pollyanna.Infrastructure
+@using Pollyanna.Pages.Shared
 @* The bell and its "What's new" panel (spec §7, §12, §16; the #89 mockup, variant A). The bell is
-   filled with something new and outlined without, never a number. Without the script it is the
+   filled, with a small red dot, with something new and outlined without, never a number. The
+   button carries its three labels, so site.js counts the rows it shows in the server's words. Without the script it is the
    link to /whats-new and the panel stays hidden; site.js (whatsNewPanel) hides the link, shows
    the button, opens and closes the panel, and dismisses in place by posting each row's own form,
    the same post as the page. The panel comes right after the button so Tab goes into it. *@
@@ -10,41 +12,15 @@
     var clapper = "M9.8 18.5a2.2 2.2 0 0 0 4.4 0z";
 }
 <a class="@Model.BellClass" href="/whats-new" aria-label="@Model.BellLabel" data-bell-link>
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="bell-body" d="@bell"/><path class="bell-clapper" d="@clapper"/></svg>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="bell-body" d="@bell"/><path class="bell-clapper" d="@clapper"/><circle class="bell-dot" cx="19" cy="5" r="3.5" hidden="@(Model.Rows.Count == 0)"/></svg>
 </a>
 <button type="button" class="@Model.BellClass" aria-label="@Model.BellLabel" aria-expanded="false"
-        aria-controls="whats-new-panel" data-bell hidden>
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="bell-body" d="@bell"/><path class="bell-clapper" d="@clapper"/></svg>
+        aria-controls="whats-new-panel" data-bell data-bell-labels="@WhatsNewPanelView.Labels" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="bell-body" d="@bell"/><path class="bell-clapper" d="@clapper"/><circle class="bell-dot" cx="19" cy="5" r="3.5" hidden="@(Model.Rows.Count == 0)"/></svg>
 </button>
 <div class="bell-panel" id="whats-new-panel" role="region" aria-labelledby="whats-new-panel-heading" hidden>
     <h2 class="bell-panel-heading" id="whats-new-panel-heading">What's new</h2>
-    <ul class="rows bell-rows" role="list">
-        @foreach (var row in Model.Rows)
-        {
-            <li class="row bell-row">
-                <span class="row-stack">
-                    <a class="bell-line" href="@row.Href">@row.Line</a>
-                    <span class="small soft bell-meta">@row.EventName@if (row.At is { } at)
-                    {<text> · </text><time datetime="@Format.IsoMinute(at)" data-when>@Format.When(at, Model.Now)</time>}</span>
-                </span>
-                <form method="post" action="/whats-new/dismiss" asp-antiforgery="true" data-bell-dismiss>
-                    <input type="hidden" name="event" value="@row.EventId">
-                    <input type="hidden" name="kind" value="@row.Kind">
-                    @if (row.Upto is { } upto)
-                    {
-                        <input type="hidden" name="upto" value="@upto">
-                    }
-                    <button type="submit" class="bell-x" aria-label="Dismiss: @row.Line">
-                        <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M2 2l10 10M12 2L2 12"/></svg>
-                    </button>
-                </form>
-            </li>
-        }
-    </ul>
-    <div class="bell-empty" hidden="@(Model.Rows.Count > 0)">
-        <p class="bell-empty-title">Nothing new right now.</p>
-        <p class="small soft">When something happens in one of your events, it shows up here.</p>
-    </div>
+    <partial name="_WhatsNewRows" model="@(new Pollyanna.Pages.Shared.WhatsNewRowsView(Model.Rows, Model.Now, InPanel: true, Model.Withheld))" />
 </div>
 @* site.js (liveConnection) says each row that arrives live here, politely; empty until then. *@
 <p class="visually-hidden" aria-live="polite" data-bell-say></p>

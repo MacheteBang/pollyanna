@@ -33,7 +33,7 @@ public sealed record StoredView(Event Event, string? Named, bool TakesPart)
 /// <param name="Named">Who the line names, if anyone.</param>
 public sealed record StoredKind(
     StoredFor For,
-    Func<Happening, PollyannaDb, Task<IReadOnlyList<Guid>>> To,
+    Func<Happening, StoredNotifications, Task<IReadOnlyList<Guid>>> To,
     Func<StoredView, string> Line,
     Func<StoredView, string> Href,
     Func<Happening, Guid?>? Named = null);

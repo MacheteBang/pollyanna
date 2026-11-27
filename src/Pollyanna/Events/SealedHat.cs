@@ -66,6 +66,9 @@ public sealed record ThreadState(Guid RecipientId, bool Closed, bool Started)
 /// </summary>
 public sealed class SealedHat(PollyannaDb db, DrawKey key)
 {
+    /// <summary>The givers a patch in this scope changed, by event, in memory only (<see cref="TakePatchedGivers"/>).</summary>
+    readonly List<(Guid EventId, Guid Giver)> patched = [];
+
     // ---------- Sealing and clearing ----------
 
     /// <summary>Seals a fresh draw, giver → recipient. Each slip starts having seen its recipient's current notes.</summary>
@@ -137,6 +140,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
         giverRow.RecipientChanged = true;
         giverRow.NotesVersionSeen = await db.Participants.Where(p => p.EventId == eventId && p.PersonId == recipient).Select(p => p.NotesVersion).SingleAsync();
         await db.SaveChangesAsync();
+        patched.Add((eventId, giver));
         return true;
     }
 
@@ -182,6 +186,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
         RandomNumberGenerator.Shuffle(messages.AsSpan());
         db.Messages.AddRange(messages);
         await db.SaveChangesAsync();
+        patched.Add((eventId, givers[pick.GiverTag]));
         return true;
     }
 
@@ -344,7 +349,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
     public async Task<SlipNews> NewsAsync(Guid eventId, Guid me)
     {
         // Two plain subqueries each, for the time and the number (SQLite has no APPLY for one with both).
-        var question = await db.Assignments.Where(a => a.EventId == eventId && a.RecipientId == me)
+        var question = await db.Assignments.Where(a => a.EventId == eventId && a.RecipientId == me).OrderBy(a => a.Id)
             .Select(a => new
             {
                 CreatedAt = db.Messages.Where(m => m.AssignmentId == a.Id && m.Sender == MessageSender.Giver && m.Seq > a.RecipientReadUpto)
@@ -364,7 +369,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
                 a.RecipientChanged,
                 a.Viewed,
                 a.NotesVersionSeen,
-                NotesVersion = db.Participants.Where(p => p.EventId == eventId && p.PersonId == a.RecipientId).Select(p => p.NotesVersion).FirstOrDefault(),
+                NotesVersion = db.Participants.Where(p => p.EventId == eventId && p.PersonId == a.RecipientId).OrderBy(p => p.PersonId).Select(p => p.NotesVersion).FirstOrDefault(),
                 a.ThreadChangeUnseen,
                 a.ThreadClosed,
             })
@@ -404,7 +409,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
                 break;
             case SlipMarker.NotesUpdated:
                 row.NotesVersionSeen = await db.Participants.Where(p => p.EventId == eventId && p.PersonId == row.RecipientId)
-                    .Select(p => p.NotesVersion).FirstOrDefaultAsync();
+                    .OrderBy(p => p.PersonId).Select(p => p.NotesVersion).FirstOrDefaultAsync();
                 break;
             case SlipMarker.ThreadChanged:
                 row.ThreadChangeUnseen = false;
@@ -429,15 +434,14 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
     }
 
     /// <summary>
-    /// Which of <paramref name="people"/> a patch has given a recipient they haven't looked at yet
-    /// (<c>RecipientChanged</c>), matched by tag in memory: whom a patch's content goes to.
+    /// The givers this scope's patches of the event gave someone new, worked out in memory while
+    /// patching (never stored), so the patch's content reaches only them; each is given out once.
     /// </summary>
-    public async Task<IReadOnlyList<Guid>> PatchedAmongAsync(Guid eventId, IEnumerable<Guid> people)
+    public IReadOnlyList<Guid> TakePatchedGivers(Guid eventId)
     {
-        var tags = await db.Assignments.AsNoTracking().Where(a => a.EventId == eventId && a.RecipientChanged)
-            .Select(a => a.GiverTag).ToListAsync();
-        var givers = GiversByTag(eventId, people);
-        return [.. tags.Where(givers.ContainsKey).Select(t => givers[t])];
+        var taken = patched.Where(p => p.EventId == eventId).Select(p => p.Giver).ToList();
+        patched.RemoveAll(p => p.EventId == eventId);
+        return taken;
     }
 
     // ---------- Across events ----------

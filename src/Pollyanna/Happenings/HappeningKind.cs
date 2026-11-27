@@ -59,7 +59,7 @@ public enum HappeningKind
     /// <summary>A recipient replied to their giver. The giver is never named.</summary>
     Reply,
     /// <summary>A recipient closed their conversation.</summary>
-    ConversationClosed,
+    ThreadClosed,
     /// <summary>A recipient reopened their conversation.</summary>
-    ConversationReopened,
+    ThreadReopened,
 }

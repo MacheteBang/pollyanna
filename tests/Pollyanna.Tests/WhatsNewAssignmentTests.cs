@@ -302,7 +302,7 @@ public sealed class WhatsNewAssignmentTests : IAsyncLifetime
         await AskAsync();
         await CloseAsync();
 
-        await DismissAsync(pat, HappeningKind.ConversationClosed);
+        await DismissAsync(pat, HappeningKind.ThreadClosed);
 
         Assert.Empty(await RowsAsync(pat));
         Assert.False((await app.AssignmentOfAsync(ev, me)).ThreadChangeUnseen);
@@ -353,8 +353,8 @@ public sealed class WhatsNewAssignmentTests : IAsyncLifetime
     [Fact]
     public async Task No_stored_row_is_ever_one_of_the_five_kinds()
     {
-        HappeningKind[] tied = [HappeningKind.Question, HappeningKind.Reply, HappeningKind.ConversationClosed,
-            HappeningKind.ConversationReopened, HappeningKind.Patched, HappeningKind.NotesEdited];
+        HappeningKind[] tied = [HappeningKind.Question, HappeningKind.Reply, HappeningKind.ThreadClosed,
+            HappeningKind.ThreadReopened, HappeningKind.Patched, HappeningKind.NotesEdited];
         Assert.All(tied, k => Assert.Null(HappeningKinds.Of(k).Stored));
 
         await OpenCardAsync();

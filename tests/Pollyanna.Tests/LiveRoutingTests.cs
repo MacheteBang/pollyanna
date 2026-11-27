@@ -60,12 +60,13 @@ public sealed class LiveRoutingTests : IAsyncLifetime
         new("question", HappeningKind.Question, EventStatus.Open, true, "Gus", "Rae", null, Content: "Rae"),
         new("reply", HappeningKind.Reply, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
         new("patched", HappeningKind.Patched, EventStatus.Open, true, "Olga", null, null, Content: "Rae"),
-        new("closed", HappeningKind.ConversationClosed, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
-        new("reopened", HappeningKind.ConversationReopened, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
+        new("closed", HappeningKind.ThreadClosed, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
+        new("reopened", HappeningKind.ThreadReopened, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
         new("dismiss", null, EventStatus.Open, false, "Gus", null, null),
         // The event page's own parts (spec §16 "What each page does live").
         new("notes", HappeningKind.NotesEdited, EventStatus.Open, false, "Bea", null, null),
-        new("notes drawn", HappeningKind.NotesEdited, EventStatus.Open, true, "Rae", null, null),
+        // Public to the event, and the giver's own "Your recipient updated their notes" as content.
+        new("notes drawn", HappeningKind.NotesEdited, EventStatus.Open, true, "Rae", null, null, Content: "Gus"),
         new("details", HappeningKind.DetailsChanged, EventStatus.Open, false, "Olga", null, null),
         new("left", HappeningKind.Left, EventStatus.Open, false, "Bea", "Bea", null),
         new("taken out", HappeningKind.TakenOut, EventStatus.Open, false, "Olga", "Bea", null),
@@ -75,10 +76,16 @@ public sealed class LiveRoutingTests : IAsyncLifetime
     [Fact]
     public void Every_kind_says_where_its_signal_goes_and_assignment_ones_never_go_as_a_hint_to_the_event()
     {
-        foreach (var kind in new[] { HappeningKind.Question, HappeningKind.Reply, HappeningKind.ConversationClosed,
-            HappeningKind.ConversationReopened, HappeningKind.Patched })
-            Assert.Equal(LiveTo.Pair, HappeningKinds.Of(kind).Live);
-        Assert.All(HappeningKinds.Table.Where(r => r.Stored is not null), r => Assert.NotEqual(LiveTo.Pair, r.Live));
+        HappeningKind[] pair = [HappeningKind.Question, HappeningKind.Reply, HappeningKind.ThreadClosed,
+            HappeningKind.ThreadReopened, HappeningKind.Patched];
+        foreach (var kind in pair)
+        {
+            Assert.Equal(LiveTo.Actor, HappeningKinds.Of(kind).Live);
+            Assert.NotNull(HappeningKinds.Of(kind).Content);
+        }
+        // Notes edited is public to the event, and content for the one giver as well.
+        Assert.NotNull(HappeningKinds.Of(HappeningKind.NotesEdited).Content);
+        Assert.All(HappeningKinds.Table.Where(r => !pair.Contains(r.Kind) && r.Kind != HappeningKind.NotesEdited), r => Assert.Null(r.Content));
     }
 
     [Theory]
@@ -119,6 +126,11 @@ public sealed class LiveRoutingTests : IAsyncLifetime
             Assert.All(tab.Hints.Where(h => !(c.Name == "patched" && h.Area == nameof(HappeningKind.TakenOut))),
                 h => Assert.Equal(new LiveHintData(ev, area), h));
             Assert.DoesNotContain(tab.Hints, h => h.Event == other);
+            // What the refetch it sets off is (spec §16): one only the actor's own tabs hear of
+            // catches up in full; one others hear of too leaves the pair parts out.
+            var ownOnly = c.Kind is not { } k || HappeningKinds.Of(k).Live == LiveTo.Actor;
+            Assert.All(tab.Frames.Where(f => f.Type == "hint" && f.Data.Contains($"\"area\":\"{area}\"")),
+                f => Assert.Contains($"\"refetch\":\"{(ownOnly ? LiveRefetch.CatchUp : LiveRefetch.Hint)}\"", f.Data));
             foreach (var frame in tab.Frames.Where(f => f.Type == "hint"))
                 foreach (var person in Names)
                     Assert.False(frame.Data.Contains(Id(person).ToString()) || frame.Data.Contains(person), $"{who} got {frame.Data}");

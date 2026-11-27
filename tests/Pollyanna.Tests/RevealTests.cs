@@ -62,7 +62,8 @@ public sealed class RevealTests : IAsyncLifetime
         var button = gift.QuerySelector(".gift-under a.button")!;
         Assert.Equal(("Untie the bow", $"{Page}/untie#gift"), (Text(button), button.GetAttribute("href")));
         Assert.True(button.ClassList.Contains("button-fill"));
-        Assert.Single(page.QuerySelectorAll("main .button-fill"));
+        // The only one showing: the question box's filled "Send" is under the cloth until it's untied.
+        Assert.Single(page.QuerySelectorAll("main .button-fill"), b => b.Closest(".gift-panel") is null);
         // The name is under the cloth for the script to show, under "You're giving to".
         Assert.Equal("You're giving to", Text(gift.QuerySelector(".gift-to")));
         Assert.Equal("Ann", Text(gift.QuerySelector(".revealed-name")));

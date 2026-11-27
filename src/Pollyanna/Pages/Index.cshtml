@@ -6,7 +6,7 @@
     ViewData["Title"] = Model.Events.Count > 0 ? "Your events" : "No events yet";
     // Live (spec §16): each panel patches in place, comes and goes; empty home and home with
     // events are two shapes, and moving between them swaps the page.
-    ViewData["LiveShape"] = Model.Events.Count > 0 ? "home" : "home-empty";
+    Pollyanna.Live.LiveShape.MarkHome(ViewData, empty: Model.Events.Count == 0);
 }
 
 @if (Model.Events.Count > 0)
@@ -26,9 +26,20 @@
                 {
                     <p class="small soft">You organize · @Format.People(e.ParticipantCount)@(e.InvitationCount > 0 ? " · " + Format.Invites(e.InvitationCount) : "")</p>
                 }
-                @if (line is { } l)
+                @* The waiting line patches on its own; in a drawn event it can be about the viewer's
+                   recipient or giver, so a refetch a hint set off leaves it out (spec §16). *@
+                @if (e.Withheld)
                 {
-                    <a class="button button-fill waiting" href="@l.Href">@l.Text</a>
+                    <partial name="_Withheld" model="@($"waiting-{e.Id}")" />
+                }
+                else
+                {
+                    <div class="live-slot" id="waiting-@e.Id" data-live data-live-pair>
+                        @if (line is { } l)
+                        {
+                            <a class="button button-fill waiting" href="@l.Href">@l.Text</a>
+                        }
+                    </div>
                 }
             </section>
         }

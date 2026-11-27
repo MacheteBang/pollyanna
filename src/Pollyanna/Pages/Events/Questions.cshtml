@@ -3,14 +3,16 @@
 @using Pollyanna.Data
 @using Pollyanna.Events
 @using Pollyanna.Infrastructure
+@using Pollyanna.Live
 @using Pollyanna.Pages.Shared
 @*
     "Questions for you" (spec §7, §12), as a conversation: the giver's messages on the left, the
-    viewer's on the right, oldest at the top, a day line between days. While a question is
-    unanswered, the conversation and the reply box are the panel on the cloth and "Send" is
-    filled; otherwise there is no cloth, and the reply box sits in a bar under the conversation.
-    Day lines and times are in UTC on the page ("about 4 PM UTC"); site.js redoes them in the
-    viewer's own time zone (conversations()).
+    viewer's on the right, oldest at the top, a day line between days. The page is always the
+    cloth, running to the bottom of the page: the conversation in its own scrolling box and the
+    reply box (one line, "Send" filled beside it) are the panel on it, and "Close this
+    conversation" sits under the panel, still on the cloth. Replying doesn't change the page's
+    shape. Day lines and times are in UTC on the page ("about 4 PM UTC"); site.js redoes them in
+    the viewer's own time zone (conversations()).
 
     Live (spec §16): everything under the page head is one region, and the conversation another
     inside it, so with a reply being written (which keeps the outer one as it is) a new question
@@ -28,6 +30,7 @@
     void Conversation(QuestionThread t)
     {
         <div class="live-slot" id="thread" data-live data-thread>
+        <div class="thread-scroll">
         <ol class="conversation" data-conversation>
             @{ DateOnly? day = null; }
             @foreach (var note in t.Notes)
@@ -49,21 +52,22 @@
             }
         </ol>
         </div>
+        </div>
     }
 
-    async Task Reply(bool fill)
+    async Task Reply()
     {
         <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "reply" })" />
-        <form method="post" asp-page-handler="reply" id="reply" class="composer">
+        <form method="post" asp-page-handler="reply" id="reply" class="composer" data-composer>
             <textarea id="reply-body" name="body" rows="1" maxlength="@EventManager.MessageMax" required
                       placeholder="Reply to your giver" aria-label="Reply to your giver"></textarea>
-            <button type="submit" class="button @(fill ? "button-fill" : "")">Send</button>
+            <button type="submit" class="button button-fill">Send</button>
         </form>
     }
 
     async Task Close()
     {
-        <div class="column conversation-foot">
+        <div class="conversation-foot">
             <form method="post" asp-page-handler="close">
                 <button type="submit" class="link-button small">Close this conversation</button>
             </form>
@@ -71,30 +75,24 @@
     }
 }
 
-<div class="live-slot" id="questions" data-live>
-@if (thread is not { Notes.Count: > 0 })
+@if (!Request.CarriesPairParts())
 {
-    <div class="column below">
-        <p>No questions yet. When your giver asks you something, it shows up here and you can reply.</p>
-    </div>
-}
-else if (Model.Unanswered)
-{
-    <div class="cloth">
-        <div class="panel conversation-panel">
-            @{ Conversation(thread); await Reply(fill: true); }
-        </div>
-    </div>
-    await Close();
+    @* A refetch a hint set off leaves the viewer's own thread out (spec §16): it's between them and their giver. *@
+    <partial name="_Withheld" model="@("questions")" />
 }
 else
 {
-    <div class="column conversation-quiet">
-        @{ Conversation(thread); }
-    </div>
-    <div class="reply-bar">
-        <div class="column">
-            @if (thread.Closed)
+<div class="live-slot" id="questions" data-live data-live-pair>
+<div class="cloth questions-cloth">
+    <div class="panel conversation-panel">
+        @if (thread is not { Notes.Count: > 0 })
+        {
+            <p>No questions yet. When your giver asks you something, it shows up here and you can reply.</p>
+        }
+        else
+        {
+            Conversation(thread);
+            if (thread.Closed)
             {
                 <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "reply" })" />
                 <section id="reply" class="conversation-closed" aria-labelledby="closed-heading">
@@ -107,13 +105,14 @@ else
             }
             else
             {
-                await Reply(fill: false);
+                await Reply();
             }
-        </div>
+        }
     </div>
-    if (!thread.Closed)
+    @if (thread is { Notes.Count: > 0, Closed: false })
     {
         await Close();
     }
-}
 </div>
+</div>
+}

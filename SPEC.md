@@ -813,8 +813,11 @@ wordmark only.
 **"What's new"** (decided on #89, November 27, 2026, user; what's in it is
 §16, how it looks §12).
 - The bell is a button labeled "What's new, 5 notifications" ("What's new,
-  nothing new" when empty), with `aria-expanded`. It shows no number, word,
-  badge or dot. Without the script it is a link to `/whats-new`.
+  nothing new" when empty), with `aria-expanded`. With something new it
+  shows a small red dot (decided November 27, 2026, owner: the blue fill
+  alone hid too easily); it never shows a number, word or badge, and the
+  label is the same with or without the dot. Without the script it is a
+  link to `/whats-new`, with the same fill and dot.
 - It opens a panel under the masthead headed "What's new". Each row is the
   notification's line as a link to the page it points to, with the event's
   name and the time in small soft ink under it (the three kinds with no
@@ -891,7 +894,10 @@ There is no separate status block.
    new." sits under the date line, above the gift.
 3. Once untied, one group: under "You're giving to", the name; their notes
    ("Notes updated since you last looked" when they changed, §5.2); the
-   question box; "Done shopping" as a small control; "Hide the name".
+   question box; "Done shopping" as a small control; "Hide the name". The
+   question box is the same one-line box as the reply box on "Questions for
+   you", with "Send" filled beside it on the right (decided November 27,
+   2026, owner); its label is for screen readers only.
 4. "Questions from your giver", a quiet link when nothing is unread.
 5. The viewer's own notes, collapsed to a preview with an edit control.
 6. Everyone taking part, collapsed to a count that opens the list.
@@ -986,9 +992,17 @@ small line "Your giver asks, you answer. Their name stays a secret." The
 thread reads as a conversation, oldest at the top: a day line between days,
 and under each message its time to the minute ("7:42 PM"; older messages
 stored to the hour keep it, §6). The reply
-is a one-line box, "Reply to your giver", with "Send" beside it; "Close
-this conversation" is a small link under it. A question that hasn't been
-answered carries the word "new". Empty: "No questions yet. When your giver
+is a one-line box, "Reply to your giver", with "Send" beside it, always
+filled; "Close this conversation" is a small link under it. In both boxes
+(this one and the giver's question box) Enter sends at once and
+Shift+Enter starts a new line, except while an input method is composing;
+an empty box sends nothing, and without the script the button sends
+(decided November 27, 2026, owner). A question that hasn't been
+answered carries the word "new". The page is always the cloth, running to
+the bottom of the page, under "Close this conversation" too, with the
+conversation and the reply box as the panel on it: it doesn't change shape
+when you reply (decided November 27, 2026, owner). The conversation
+scrolls in its own box (§16 Threads). Empty: "No questions yet. When your giver
 asks you something, it shows up here and you can reply." The rules of §6
 are unchanged.
 
@@ -1358,14 +1372,15 @@ is in §14.
   | Soft ink | `#5B5650` | Secondary text |
   | Ribbon blue | `#3F6E8C` | Bows, the cloth's thread, the focus ring, link underlines |
   | Pale blue | `#DCE7EE` | Row dividers, the email band, the girl's shirt, the other side's message bubbles |
-  | Red | `#9E2019` | Error text, "Cancel this event" and "Delete my account" only |
+  | Red | `#9E2019` | Error text, "Cancel this event", "Delete my account" and the bell's dot only |
 
   - Contrast: ink on white 17.29, soft ink on white 7.26, red on white
     7.85, ink on pale blue 13.76, soft ink on pale blue 5.78, ribbon blue on
     white 5.50, all passing AA for text. Ribbon blue on pale blue is 4.37:
     shapes only, never small text.
   - Red marks nothing else. "Leave this event" stays ink. Unread questions
-    are shown by position and words, never a red dot.
+    are shown by position and words, never a red dot of their own; the
+    bell's dot (§12 the bell) is the only one.
   - Statuses get no color. No red-and-green pairing.
 - Gingham: two CSS layers of ribbon blue at 50% opacity on white, 14px
   checks (a 28px repeat), so one thread reads `#9FB7C6` and a crossing
@@ -1485,14 +1500,20 @@ is in §14.
   exception to the single corner. A centered day line sits between days
   ("Today", the weekday, or the date after a week) and the time under each
   message to the minute ("7:42 PM"; messages stored to the hour before map
-  #82 show "about 7 PM"). While a question is unanswered the whole
-  conversation and the reply box sit in the white panel on the cloth and
-  "Send" is the filled button; with nothing new there is no cloth, the
-  reply box sits in a bar under the conversation and "Send" is outlined.
+  #82 show "about 7 PM"). The questions page is always the cloth, down to
+  the bottom of the page: the conversation and the reply box sit in the
+  white panel on it, "Send" is the filled button, and "Close this
+  conversation" sits under the panel on the cloth, on a small white ground
+  so it reads (decided November 27, 2026, owner; the earlier "no cloth
+  with nothing new" variant is gone). The conversation's scrolling box
+  (§16 Threads) is plain: no shadow and no styled scrollbar.
 - The bell (§7, §16; decided on #89, November 27, 2026, user) sits in the
   masthead left of the first name. With something new it is filled ribbon
-  blue with an ink clapper; with nothing it is a soft-ink outline. No
-  number, word, badge or dot beside it. (The bow was tried and ruled out:
+  blue with an ink clapper and has a small red dot at its top right,
+  ringed in white (November 27, 2026, owner); with nothing it is a
+  soft-ink outline with no dot. No number, word or badge beside it, and
+  nothing moves (reduce motion has nothing to stop). The dot is the
+  bell's alone: nothing else in the app gains a dot. (The bow was tried and ruled out:
   it reads as the brand, not as notifications.)
   - The "What's new" panel is the one thing in the app that sits over the
     page: white, just under the masthead, 8px in from each edge on a phone
@@ -1525,7 +1546,8 @@ is in §14.
     wide shots 640, both at 2×, captured from the built app with the demo
     people and the "Cousins' Swap" event.
 - Avoid: gradients, pill buttons and badges, emoji, icons above headings,
-  card grids, shadows, all-caps labels, unread counts or dots, a cream + serif + coral (or
+  card grids, shadows, all-caps labels, unread counts or dots (the bell's
+  one red dot aside, above), a cream + serif + coral (or
   terracotta) look, Christmas red-and-green. The checklist on #51 is run on
   any new screen or mark.
 
@@ -1717,6 +1739,33 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     comparing the viewer's whole frame sequence (`PairingSecrecyTests`
     adds a run of its own); the browser side is still to be checked by
     hand (§16 Testing).
+  - Review fixes (November 27, 2026), with the owner's decisions from the
+    review: a refetch a hint set off leaves the pair parts out
+    (`Pollyanna-Live: hint`, named in the hint frame; each part keeps its
+    place as `data-live-withheld` and the script keeps what it shows), so
+    a notes edit in a drawn event is also content for that recipient's
+    giver; the questions page's refetch after the reveal follows the
+    redirect to "Everyone's been revealed." with "Show". Content goes to
+    whom the happening's own content column finds as it is announced
+    (`PairContent`; a patch's giver from `SealedHat.TakePatchedGivers`,
+    never every giver with `RecipientChanged`), held in memory until the
+    commit; a save retried after a `Seq` collision still sends what was
+    held. The table gains content and worked-out columns in place of the
+    kind switches; `ThreadClosed`/`ThreadReopened`, `Outbox.AddAsync` and
+    its event-open, invitation and withdrawal methods, and
+    `StoredNotifications` for who gets a stored row and for account
+    deletion follow GLOSSARY.md and CODING_STANDARDS.md. `LiveShape`
+    gives the script each live page's path, where a refetch is sent on
+    and the words it shows (`data-live-words`); one partial renders
+    "What's new"'s rows for the panel and the page. Also from the owner:
+    the bell's red dot, the question box as the reply box's composer
+    with Enter sending in both, each conversation in its own scrolling
+    box that new messages are added to, and the questions page always on
+    the cloth. Content frames still carry the three whole pages (trimming
+    them needs an HTML parser in the server). Tests: the hint-refetch run
+    in `PairingSecrecyTests`, `LivePagesTests`, `LiveRoutingTests` (the
+    refetch value), `LiveContentTests` (the collision, the patch's one
+    giver), `QuestionTests`, `QuestionConversationTests`, `WhatsNewTests`.
 
 ### Done: the "Tablecloth" identity
 
@@ -2844,7 +2893,7 @@ reveals.
 | Public to the event: opened, names drawn or drawn again, revealed, archived, canceled, someone's notes edited, someone joining or leaving, details changed | every connected participant and organizer of the event | a hint naming the event and the area, never a person; the page refetches |
 | For organizers only: has looked, done shopping, wants to leave, invitations taken up, people, organizers and rules changed | the event's connected organizers | a hint, then a refetch |
 | Not about an assignment: made an organizer, added to an event, accepted invitation, redraw needed, taken out of an event | just the person it's for, or the organizers | a hint, then a refetch |
-| Between a giver and a recipient: question, reply, closed or reopened, patched, "your recipient updated their notes" | just that person | the content itself (each affected region's HTML and the menu's rows), inside the connection, with no follow-up fetch |
+| Between a giver and a recipient: question, reply, closed or reopened, patched, "your recipient updated their notes" | just that person: the question's recipient, the giver of whoever replied, closed, reopened or edited their notes, the giver a patch changed | the content itself (each affected region's HTML and the menu's rows), inside the connection, with no follow-up fetch |
 | Your own action: a sent message, a dismissal, saved notes, "Done shopping" | your other tabs and devices | a hint, then a refetch |
 
 - A hint followed by a fetch from only one giver would pair them in the
@@ -2854,8 +2903,28 @@ reveals.
   log line says "online", not where. A keep-alive comment every 15
   seconds, so a visit is one log line, not one a minute.
 - Connections are tracked by person and event only. The target of an
-  assignment happening is worked out in memory when it's sent (as
-  `SealedHat` does) and never stored or subscribed under an assignment.
+  assignment happening is worked out in memory as it happens (as
+  `SealedHat` does; for a patch, by the patch itself, so only the giver
+  it changed), held with it until its change commits, and never stored
+  or subscribed under an assignment.
+- **A hint's refetch leaves the pair parts out** (decided November 27,
+  2026, owner, on review). A public hint makes everyone refetch, but in a
+  drawn event a notes edit or a patch changes one giver's response only
+  (new notes, a new name, a new menu row), which would pair them by
+  response size in the proxy log. So a refetch a hint set off gets the
+  page with the parts between a giver and a recipient left out: the
+  recipient's name, their notes and "Notes updated since you last
+  looked", the question box, the patch line, the recipient's own
+  questions and the lines pointing to them ("Your giver asked you
+  something", "Questions from your giver", home's waiting line in a drawn
+  event), and the five worked-out menu rows and the bell's state from
+  them. Each keeps its place, empty, and the script keeps what it already
+  shows. Those parts arrive only in content frames (so a notes edit in a
+  drawn event also sends one to that recipient's giver, and a patch to the
+  giver it changed), on a real page load, or on a catch-up refetch (shown
+  again or reconnected, or after your own action in a pair, which only
+  your own tabs hear of), which carries everything. The live request
+  header's value tells the two apart; the hint names which to send.
 - Left out: decoy refetches broadcast to the whole event, and releasing
   on a tick or the hour. Both give up instant feedback.
 
@@ -2869,7 +2938,7 @@ Decided on #88.
 | Event page, `open` | "Taking part"; details; state changes |
 | Event page, `drawn` | the giver's question box (replies, closed or reopened); the recipient's notes and "Notes updated since you last looked"; the "Your giver asked you something" line; patched to someone new; the people list; state changes |
 | Event page, over | state changes only (archived, canceled) |
-| Questions | new questions; replies, closing and reopening from your other tabs; the reveal (a state change: read-only, giver named) |
+| Questions | new questions; replies, closing and reopening from your other tabs; the reveal: the refetch gets the server's redirect to the event page, and the page shows "Everyone's been revealed." with "Show", which goes there (decided November 27, 2026, owner) |
 | Organizing | the next step's sentence and button (counts, blockers); each person's row words; invitations taken up; people and organizers changed by another organizer; the "Who can't draw whom" summaries |
 
 Every other signed-in page holds the connection for the menu only. Not
@@ -2880,7 +2949,10 @@ live: the countdown turning over at midnight, and past events.
   words, waiting lines and notes change silently.
 - **State changes** (opened, drawn, drawn again, revealed, archived,
   canceled, you were taken out) change the page's shape:
-  - With nothing on the page being edited, the page body is swapped.
+  - With nothing on the page being edited, the page body is swapped,
+    unless the refetch left pair parts out (names drawn, say: the new
+    page would have no name on the gift); then the line shows with
+    "Show", as below, and loading the page brings them.
   - With something being edited (a draft, an open confirmation, a form in
     flight), a quiet line appears in its place instead and the draft stays
     put: "Names have been drawn." / "Names have been drawn again." / "The
@@ -2894,7 +2966,8 @@ live: the countdown turning over at midnight, and past events.
   a read-only view: it moves no read marker or `notes_version_seen`,
   clears no `recipient_changed` or `thread_change_unseen`, deletes no
   stored notification and sets no `viewed`. Only a real navigation or a
-  deliberate post counts as seeing something.
+  deliberate post counts as seeing something. A refetch a hint set off
+  leaves the pair parts out (above, "Who a live signal goes to").
 - **Drafts are never touched.** A form with focus or unsaved text is left
   alone while the regions around it update. Notes edited in one tab while
   another tab saves them: the draft is kept silently and the last save
@@ -2910,10 +2983,18 @@ live: the countdown turning over at midnight, and past events.
   server's existing refusal answers it.
 - **While a post is in flight, hints are ignored.** Its response is a
   fresh page.
-- **Threads** (the questions page and the giver's question box): a new
-  message is added at the bottom with its time to the minute, and a
-  question carries "new". At or near the bottom, the view stays there;
-  scrolled up, a quiet "New message below" link appears instead. When the
+- **Threads** (the questions page and the giver's question box): each
+  conversation lives in its own scrolling box, at most a little over half
+  the window high, starting at its newest message (decided November 27,
+  2026, owner: the page jumped as a message came in). A new message is
+  added inside the box, at the bottom, with its time to the minute, and a
+  question carries "new"; the box around it is never replaced, and the
+  page's own scroll position never moves on a live update. With the box at
+  its bottom, it scrolls smoothly to the new message (at once under reduce
+  motion); scrolled up, a quiet "New message below" link appears instead,
+  and pressing it scrolls the box. Sending your own message brings the
+  page back with the box at its newest. Without the script the box still
+  scrolls and starts at its newest message. When the
   conversation is closed, the giver's box shows "Your recipient has closed
   this conversation" and Send is turned off, but a draft stays visible;
   reopening turns Send back on. Live arrival never moves a read marker
@@ -2966,7 +3047,11 @@ back here for the hand checks.
   viewer's whole live frame sequence, masthead menu and `/whats-new` page
   must come out byte-identical. Beside them: no stored notification row is
   ever of the five worked-out kinds; no hint frame holds a person's id or
-  name; a giver-recipient happening causes no request from anyone.
+  name; a giver-recipient happening causes no request from anyone. After
+  a notes edit and a patch in a drawn event, every person's hint refetch
+  of each live page comes out byte-identical across runs with every
+  pairing different, the viewer's own included, and the giver's content
+  frame carries the change.
 - **A live refetch isn't a visit:** for home, the event page, questions
   and organizing, a live `GetPageAsync` moves no read marker, sets no
   `viewed`, clears no flag and deletes no stored row, and a plain
@@ -2991,7 +3076,9 @@ back here for the hand checks.
   - a tab hidden and then shown
   - a network drop and reconnect
   - drafts, folds and the gift's tied state kept
-  - "New message below"
+  - a message arriving in each conversation's box: the page doesn't move,
+    the box scrolls smoothly at its bottom (at once under reduce motion),
+    "New message below" scrolled up; Enter and Shift+Enter in both boxes
   - screen-reader announcements
   - focus after a dismiss
   - the panel with "reduce motion", and `/whats-new` without the script

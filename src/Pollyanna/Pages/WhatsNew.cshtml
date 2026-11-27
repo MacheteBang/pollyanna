@@ -11,35 +11,5 @@
    form button. No cloth: there is nothing to do here but go somewhere else. *@
 <partial name="_PageHead" model="@(new PageHeadView("What's new", Back: new("Home", "/")))" />
 <div class="column">
-    @if (Model.Rows.Count == 0)
-    {
-        <div class="whats-new-empty">
-            <p class="whats-new-empty-title">Nothing new right now.</p>
-            <p class="small soft">When something happens in one of your events, it shows up here.</p>
-        </div>
-    }
-    else
-    {
-        <ul class="rows whats-new-rows" role="list">
-            @foreach (var row in Model.Rows)
-            {
-                <li class="row whats-new-row">
-                    <span class="row-stack">
-                        <a class="whats-new-line" href="@row.Href">@row.Line</a>
-                        <span class="small soft whats-new-meta">@row.EventName@if (row.At is { } at)
-                        {<text> · </text><time datetime="@Format.IsoMinute(at)" data-when>@Format.When(at, Model.Now)</time>}</span>
-                    </span>
-                    <form method="post" action="/whats-new/dismiss" asp-antiforgery="true">
-                        <input type="hidden" name="event" value="@row.EventId">
-                        <input type="hidden" name="kind" value="@row.Kind">
-                        @if (row.Upto is { } upto)
-                        {
-                            <input type="hidden" name="upto" value="@upto">
-                        }
-                        <button type="submit" class="link-button small" aria-label="Dismiss: @row.Line">Dismiss</button>
-                    </form>
-                </li>
-            }
-        </ul>
-    }
+    <partial name="_WhatsNewRows" model="@(new WhatsNewRowsView(Model.Rows, Model.Now, InPanel: false))" />
 </div>

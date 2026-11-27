@@ -4,6 +4,10 @@ using Pollyanna.Data;
 using Pollyanna.Happenings;
 using Pollyanna.MockIssuer;
 using Pollyanna.Tests.Support;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using static Pollyanna.Tests.Support.Seed;
 
 namespace Pollyanna.Tests;
@@ -118,11 +122,11 @@ public sealed class LiveContentTests : IAsyncLifetime
 
         await Browser("Rae").SubmitOnAsync($"{Page}/questions", $"{Page}/questions/close");
         await app.Live.SettleAsync();
-        var closed = Parse(GiverGot(nameof(HappeningKind.ConversationClosed), "Rae").Pages[Page]);
+        var closed = Parse(GiverGot(nameof(HappeningKind.ThreadClosed), "Rae").Pages[Page]);
         await SettledAsync();
         await Browser("Rae").SubmitOnAsync($"{Page}/questions", $"{Page}/questions/reopen");
         await app.Live.SettleAsync();
-        var reopened = Parse(GiverGot(nameof(HappeningKind.ConversationReopened), "Rae").Pages[Page]);
+        var reopened = Parse(GiverGot(nameof(HappeningKind.ThreadReopened), "Rae").Pages[Page]);
 
         Assert.NotNull(closed.QuerySelector("#ask-closed [data-closed]"));
         Assert.Null(closed.QuerySelector($"#ask form[action='{Page}/ask']"));
@@ -140,6 +144,8 @@ public sealed class LiveContentTests : IAsyncLifetime
         var four = await app.EventAsync("Mittens", EventStatus.Open, [Id("Olga")], [Id("Gus"), Id("Rae"), Id("Bea"), Id("Olga")]);
         await app.SealAsync(four, Loop(Id("Gus"), Id("Rae"), Id("Bea"), Id("Olga")));
         await app.UpdateAssignmentAsync(four, Id("Rae"), a => a.Viewed = true);
+        // Gus hasn't looked since an earlier patch gave him someone new: this one isn't his.
+        await app.UpdateAssignmentAsync(four, Id("Gus"), a => a.RecipientChanged = true);
         await SettledAsync();
 
         await Browser("Olga").PostWithTokenAsync($"/events/{four}/manage", $"/events/{four}/manage/removeperson",
@@ -190,5 +196,61 @@ public sealed class LiveContentTests : IAsyncLifetime
         // thing that makes a page fetch.
         Assert.Equal(requests + 2, app.Logs.Entries.Count(e => e.Category == "Pollyanna.Access"));
         Assert.All(Names.Where(n => n != "Rae"), n => Assert.Empty(tabs[n].Hints));
+    }
+
+    /// <summary>
+    /// Someone else's message takes the number a question was about to be saved under, so the
+    /// post tries again with the next one. The question still reaches its recipient: what a change
+    /// announces goes out once the change is saved, on whichever try that is.
+    /// </summary>
+    [Fact]
+    public async Task A_question_saved_on_a_second_try_still_reaches_the_recipient()
+    {
+        var collide = new CollideOnce();
+        await using var app = await TestApp.StartAsync(configure: b => b.ConfigureTestServices(s =>
+            s.ConfigureDbContext<PollyannaDb>(o => o.AddInterceptors(collide))));
+        var (gus, gusId) = await app.SignInAsync(new MockIdentity("gus", "Gus", "gus@example.com", true, null));
+        var (rae, raeId) = await app.SignInAsync(new MockIdentity("rae", "Rae", "rae@example.com", true, null));
+        using var _g = gus;
+        using var _r = rae;
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [gusId], [gusId, raeId]);
+        await app.SealAsync(ev, Loop(gusId, raeId));
+        using var live = await rae.OpenLiveAsync();
+        await app.Live.SettleAsync();
+        live.Clear();
+
+        collide.Before = m => app.WithDbAsync(async db =>
+        {
+            db.Messages.Add(new Message { AssignmentId = m.AssignmentId, Seq = m.Seq, Sender = MessageSender.Giver, Body = "At the same moment", CreatedAt = m.CreatedAt });
+            await db.SaveChangesAsync();
+        });
+        await gus.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/ask", Form(("body", "Socks?")));
+        await app.Live.SettleAsync();
+
+        Assert.True(collide.Collided);
+        Assert.Equal(["At the same moment", "Socks?"],
+            await app.WithDbAsync(db => db.Messages.OrderBy(m => m.Seq).Select(m => m.Body).ToListAsync()));
+        var content = Assert.Single(live.Contents);
+        Assert.Equal(nameof(HappeningKind.Question), content.Area);
+        Assert.Contains("Socks?", Parse(content.Pages[$"/events/{ev}/questions"]).QuerySelector("#thread")!.TextContent);
+    }
+
+    /// <summary>Just before the first message is saved, <see cref="Before"/> saves another under the same number.</summary>
+    sealed class CollideOnce : SaveChangesInterceptor
+    {
+        public Func<Message, Task>? Before;
+        public bool Collided;
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (Before is { } before && !Collided
+                && eventData.Context?.ChangeTracker.Entries<Message>().FirstOrDefault(e => e.State == EntityState.Added) is { } added)
+            {
+                Collided = true;
+                await before(added.Entity);
+            }
+            return result;
+        }
     }
 }

@@ -7,9 +7,14 @@ namespace Pollyanna.Live;
 /// <summary>One frame for a live stream: its event type and its data, one line.</summary>
 public sealed record LiveFrame(string Type, string Data)
 {
-    /// <summary>A content-free hint (spec §16): the event and the area, never a person. The page refetches.</summary>
-    public static LiveFrame Hint(Guid eventId, string area) =>
-        new("hint", JsonSerializer.Serialize(new { @event = eventId, area }));
+    /// <summary>
+    /// A content-free hint (spec §16): the event and the area, never a person. The page refetches,
+    /// sending <c>refetch</c> as the <see cref="LiveRefetch.Header"/>: <see cref="LiveRefetch.CatchUp"/>
+    /// when only the actor's own tabs hear of it (<paramref name="ownOnly"/>), so nobody else's
+    /// refetch comes with it; otherwise <see cref="LiveRefetch.Hint"/>, which leaves the pair parts out.
+    /// </summary>
+    public static LiveFrame Hint(Guid eventId, string area, bool ownOnly) =>
+        new("hint", JsonSerializer.Serialize(new { @event = eventId, area, refetch = ownOnly ? LiveRefetch.CatchUp : LiveRefetch.Hint }));
 }
 
 /// <summary>One open <c>/live</c> stream: whose it is, which session opened it, and its frames waiting to be written.</summary>

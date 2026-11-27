@@ -44,10 +44,21 @@ public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, Http
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         if (live)
-            request.Headers.Add(LiveRefetch.Header, LiveRefetch.Value);
+            request.Headers.Add(LiveRefetch.Header, LiveRefetch.CatchUp);
         var response = await app.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return await ParseAsync(response);
+    }
+
+    /// <summary>
+    /// A live refetch of <paramref name="path"/> as the page's script makes it, not followed: on a
+    /// hint (<see cref="LiveRefetch.Hint"/>, the pair parts left out) or catching up (spec §16).
+    /// </summary>
+    public Task<HttpResponseMessage> RefetchAsync(string path, bool hint)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add(LiveRefetch.Header, hint ? LiveRefetch.Hint : LiveRefetch.CatchUp);
+        return app.SendAsync(request);
     }
 
     public static async Task<IHtmlDocument> ParseAsync(HttpResponseMessage response) =>

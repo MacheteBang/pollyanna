@@ -1,9 +1,20 @@
 // Pollyanna's only script. Pages work without it; it adds the countdown and small conveniences.
 "use strict";
 
+// The stylesheet tells pages with the script from those without (a conversation's scrolling box).
+document.documentElement.classList.add("js");
+
 // The page's parts are set up on load, and again on what a live update brings in (livePage), so
 // each takes the root to look in. all(root, selector) includes the root itself when it matches.
 const all = (root, selector) => [...(root.matches?.(selector) ? [root] : []), ...root.querySelectorAll(selector)];
+
+// Puts a list's children in the order given (kept, new or moved), moving only those out of place,
+// so a row that stays keeps its focus and nothing flashes: home's panels and the bell's rows.
+function inOrder(list, children) {
+    children.forEach((child, i) => {
+        if (list.children[i] !== child) list.insertBefore(child, list.children[i] ?? null);
+    });
+}
 
 // Countdown to the exchange date, from the viewer's own date (spec §4). The date is a plain
 // calendar date with no time zone, so it is read as local midnight.
@@ -216,15 +227,17 @@ function whatsNewPanel() {
         close(!focus || focus === document.body || panel.contains(focus));
     });
 
-    // The bell's state and label follow the rows left; only the label counts them.
+    // The bell's state and label follow the rows left; only the label counts them, in the
+    // server's words (data-bell-labels: none, one, many with "{n}"). Its fill and red dot go together.
+    let labels = [];
+    try { labels = JSON.parse(button.dataset.bellLabels || "[]"); } catch { /* the label stays as it was */ }
     const update = () => {
         const count = list.children.length;
-        const label = count === 0 ? "What's new, nothing new"
-            : count === 1 ? "What's new, 1 notification"
-            : `What's new, ${count} notifications`;
+        const label = (labels[Math.min(count, 2)] ?? "").replace("{n}", String(count));
         for (const bell of [button, link]) {
             bell.classList.toggle("bell-new", count > 0);
-            bell.setAttribute("aria-label", label);
+            for (const dot of bell.querySelectorAll(".bell-dot")) dot.toggleAttribute("hidden", count === 0);
+            if (label) bell.setAttribute("aria-label", label);
         }
         empty.hidden = count > 0;
     };
@@ -261,8 +274,11 @@ function whatsNewPanel() {
         return form ? `${form.elements.event.value}|${form.elements.kind.value}` : "";
     };
     live.onRefetch.push(page => {
-        const fresh = page.querySelector("#whats-new-panel .bell-rows");
+        const fresh = page?.querySelector("#whats-new-panel .bell-rows");
         if (!fresh) return;
+        // A refetch a hint set off leaves out the rows tied to an assignment (data-live-pair):
+        // the ones here stay, where they are.
+        const pairsLeftOut = fresh.matches("[data-live-withheld]");
         const here = new Map([...list.children].map(li => [key(li), li]));
         const arrived = [];
         const rows = [...fresh.children].map(li => {
@@ -288,15 +304,19 @@ function whatsNewPanel() {
             if (form && upto) form.prepend(document.importNode(upto, true));
             return kept;
         });
+        if (pairsLeftOut)
+            [...list.children].forEach((row, i) => {
+                if (!row.matches("[data-live-pair]") || !here.has(key(row))) return;
+                here.delete(key(row));
+                rows.splice(Math.min(i, rows.length), 0, row);
+            });
         let lostFocus = false;
         for (const gone of here.values()) {
             if ("going" in gone.dataset) continue; // its own dismissal is finishing it
             lostFocus ||= gone.contains(document.activeElement);
             gone.remove();
         }
-        rows.forEach((row, i) => {
-            if (list.children[i] !== row) list.insertBefore(row, list.children[i] ?? null);
-        });
+        inOrder(list, rows);
         update();
         whatsNewTimes();
         if (lostFocus && isOpen()) heading.focus();
@@ -313,8 +333,11 @@ function whatsNewPanel() {
 // makes the page do one live refetch of its own URL, marked by the Pollyanna-Live header
 // (LiveRefetch.Header: the server treats it as a read-only view, not a visit), and hands the
 // fetched page to whoever listens (live.onRefetch: the bell's panel and livePage), with what the
-// hints said: listener(page, { areas, gone }). Hints are ignored while a form post is in flight, since its
-// response is a fresh page anyway. A hidden page closes its connection (and on pagehide), opens it
+// hints said: listener(page, { areas, gone, moved }) (moved: the refetch was sent on elsewhere, and
+// page is null). A hint names its refetch's header value: "hint" leaves the parts between a giver
+// and a recipient out, since everyone it reached refetches with it; a catch-up (shown again,
+// reconnected, or your own action in a pair) carries everything. Hints are ignored while a form
+// post is in flight, since its response is a fresh page anyway. A hidden page closes its connection (and on pagehide), opens it
 // again when shown and then refetches once; so does EventSource's own reconnect after a drop.
 // Nothing is replayed. A refused connection (signed out, account deleted, session expired) stays
 // closed until the next page load. Without the script, or without EventSource, nothing changes.
@@ -326,14 +349,18 @@ const live = { tab: "", posting: false, onRefetch: [] };
 //   at it ("Names have been drawn."). A refetch with another shape is a state change.
 // - [data-live][id] is a region that patches in place: replaced whole when the server's HTML for
 //   it changed, unless something in it is being edited, and then tried again on the next refetch.
+//   A region inside another is compared and patched on its own. A conversation ([data-thread])
+//   is patched by adding its new messages inside its scrolling box.
+// - [data-live-pair] marks a part between a giver and a recipient; [data-live-withheld] says a
+//   refetch a hint set off left it out, so what this page shows of it stays (spec §16).
 // - [data-live-list][id] holds regions (by id) that come and go, such as home's panels.
 // Being edited: a form with focus or unsaved changes, or an open "Bigger changes" confirmation.
 // The event page's gift is never a region, so its tied or untied state stays as the viewer left it
 // while the parts under the name (their notes, "Done shopping") patch inside it.
 // A giver's or recipient's own content frame (liveConnection) brings this page as they'd see it,
 // patched the same way, and three things more: a patch brings the whole gift in again, tied, with
-// the new name in it (never left on screen); a thread with new messages stays at the bottom if
-// the view was there, or shows a quiet "New message below", and says them politely; and the
+// the new name in it (never left on screen); a conversation's box with new messages scrolls to
+// them if it was at the bottom, or shows a quiet "New message below", and says them politely; and the
 // question box's Send is off while the conversation is closed, with any draft kept.
 // Open folds stay open and focus stays where it was. A state change swaps the page body when
 // nothing is being edited, and says the line politely; otherwise the line shows, with "Show",
@@ -343,11 +370,23 @@ function livePage() {
     const main = document.querySelector("main[data-live-shape]");
     const say = main?.querySelector("[data-live-say]");
     if (!main || !main.dataset.liveShape || !say) return;
+    // The words and hint areas the server gives for what a refetch can't show (LiveShape.Words).
+    let words = {};
+    try { words = JSON.parse(main.dataset.liveWords || "{}"); } catch { /* the lines just don't show */ }
 
     // Each region's HTML as the server sent it, to tell what changed: the page's own script changes
     // the regions (countdowns, folds, times), and every render has a new form token.
+    // A region inside another is compared on its own, so the one around it changes only for
+    // what's its own. That keeps a conversation's box in place while messages arrive in it, and a
+    // part between a giver and a recipient (data-live-pair) that a refetch a hint set off leaves
+    // out (data-live-withheld, spec §16) shows what it showed.
     const sent = new Map();
-    const html = el => el.outerHTML.replace(/<input name="__RequestVerificationToken"[^>]*>/g, "");
+    const html = el => {
+        const copy = el.cloneNode(true);
+        for (const part of copy.querySelectorAll("[data-live][id], [data-live-pair]")) part.replaceWith(`[${part.id}]`);
+        return copy.outerHTML.replace(/<input name="__RequestVerificationToken"[^>]*>/g, "");
+    };
+    const withheld = el => el.matches("[data-live-withheld]");
     const keep = root => {
         for (const el of all(root, "[data-live][id]")) sent.set(el.id, html(el));
     };
@@ -388,6 +427,13 @@ function livePage() {
     };
     const swap = (was, fresh) => {
         const now = document.importNode(fresh, true);
+        // A pair part the refetch left out keeps what this page shows of it, and a conversation
+        // stays the box it is (scrolled where it was); the regions pass brings it up to date.
+        for (const part of all(now, "[data-live-pair][data-live-withheld], [data-thread][id]")) {
+            if (part === now) continue;
+            const shown = was.querySelector(`#${CSS.escape(part.id)}`);
+            if (shown) part.replaceWith(shown);
+        }
         keepFolds(was, now);
         const focused = focusable(was).indexOf(document.activeElement);
         was.replaceWith(now);
@@ -411,16 +457,18 @@ function livePage() {
                 return added;
             });
             for (const gone of here.values()) gone.remove();
-            order.forEach((row, i) => {
-                if (list.children[i] !== row) list.insertBefore(row, list.children[i] ?? null);
-            });
+            inOrder(list, order);
         }
     };
     const regions = page => {
         for (const region of main.querySelectorAll("[data-live][id]")) {
             if (!region.isConnected) continue; // inside one already replaced
             const fresh = page.getElementById(region.id);
-            if (!fresh || html(fresh) === sent.get(region.id) || editing(region)) continue;
+            if (!fresh || withheld(fresh) || html(fresh) === sent.get(region.id) || editing(region)) continue;
+            if (region.matches("[data-thread]") && addMessages(region, fresh)) {
+                sent.set(region.id, html(fresh));
+                continue;
+            }
             swap(region, fresh);
         }
     };
@@ -445,7 +493,7 @@ function livePage() {
     const retie = page => {
         const gift = main.querySelector("#gift[data-gift]");
         const fresh = page.getElementById("gift");
-        if (!gift || !fresh) return;
+        if (!gift || !fresh || withheld(fresh)) return;
         const now = document.importNode(fresh, true);
         now.classList.remove("untied", "still");
         gift.replaceWith(now);
@@ -453,12 +501,39 @@ function livePage() {
         pageParts(now);
     };
 
-    // Threads (the questions page and the giver's question box): what's new after a patch, kept
-    // in view if the view was at the bottom, otherwise pointed to, and said politely.
-    const lastMessage = thread => [...thread.querySelectorAll(".message")].at(-1);
+    // Threads (the questions page and the giver's question box, spec §16): each conversation is
+    // its own scrolling box. New messages are added inside it, never by replacing the box, so the
+    // page itself never moves. Read at the bottom, the box scrolls smoothly to them (at once under
+    // reduce motion); scrolled up, a quiet "New message below" link points to them. Said politely.
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const box = thread => thread.querySelector(".thread-scroll");
     const atBottom = thread => {
-        const last = lastMessage(thread);
-        return !last || last.getBoundingClientRect().bottom <= window.innerHeight + 48;
+        const b = box(thread);
+        return !b || b.scrollHeight - b.scrollTop - b.clientHeight <= 24;
+    };
+    const toBottom = (thread, smooth) => {
+        const b = box(thread);
+        if (b) b.scrollTo({ top: b.scrollHeight, behavior: smooth && !still.matches ? "smooth" : "auto" });
+    };
+    // The same messages first, then more: those are added to the list in the box, and a message
+    // whose "new" changed takes its new line; false (the whole region is replaced) otherwise.
+    const addMessages = (region, fresh) => {
+        const list = region.querySelector("ol.conversation");
+        const freshList = fresh.querySelector("ol.conversation");
+        if (!list || !freshList) return false;
+        const have = [...list.querySelectorAll(".message")];
+        const now = [...freshList.querySelectorAll(".message")];
+        const same = (a, b) => a.querySelector("time")?.getAttribute("datetime") === b.querySelector("time")?.getAttribute("datetime")
+            && a.querySelector(".bubble-body")?.textContent === b.querySelector(".bubble-body")?.textContent;
+        if (now.length < have.length || have.some((m, i) => !same(m, now[i]))) return false;
+        have.forEach((m, i) => {
+            const isNew = now[i].querySelector(".message-new") !== null;
+            if ((m.querySelector(".message-new") !== null) !== isNew)
+                m.querySelector(".message-meta")?.replaceWith(document.importNode(now[i].querySelector(".message-meta"), true));
+        });
+        for (const m of now.slice(have.length)) list.append(document.importNode(m, true));
+        conversations(region);
+        return true;
     };
     // A thread inside a tied gift isn't on screen: nothing scrolls to it or reads it out.
     const shown = thread => !thread.closest("[data-gift]:not(.untied)");
@@ -469,17 +544,19 @@ function livePage() {
         const a = document.createElement("a");
         a.href = `#${thread.id}`;
         a.textContent = "New message below";
+        const gone = () => {
+            if (p.isConnected && !atBottom(thread)) return;
+            p.remove();
+            box(thread)?.removeEventListener("scroll", gone);
+        };
         a.addEventListener("click", event => {
             event.preventDefault();
-            lastMessage(thread)?.scrollIntoView({ block: "end" });
+            toBottom(thread, true);
             p.remove();
         });
         p.append(a);
         thread.append(p);
-        const gone = () => {
-            if (!p.isConnected || atBottom(thread)) { p.remove(); window.removeEventListener("scroll", gone); }
-        };
-        window.addEventListener("scroll", gone, { passive: true });
+        box(thread)?.addEventListener("scroll", gone, { passive: true });
     };
     const watchThreads = () => {
         const before = new Map(all(main, "[data-thread][id]").map(t => [t.id, { count: t.querySelectorAll(".message").length, bottom: atBottom(t) }]));
@@ -490,7 +567,7 @@ function livePage() {
                 if (!thread || !shown(thread)) continue;
                 const messages = [...thread.querySelectorAll(".message")];
                 if (messages.length <= was.count) continue;
-                if (was.bottom) messages.at(-1).scrollIntoView({ block: "end" });
+                if (was.bottom) toBottom(thread, true);
                 else below(thread);
                 for (const m of messages.slice(was.count))
                     said.push(`New message: ${m.querySelector(".bubble-body")?.textContent.trim() ?? ""}`);
@@ -530,10 +607,19 @@ function livePage() {
     };
 
     live.onRefetch.push((page, hint) => {
+        // Moved: the questions page sends a refetch on to the event page once names are revealed
+        // (or the event archived). That's a state change; the line shows with "Show", which goes there.
+        if (hint.moved) {
+            if (!main.dataset.liveMoved) return;
+            const text = (hint.areas.has(words.archivedArea) ? words.archived : words.revealed) ?? "";
+            if (text) line(text, "Show", main.dataset.liveMoved);
+            stale = true;
+            return;
+        }
         if (hint.gone) {
-            const text = hint.areas.has("EventCanceled") ? "This event was canceled" : "You're no longer in this event";
+            const text = (hint.areas.has(words.canceledArea) ? words.canceled : words.out) ?? "";
             if (!editing(main)) main.replaceChildren(say);
-            line(text, "Back to your events", "/");
+            line(text, words.back ?? "", "/");
             stale = true;
             return;
         }
@@ -543,7 +629,7 @@ function livePage() {
         if (!fresh?.dataset.liveShape) return;
         if (fresh.dataset.liveShape === main.dataset.liveShape) {
             if (!stale) {
-                if (hint.areas.has("Patched")) retie(page);
+                if (hint.areas.has(words.patchedArea)) retie(page);
                 const threads = watchThreads();
                 lists(page);
                 regions(page);
@@ -553,7 +639,9 @@ function livePage() {
             return;
         }
         const text = fresh.dataset.liveLine ?? "";
-        if (!stale && !editing(main)) {
+        // A refetch a hint set off left the pair parts out (the gift's name, say), so it can't
+        // stand as the page: the line shows with "Show", whose load brings them.
+        if (!stale && !editing(main) && fresh.querySelector("[data-live-withheld]") === null) {
             body(page, fresh);
             if (text) line(text);
             return;
@@ -574,14 +662,22 @@ function liveConnection() {
     // The areas (happening kinds) of the hints since the last refetch: a page can tell a
     // cancellation from being taken out. A catch-up refetch has none.
     let areas = new Set();
+    // What the next refetch sends in its Pollyanna-Live header (LiveRefetch): the value a hint
+    // names ("hint" leaves the parts between a giver and a recipient out, since everyone the hint
+    // reached refetches with it), or a catch-up, which carries everything. A catch-up wins: it's
+    // after being away, or after your own action in a pair, which only your own tabs hear of.
+    const catchUp = "catch-up"; // any value but the hint's
+    let as = null;
     const hinted = event => {
+        let named = null;
         try {
-            const area = JSON.parse(event.data).area;
-            if (typeof area === "string") areas.add(area);
+            const data = JSON.parse(event.data);
+            if (typeof data.area === "string") areas.add(data.area);
+            if (typeof data.refetch === "string") named = data.refetch;
         } catch {
             // A hint without data still refetches.
         }
-        refetch();
+        refetch(named ?? catchUp);
     };
 
     // A giver-recipient happening (spec §16) comes as content: the pages it touches, as this person
@@ -598,7 +694,8 @@ function liveConnection() {
             return;
         }
         const pages = frame?.pages ?? {};
-        const path = location.pathname.replace(/\/untie$/, "");
+        // This page's own path as the server files its content (data-live-path; /untie is the event page).
+        const path = document.querySelector("main")?.dataset.livePath || location.pathname;
         const html = pages[path] ?? pages["/"] ?? Object.values(pages)[0];
         if (typeof html !== "string") return;
         const page = new DOMParser().parseFromString(html, "text/html");
@@ -608,16 +705,25 @@ function liveConnection() {
         for (const listener of live.onRefetch) listener(page, hint);
     };
 
-    const refetch = async () => {
+    const refetch = async value => {
+        as = as === catchUp || value === catchUp ? catchUp : value;
         if (live.posting || document.hidden) return;
         if (fetching) { again = true; return; }
         fetching = true;
-        const hint = { areas, gone: false };
+        const hint = { areas, gone: false, moved: false };
+        const header = as;
         areas = new Set();
+        as = null;
         try {
             const response = await fetch(location.href, {
-                headers: { "Pollyanna-Live": "1" }, redirect: "manual", credentials: "same-origin", cache: "no-store",
+                headers: { "Pollyanna-Live": header }, redirect: "manual", credentials: "same-origin", cache: "no-store",
             });
+            // Sent on elsewhere: the questions page, once names are revealed (a state change).
+            hint.moved = response.type === "opaqueredirect";
+            if (hint.moved && !live.posting) {
+                for (const listener of live.onRefetch) listener(null, hint);
+                return;
+            }
             // Not found: the event was canceled, or this person is no longer in it. That page
             // still has the masthead, so the bell's panel is brought up to date all the same.
             hint.gone = response.status === 404;
@@ -629,7 +735,7 @@ function liveConnection() {
             // The next hint or reconnect tries again.
         } finally {
             fetching = false;
-            if (again) { again = false; refetch(); }
+            if (again) { again = false; refetch(as ?? catchUp); }
         }
     };
 
@@ -641,7 +747,7 @@ function liveConnection() {
         source.addEventListener("content", content);
         // The first open is the page load itself; any later one (shown again, reconnected) catches up.
         source.addEventListener("open", () => {
-            if (opened) refetch();
+            if (opened) refetch(catchUp);
             opened = true;
         });
         source.addEventListener("error", () => {
@@ -669,6 +775,33 @@ function liveConnection() {
         if (!event.defaultPrevented) live.posting = true;
     });
     open();
+}
+
+// A conversation's box starts at its newest message: on load, and when one comes in whole. Once
+// set, live updates scroll it (livePage), so a box brought along by a swap stays where it was.
+function threadBoxes(root = document) {
+    for (const box of all(root, ".thread-scroll")) {
+        if ("placed" in box.dataset) continue;
+        box.dataset.placed = "";
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
+// The message boxes (the giver's question box and the recipient's reply box, spec §7): Enter
+// sends at once and Shift+Enter starts a new line, the same on both sides. Not while an input
+// method is composing a character. An empty box is stopped by "required", as the button is.
+// Without the script, the button sends.
+function composers(root = document) {
+    for (const form of all(root, "form[data-composer]")) {
+        const box = form.querySelector("textarea");
+        if (!box || "enterSends" in box.dataset) continue;
+        box.dataset.enterSends = "";
+        box.addEventListener("keydown", event => {
+            if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+            event.preventDefault();
+            form.requestSubmit();
+        });
+    }
 }
 
 // "12 / 1,000" under a message box as it fills.
@@ -730,6 +863,8 @@ function pageParts(root = document) {
     addPeople(root);
     gifts(root);
     conversations(root);
+    threadBoxes(root);
+    composers(root);
     counters(root);
     saveOnChange(root);
     foldLinks(root);

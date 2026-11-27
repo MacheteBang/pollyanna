@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Pollyanna.Notifications;
 
 /// <summary>
-/// Queues notifications (spec §15). Rows are only added to the <see cref="PollyannaDb"/> context, so
+/// Adds notifications to be sent (spec §15). Rows are only added to the <see cref="PollyannaDb"/> context, so
 /// they are saved by the caller's own <c>SaveChanges</c>, in the same transaction as the change
 /// that causes them. With no mail relay configured, nothing is queued.
 /// Callers only say what happened, as a kind's cause; the kind's rules decide the rest. Whoever
@@ -18,10 +18,10 @@ public sealed class Outbox(PollyannaDb db, PollyannaSettings settings, TimeProvi
     public bool Enabled => settings.Mail is not null;
 
     /// <summary>
-    /// Queues the kind whose cause this is, by that kind's rules: for each of its recipients but
+    /// Adds the kind whose cause this is, by that kind's rules: for each of its recipients but
     /// the actor, unless the person has emails switched off or a waiting row already covers it.
     /// </summary>
-    public async Task QueueAsync<TCause>(TCause cause) where TCause : NotificationCause
+    public async Task AddAsync<TCause>(TCause cause) where TCause : NotificationCause
     {
         if (!Enabled)
             return;
@@ -49,6 +49,35 @@ public sealed class Outbox(PollyannaDb db, PollyannaSettings settings, TimeProvi
             WakeSenderAfterSave();
         }
     }
+
+    /// <summary>
+    /// "Event is open" for the participants, and every invitation made while it was a draft,
+    /// which is emailed now (spec §15).
+    /// </summary>
+    public async Task AddEventOpenAsync(Guid eventId, Guid? actor)
+    {
+        await AddAsync(new Kinds.EventOpen.Cause(eventId, actor));
+        var invitations = await db.Invitations.Where(i => i.EventId == eventId).OrderBy(i => i.CreatedAt).ToListAsync();
+        foreach (var invitation in invitations)
+            await AddAsync(new Kinds.Invitation.Cause(eventId, invitation.Email, invitation.InvitedBy, actor));
+    }
+
+    /// <summary>An invitation's email, unless the event is a draft: a draft's invitations are emailed when it opens (spec §4, §15).</summary>
+    public async Task AddInvitationAsync(Guid eventId, Guid? invitationId, Guid? actor)
+    {
+        var ev = await db.Events.FindAsync(eventId);
+        if (ev is null || !Events.EventLifecycle.ShownToParticipants.Contains(ev.Status))
+            return;
+        if (await db.Invitations.FindAsync(invitationId) is { } invitation)
+            await AddAsync(new Kinds.Invitation.Cause(eventId, invitation.Email, invitation.InvitedBy, actor));
+    }
+
+    /// <summary>Every email of the event still waiting goes, unsent: it was canceled (spec §4).</summary>
+    public Task WithdrawEventAsync(Guid eventId) =>
+        db.Notifications.Where(n => n.EventId == eventId).ExecuteDeleteAsync();
+
+    /// <summary>The "names are drawn" emails still waiting go: the slips they point to are gone (a redraw, spec §15).</summary>
+    public Task WithdrawNamesDrawnAsync(Guid eventId) => Kinds.NamesDrawn.WithdrawWaitingAsync(db, eventId);
 
     /// <summary>Whether a waiting row covers a new one for <paramref name="recipient"/>, as <paramref name="kind"/> says.</summary>
     async Task<bool> CoveredAsync(NotificationKindDefinition kind, Guid eventId, Recipient recipient, Guid? named)
