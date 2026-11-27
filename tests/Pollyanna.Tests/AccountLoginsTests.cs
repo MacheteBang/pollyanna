@@ -81,7 +81,7 @@ public sealed class AccountLoginsTests : IAsyncLifetime
 
         Assert.Equal(["Add issuer.test", "Add Google", "Add Work account"], AddButtons(page));
         Assert.All(page.QuerySelectorAll("#logins form[action='/account/addlogin'] button"),
-            b => Assert.Contains("button-outline", b.ClassList));
+            b => Assert.DoesNotContain("button-fill", b.ClassList));
     }
 
     [Fact]

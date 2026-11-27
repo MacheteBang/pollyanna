@@ -3,8 +3,14 @@
 @using Pollyanna.Data
 @{
     ViewData["Title"] = Model.Event.Name;
-    // Every state is in "Tablecloth": _EventHead, then the state's own partial.
-    Layout = "_Tablecloth";
+    // Every state: _EventHead, then the state's own partial.
+}
+@section Preload {
+    @if (Model.Event.Status == EventStatus.Drawn && Model.Slip is not null)
+    {
+        @* The name is written in the hand as the gift unties: load it up front so it doesn't swap in mid-way. *@
+        <link rel="preload" href="~/fonts/playpen-sans-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+    }
 }
 <partial name="_EventHead" model="Model" />
 @if (Model.Membership.IsOver)

@@ -194,7 +194,9 @@ public sealed partial class OneLookTests : IAsyncLifetime
     [InlineData("/fonts/ReenieBeanie-OFL.txt")]
     public async Task Paper_slips_files_are_gone(string path)
     {
-        using var browser = app.NewBrowser();
+        // Signed out, any unknown path goes to sign-in; signed in, it's a plain 404.
+        var (browser, _) = await app.SignInAsync(new MockIdentity("pat", "Pat", "pat@example.com", true, null));
+        using var _b = browser;
 
         Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync(path)).StatusCode);
     }

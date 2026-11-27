@@ -143,5 +143,5 @@ covers running it locally, the tests and how the project is built.
 ## License
 
 Pollyanna is licensed under the [GNU Affero General Public License v3.0](LICENSE). The fonts,
-Courier Prime and Reenie Beanie, are under the SIL Open Font License, and the bow is adapted
+Figtree and Playpen Sans, are under the SIL Open Font License, and the bow is adapted
 from Microsoft Fluent Emoji (MIT); see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

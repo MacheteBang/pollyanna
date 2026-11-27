@@ -289,7 +289,7 @@ public sealed class EventCreationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_manage_pages_ticklist_marks_nobody_as_prefilled()
+    public async Task The_manage_pages_ticklist_shows_everyone_the_organizer_knows_unticked()
     {
         var (browser, me) = await app.SignInAsync(Pat);
         using var _b = browser;
@@ -299,10 +299,9 @@ public sealed class EventCreationTests : IAsyncLifetime
 
         var page = await browser.GetPageAsync($"/events/{draft}/manage");
 
-        // The script hides a row whose data-prefilled is "true", so a row here must say "false".
-        var annRow = page.QuerySelector($"input[name=personIds][value='{ann}']")!;
-        Assert.Equal("false", annRow.ParentElement!.GetAttribute("data-prefilled"));
-        Assert.False(annRow.ParentElement!.HasAttribute("hidden"));
+        var annBox = page.QuerySelector($"input[name=personIds][value='{ann}']")!;
+        Assert.False(annBox.HasAttribute("checked") || annBox.HasAttribute("disabled"));
+        Assert.False(annBox.ParentElement!.HasAttribute("hidden"));
     }
 
     [Fact]

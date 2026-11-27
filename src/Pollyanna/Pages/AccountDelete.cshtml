@@ -1,7 +1,6 @@
 @page "/account/delete"
 @model AccountDeleteModel
 @{
-    Layout = "_Tablecloth";
     ViewData["Title"] = "Delete your account";
     var check = Model.Check;
     string List(IReadOnlyList<string> names) => string.Join(", ", names);

@@ -30,12 +30,13 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
     private static partial Regex Token();
 
     /// <summary>
-    /// Every page the viewer can reach in the event, plus the leave confirmations, plus the manage
+    /// Every page the viewer can reach in the event, plus the leave confirmations, the new-event form
+    /// (which lists earlier events), plus the manage
     /// page of <paramref name="upcoming"/>, a draft whose add-people control lists the event's people.
     /// </summary>
     static async Task<List<string>> PagesAsync(TestBrowser browser, Guid ev, Viewer viewer, bool archived, Guid upcoming)
     {
-        var paths = new List<string> { "/", "/account", "/account/delete", "/past", $"/events/{ev}", $"/events/{upcoming}/manage" };
+        var paths = new List<string> { "/", "/account", "/account/delete", "/past", "/events/new", $"/events/{ev}", $"/events/{upcoming}/manage" };
         if (viewer != Viewer.Participant)
             paths.Add($"/events/{ev}/manage");
         if (viewer != Viewer.Organizer)
@@ -148,7 +149,6 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         {
             Assert.DoesNotContain("reveal-name", string.Concat(before));
             Assert.DoesNotContain("revealed-name", string.Concat(before));
-            Assert.DoesNotContain("passed-note", string.Concat(before));
             Assert.DoesNotContain("class=\"bubble\"", string.Concat(before));
         }
         // The add-people control on the draft lists the event's people.

@@ -1,6 +1,6 @@
 /* Pollyanna, "Tablecloth" (spec §12). A table laid for the family: one white panel holding the
    one thing to do, on a full-width band of blue gingham, with quiet rows on white beneath it.
-   Loaded by Pages/Shared/_Tablecloth.cshtml only; pages still on "Paper slips" use site.css.
+   Loaded by Pages/Shared/_Tablecloth.cshtml, the layout of every page.
    Six colors and no others; light only; everything served by the app. */
 
 /* ---------- Fonts (served by the app; SIL Open Font License, see /fonts/*-OFL.txt) ---------- */
@@ -523,13 +523,6 @@ strong, b { font-weight: 800; }
 /* The provider buttons run the full column width. */
 .lone > .actions { align-self: stretch; }
 
-/* "Back to your events": a plain link with a full tap target. */
-.lone-way-out {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--tap);
-}
-
 /* ---------- Form fields (new event first; reuse for any form in a panel) ---------- */
 
 /* What the script hides stays hidden, whatever its display. */
@@ -642,7 +635,8 @@ strong, b { font-weight: 800; }
 /* A confirmation's action: the size of the one thing to do, whatever its color. */
 .button-strong { font: var(--type-action); }
 
-/* The way out under a confirmation's button. */
+/* A link standing alone as the way out ("Stay in", "Keep my account", "Back to your events"):
+   tall enough to tap. */
 .way-out {
     align-self: flex-start;
     display: inline-flex;
@@ -730,13 +724,6 @@ strong, b { font-weight: 800; }
     color: var(--ink);
     font: var(--type-small);
     font-weight: 800;
-}
-
-/* A link standing alone as a way out, such as "Stay in": tall enough to tap. */
-.tap-link {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--tap);
 }
 
 /* A confirmation (leave): plain text on white, then the button and the way out. */
