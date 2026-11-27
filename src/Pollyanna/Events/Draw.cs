@@ -52,7 +52,7 @@ public static class Draw
     {
         var graph = new Graph(rules);
         if (graph.N < MinPeople)
-            return new(null, $"The hat needs at least {MinPeople} people.");
+            return new(null, $"At least {MinPeople} people need to take part.");
         if (!graph.CanComplete(new int[graph.N].Fill(-1)))
             return new(null, WhyImpossible(rules, graph));
 
@@ -89,7 +89,7 @@ public static class Draw
     {
         var graph = new Graph(rules);
         if (graph.N < MinPeople)
-            return $"The hat needs at least {MinPeople} people.";
+            return $"At least {MinPeople} people need to take part.";
         return graph.CanComplete(new int[graph.N].Fill(-1)) ? null : WhyImpossible(rules, graph);
     }
 
@@ -111,7 +111,7 @@ public static class Draw
             .GroupBy(p => rules.HouseholdOf[p])
             .MaxBy(h => h.Count());
         if (biggest is not null && biggest.Count() * 2 > graph.N)
-            return $"The household {rules.Name(biggest.Key)} has more than half the people in the hat, so they can't all draw someone outside it.";
+            return $"The household {rules.Name(biggest.Key)} has more than half the people taking part, so they can't all draw someone outside it.";
 
         return rules.Forbidden.Count > 0
             ? "There's no way to draw names under these rules. Loosen a household or a rule, or repeat pairings from fewer years back."

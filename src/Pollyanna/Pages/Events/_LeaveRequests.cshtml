@@ -2,5 +2,5 @@
 @model IReadOnlyList<Pollyanna.Pages.Events.ManageModel.ParticipantRow>
 @foreach (var p in Model.Where(p => p.WantsToLeave))
 {
-    <p class="small red-text strong">@p.Name asked to leave. Doing this instead of a redraw keeps them in and drops the request.</p>
+    <p class="small error">@p.Name asked to leave. Doing this instead of a redraw keeps them in and drops the request.</p>
 }

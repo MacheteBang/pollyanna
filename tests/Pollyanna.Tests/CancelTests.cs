@@ -36,7 +36,7 @@ public sealed class CancelTests : IAsyncLifetime
 
     static string Manage(Guid ev) => $"/events/{ev}/manage";
 
-    Task<HttpResponseMessage> CancelAsync(Guid ev) => browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/cancel");
+    Task<HttpResponseMessage> CancelAsync(Guid ev) => browser.PostWithTokenAsync("/account", $"{Manage(ev)}/cancel");
 
     async Task<Guid> EventInAsync(EventStatus status, string name = "Test swap")
     {

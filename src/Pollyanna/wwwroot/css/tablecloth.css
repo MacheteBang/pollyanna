@@ -784,3 +784,58 @@ strong, b { font-weight: 800; }
 .past-row:hover .past-name { text-decoration: underline; text-decoration-color: var(--ribbon); text-decoration-thickness: var(--line); }
 .past-name { font: var(--type-action); overflow-wrap: anywhere; }
 .past-row .small { font-weight: 400; }
+
+/* ---------- Organizing page (#73): people rows, add people, and the parts #78 reworks ---------- */
+
+/* A person's row: picture, name, the small words on what is missing, then "Remove". */
+.row-name { flex: 1; min-width: 0; font-weight: 800; overflow-wrap: anywhere; }
+.row-plain { font-weight: 400; }
+.row-words { text-align: right; }
+.row-end { flex: none; }
+.row > .avatar { align-self: center; }
+
+/* "Add people": an outlined button that opens the add-people control in place. */
+.add-people-fold > summary { list-style: none; align-self: flex-start; }
+.add-people-fold > summary::-webkit-details-marker { display: none; }
+.add-people-fold { display: flex; flex-direction: column; gap: var(--space-4); }
+.add-people-fold > form { margin-top: var(--space-4); }
+
+/* Until #78 reworks them: rules, details, organizers and the rare actions, as plain groups. */
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.hint { font: var(--type-small); color: var(--soft-ink); }
+.group-subtitle { font: var(--type-small); font-weight: 800; margin-top: var(--space-3); }
+.field-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.field-row > .field { flex: 1 1 12rem; }
+
+fieldset.choices { border: 0; margin: 0; padding: 0; min-width: 0; }
+.choices legend { padding: 0; font-weight: 800; margin-bottom: var(--space-2); }
+.choices .person { align-items: center; }
+.choices .person input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--ribbon); }
+.choices .rows, .choices ul { list-style: none; padding: 0; margin: 0; }
+
+details.editor { border-top: var(--line) solid var(--pale); }
+details.editor > summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    font-weight: 600;
+    cursor: pointer;
+}
+details.editor[open] > summary { margin-bottom: var(--space-3); }
+details.editor > form, details.editor > p, details.editor > div { margin-bottom: var(--space-3); }
+
+#people, #invited, #pairings, #changes, #rules, #organizers, #details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.household { padding-block: var(--space-2); border-top: var(--line) solid var(--pale); }
+.household-name { font-weight: 800; }
+
+.pairings { list-style: none; padding: 0; }
+.pairing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding-block: var(--space-2); border-top: var(--line) solid var(--pale); }
+.pairing:first-child { border-top: 0; }
+.pairing-person { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; }
+
+.people { list-style: none; padding: 0; }
