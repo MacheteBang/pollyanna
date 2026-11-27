@@ -1,5 +1,6 @@
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.Live;
 using Pollyanna.WhatsNew;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -59,8 +60,9 @@ public sealed class EventModel(PollyannaDb db, EventManager events, WhatsNewList
             return NotFound();
         if (!Membership.IsParticipant)
             return Redirect($"/events/{id}/manage");
-        // Seeing the page clears what pointed here, in this same request (spec §16).
-        await whatsNew.SeenAsync(Me, id, $"/events/{id}");
+        // Seeing the page clears what pointed here, in this same request; a live refetch isn't seeing it (spec §16).
+        if (!Request.IsLiveRefetch())
+            await whatsNew.SeenAsync(Me, id, $"/events/{id}");
 
         Participants = await Db.Participants.Where(p => p.EventId == id)
             .Join(Db.People, p => p.PersonId, person => person.Id, (p, person) => new ParticipantRow(

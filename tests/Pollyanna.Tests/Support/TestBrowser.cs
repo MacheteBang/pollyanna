@@ -1,6 +1,7 @@
 using System.Net;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
+using Pollyanna.Live;
 using Pollyanna.MockIssuer;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -28,9 +29,17 @@ public sealed class TestBrowser(HttpClient app, IReadOnlyDictionary<string, Http
         return response;
     }
 
-    public async Task<IHtmlDocument> GetPageAsync(string path)
+    /// <summary>
+    /// Loads <paramref name="path"/> and parses it. With <paramref name="live"/>, it is a live
+    /// refetch, as the page's script makes on a hint: the same URL, marked with
+    /// <see cref="LiveRefetch.Header"/>, which counts as no visit (spec §16).
+    /// </summary>
+    public async Task<IHtmlDocument> GetPageAsync(string path, bool live = false)
     {
-        var response = await app.GetAsync(path);
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (live)
+            request.Headers.Add(LiveRefetch.Header, LiveRefetch.Value);
+        var response = await app.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return await ParseAsync(response);
     }
