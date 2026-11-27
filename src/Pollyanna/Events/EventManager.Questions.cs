@@ -1,5 +1,5 @@
 using Pollyanna.Data;
-using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 
 namespace Pollyanna.Events;
 
@@ -97,8 +97,9 @@ public sealed partial class EventManager
             return Outcome.Fail("You've sent a lot of messages this hour. Try again a little later.");
 
         // "A question for you", saved with the message. Nothing is ever queued for the giver (docs/adr/0001).
-        if (sender == MessageSender.Giver)
-            await outbox.QueueAsync(new Question.Cause(eventId, thread.RecipientId, me));
+        await announcer.AnnounceAsync(sender == MessageSender.Giver
+            ? new Happening(HappeningKind.Question, eventId, me, thread.RecipientId)
+            : new Happening(HappeningKind.Reply, eventId, me));
         return await hat.AddMessageAsync(thread, sender, body, Now)
             ? Outcome.Done(sent)
             : Outcome.Fail("Names were drawn again, so that conversation is gone.");
@@ -111,6 +112,8 @@ public sealed partial class EventManager
             return refusal;
         if (!await hat.SetClosedAsync(m.Event.Id, me, closed))
             return Outcome.Fail("There's no conversation here.");
+        await announcer.AnnounceAsync(new Happening(closed ? HappeningKind.ConversationClosed : HappeningKind.ConversationReopened, m.Event.Id, me));
+        await db.SaveChangesAsync();
         return Outcome.Done(closed
             ? "Conversation closed. Your giver can't send more questions until you reopen it."
             : "Conversation reopened. Your giver can write again.");

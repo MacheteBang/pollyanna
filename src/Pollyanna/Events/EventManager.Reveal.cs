@@ -1,5 +1,5 @@
 using Pollyanna.Data;
-using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 using Microsoft.EntityFrameworkCore;
 
 namespace Pollyanna.Events;
@@ -40,7 +40,7 @@ public sealed partial class EventManager
             if (claimed == 0)
                 return Outcome.Fail("The status changed in the meantime. Have a look and try again.");
             await ClearLeaveRequestsAsync(id);
-            await outbox.QueueAsync(new EventRevealed.Cause(id, me));
+            await announcer.AnnounceAsync(new Happening(HappeningKind.EventRevealed, id, me));
             await db.SaveChangesAsync();
             return Outcome.Done("Revealed. Everyone in the event can see who drew whom on the event page.");
         });
@@ -50,7 +50,7 @@ public sealed partial class EventManager
     /// Archives a drawn or revealed event (spec §4, §6): read-only from then on, and off the home
     /// page. Its question threads are deleted unless <paramref name="keepMessages"/>. Irreversible.
     /// </summary>
-    public async Task<Outcome> ArchiveAsync(Membership m, bool keepMessages)
+    public async Task<Outcome> ArchiveAsync(Membership m, Guid me, bool keepMessages)
     {
         var from = m.Event.Status;
         if (EventLifecycle.Archive.Refusal(from) is { } refusal)
@@ -66,6 +66,8 @@ public sealed partial class EventManager
             if (!keepMessages)
                 await hat.ClearThreadsAsync(id);
             await ClearLeaveRequestsAsync(id);
+            await announcer.AnnounceAsync(new Happening(HappeningKind.EventArchived, id, me));
+            await db.SaveChangesAsync();
             return Outcome.Done(keepMessages
                 ? "Archived. The question threads were kept, and only their own two people can read them."
                 : "Archived. The question threads were deleted.");
@@ -77,7 +79,7 @@ public sealed partial class EventManager
     /// emailed. Its pending invitations, leave requests, question threads and waiting emails are
     /// deleted; everything else stays, unseen. Irreversible.
     /// </summary>
-    public async Task<Outcome> CancelAsync(Membership m)
+    public async Task<Outcome> CancelAsync(Membership m, Guid me)
     {
         if (EventLifecycle.Cancel.Refusal(m.Event.Status) is { } refusal)
             return Outcome.Fail(refusal);
@@ -92,7 +94,8 @@ public sealed partial class EventManager
             await hat.ClearThreadsAsync(id);
             await ClearLeaveRequestsAsync(id);
             await db.Invitations.Where(i => i.EventId == id).ExecuteDeleteAsync();
-            await db.Notifications.Where(n => n.EventId == id).ExecuteDeleteAsync();
+            await announcer.AnnounceAsync(new Happening(HappeningKind.EventCanceled, id, me));
+            await db.SaveChangesAsync();
             return Outcome.Done($"{m.Event.Name} is canceled.");
         });
     }

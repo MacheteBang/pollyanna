@@ -201,24 +201,24 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
         await LoadAsOrganizerAsync(id) ? Finish(await events.DrawAsync(Membership, Me), Here("next-step")) : NotFound();
 
     public async Task<IActionResult> OnPostRedrawAsync(Guid id) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.RedrawAsync(Membership), Here("next-step")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.RedrawAsync(Membership, Me), Here("next-step")) : NotFound();
 
     public async Task<IActionResult> OnPostRevealAsync(Guid id, bool confirmed) =>
         await LoadAsOrganizerAsync(id) ? Finish(await events.RevealAsync(Membership, Me, confirmed), Here("next-step")) : NotFound();
 
     /// <summary>"Keep X in instead" (spec §7): drops someone's request to leave rather than drawing again.</summary>
     public async Task<IActionResult> OnPostKeepInAsync(Guid id, Guid personId) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.KeepInAsync(Membership, personId), Here("next-step")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.KeepInAsync(Membership, Me, personId), Here("next-step")) : NotFound();
 
     public async Task<IActionResult> OnPostArchiveAsync(Guid id, bool keepMessages) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.ArchiveAsync(Membership, keepMessages), Here("next-step")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.ArchiveAsync(Membership, Me, keepMessages), Here("next-step")) : NotFound();
 
     /// <summary>Canceling leaves nothing to come back to: the home page shows the notice.</summary>
     public async Task<IActionResult> OnPostCancelAsync(Guid id)
     {
         if (!await LoadAsOrganizerAsync(id))
             return NotFound();
-        var outcome = await events.CancelAsync(Membership);
+        var outcome = await events.CancelAsync(Membership, Me);
         return Finish(outcome, outcome.Ok ? "/" : Here("next-step"));
     }
 
@@ -252,22 +252,22 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     }
 
     public async Task<IActionResult> OnPostRemovePersonAsync(Guid id, Guid personId, DrawChange? change) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.RemoveParticipantAsync(Membership, personId, change), Here("people")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.RemoveParticipantAsync(Membership, Me, personId, change), Here("people")) : NotFound();
 
     public async Task<IActionResult> OnPostCancelInviteAsync(Guid id, Guid invitationId) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.CancelInvitationAsync(Membership, invitationId), Here("people")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.CancelInvitationAsync(Membership, Me, invitationId), Here("people")) : NotFound();
 
     public async Task<IActionResult> OnPostSaveHouseholdAsync(Guid id, Guid? householdId, string? householdName, List<Guid> members) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.SaveHouseholdAsync(Membership, householdId, householdName, members), Here("rules")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.SaveHouseholdAsync(Membership, Me, householdId, householdName, members), Here("rules")) : NotFound();
 
     public async Task<IActionResult> OnPostDeleteHouseholdAsync(Guid id, Guid householdId) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.DeleteHouseholdAsync(Membership, householdId), Here("rules")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.DeleteHouseholdAsync(Membership, Me, householdId), Here("rules")) : NotFound();
 
     public async Task<IActionResult> OnPostAddRuleAsync(Guid id, Guid personA, Guid personB) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.AddExclusionAsync(Membership, personA, personB), Here("rules")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.AddExclusionAsync(Membership, Me, personA, personB), Here("rules")) : NotFound();
 
     public async Task<IActionResult> OnPostRemoveRuleAsync(Guid id, Guid exclusionId) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.RemoveExclusionAsync(Membership, exclusionId), Here("rules")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.RemoveExclusionAsync(Membership, Me, exclusionId), Here("rules")) : NotFound();
 
     /// <summary>The organizer picker (spec §4): someone from the list, or an address that finds an existing person.</summary>
     public async Task<IActionResult> OnPostAddOrganizerAsync(Guid id, Guid? personId, string? email)
@@ -282,7 +282,7 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     {
         if (!await LoadAsOrganizerAsync(id))
             return NotFound();
-        var outcome = await events.RemoveOrganizerAsync(Membership, personId);
+        var outcome = await events.RemoveOrganizerAsync(Membership, Me, personId);
         // Someone who stops organizing an event they're not in can't see it any more.
         if (outcome.Ok && personId == Me)
             return Finish(outcome, Membership.IsParticipant && Membership.ShownToParticipants ? $"/events/{id}" : "/");

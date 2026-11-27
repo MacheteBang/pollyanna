@@ -62,7 +62,7 @@ public enum WaitingCover
 /// <summary>
 /// One notification kind: who it is for, when a waiting row is no longer wanted, and what the
 /// email says. Subclasses are found by reflection, so a new kind is one new file in
-/// <c>Notifications/Kinds/</c> plus the <see cref="Outbox.QueueAsync"/> call where its cause happens.
+/// <c>Notifications/Kinds/</c> plus the Email column of its happening's row in <see cref="Happenings.HappeningKinds"/>.
 /// The shared rules (account deleted, no usable address, role lost) are applied by
 /// <see cref="OutboxSender"/> before <see cref="IsStillWantedAsync"/>; the footer is added there too.
 /// </summary>

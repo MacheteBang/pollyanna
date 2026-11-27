@@ -126,7 +126,7 @@ public sealed class RevealArchiveTests : IAsyncLifetime
             // Someone else redrew in the meantime.
             await db.Events.Where(e => e.Id == ev).ExecuteUpdateAsync(s => s.SetProperty(e => e.Status, EventStatus.Open));
             Assert.False((await events.RevealAsync(seen, me, confirmed: true)).Ok);
-            Assert.False((await events.ArchiveAsync(seen, keepMessages: false)).Ok);
+            Assert.False((await events.ArchiveAsync(seen, me, keepMessages: false)).Ok);
         }
         Assert.Equal(EventStatus.Open, await app.StatusAsync(ev));
     }
