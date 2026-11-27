@@ -7,7 +7,8 @@ namespace Pollyanna.Pages.Auth;
 /// <summary>
 /// <c>/auth/failed</c>: a sign-in that didn't work (spec §3). An open provider's refusal shows its
 /// reason and the address just used, read only from the protected refusal the callback sent, then
-/// every provider's button again. Any other failure keeps the general wording.
+/// every provider's button again. Any other failure keeps the general wording and offers the same
+/// buttons (spec §7 Error pages).
 /// </summary>
 public sealed class FailedModel(RefusedSignIn refusals, ProviderRegistry providers) : PageModel
 {
@@ -22,12 +23,13 @@ public sealed class FailedModel(RefusedSignIn refusals, ProviderRegistry provide
     {
         ProviderProblem = reason == "provider";
         Refusal = refusals.Read(Request.Query[RefusedSignIn.QueryKey]);
-        if (Refusal is null)
-            return;
+        if (Refusal is not null)
+            ProviderLabel = providers.ByKey(Refusal.Provider)?.Label ?? Refusal.Provider;
 
-        ProviderLabel = providers.ByKey(Refusal.Provider)?.Label ?? Refusal.Provider;
-        var target = Refusal.ReturnUrl is { } r && Url.IsLocalUrl(r) && r != "/" ? r : null;
+        // Only a refusal carries the return URL; any other failure starts over from home.
+        var target = Refusal?.ReturnUrl is { } r && Url.IsLocalUrl(r) && r != "/" ? r : null;
         var query = target is null ? "" : "?returnUrl=" + Uri.EscapeDataString(target);
+        // §3's words for these pages: "Sign in with", outlined (the chooser says "Continue with").
         Choices = [.. providers.Select(p => new ProviderButtonView(p, "Sign in with " + p.Label, p.LoginPath + query, Outline: true))];
     }
 }

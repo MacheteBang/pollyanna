@@ -7,7 +7,7 @@ namespace Pollyanna.Pages;
 public sealed class ErrorModel : PageModel
 {
     public string Heading { get; private set; } = "Something went wrong";
-    public string Message { get; private set; } = "Pollyanna hit a problem. Try again in a moment.";
+    public string Message { get; private set; } = "That one's on Pollyanna, not you. Nothing was changed. Try again in a minute.";
 
     public void OnGet(int? code) => Describe(code);
     public void OnPost(int? code) => Describe(code);
@@ -17,8 +17,8 @@ public sealed class ErrorModel : PageModel
         switch (code)
         {
             case 404:
-                Heading = "Not here";
-                Message = "There's nothing at this address, or it isn't yours to see.";
+                Heading = "We can't find that page";
+                Message = "It may have moved, or the event may have been canceled.";
                 break;
             case 400:
                 Heading = "That didn't go through";
