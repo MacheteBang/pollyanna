@@ -3,6 +3,7 @@
 @using Pollyanna.Data
 @using Pollyanna.Events
 @using Pollyanna.Infrastructure
+@using Pollyanna.Live
 @using Pollyanna.Pages.Shared
 @*
     "Questions for you" (spec §7, §12), as a conversation: the giver's messages on the left, the
@@ -71,7 +72,14 @@
     }
 }
 
-<div class="live-slot" id="questions" data-live>
+@if (!Request.CarriesPairParts())
+{
+    @* A refetch a hint set off leaves the viewer's own thread out (spec §16): it's between them and their giver. *@
+    <partial name="_Withheld" model="@("questions")" />
+}
+else
+{
+<div class="live-slot" id="questions" data-live data-live-pair>
 @if (thread is not { Notes.Count: > 0 })
 {
     <div class="column below">
@@ -117,3 +125,4 @@ else
     }
 }
 </div>
+}

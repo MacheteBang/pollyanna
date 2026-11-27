@@ -18,10 +18,10 @@
 </button>
 <div class="bell-panel" id="whats-new-panel" role="region" aria-labelledby="whats-new-panel-heading" hidden>
     <h2 class="bell-panel-heading" id="whats-new-panel-heading">What's new</h2>
-    <ul class="rows bell-rows" role="list">
+    <ul class="rows bell-rows" role="list" @(Model.Withheld ? Html.Raw("data-live-withheld") : null)>
         @foreach (var row in Model.Rows)
         {
-            <li class="row bell-row">
+            <li class="row bell-row" @(row.WorkedOut ? Html.Raw("data-live-pair") : null)>
                 <span class="row-stack">
                     <a class="bell-line" href="@row.Href">@row.Line</a>
                     <span class="small soft bell-meta">@row.EventName@if (row.At is { } at)

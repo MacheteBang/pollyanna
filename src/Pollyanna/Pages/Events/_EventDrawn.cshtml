@@ -22,6 +22,12 @@
     reply still arrives and closing still shows, and the script turns Send off; the lines before
     and after the gift sit in always-there slots. A patch brings the whole gift in again, tied
     (site.js, on the giver's own content frame), so an old name is never left on screen.
+
+    The parts between the viewer and their recipient or giver (data-live-pair: their notes, the
+    question box, the lines before and after the gift, and the name and markers on the gift) are
+    left out of a refetch a hint set off (Model.PairParts false), so what it brings back depends on
+    nobody's pairing; each keeps its place (_Withheld), and the script keeps what it shows. They
+    arrive in the viewer's own content frames, a catch-up refetch or a real load.
 *@
 @{
     var id = Model.Event.Id;
@@ -29,9 +35,17 @@
     var ask = Model.AskThread;
     var questions = Model.QuestionsThread is { Notes.Count: > 0 } q ? q : null;
     var untie = $"/events/{id}/untie#gift";
+    var pair = Model.PairParts;
 }
 
-<div class="live-slot" id="live-asked" data-live>
+@if (!pair)
+{
+    <partial name="_Withheld" model="@("live-asked")" />
+    <partial name="_Withheld" model="@("live-gift-again")" />
+}
+else
+{
+<div class="live-slot" id="live-asked" data-live data-live-pair>
     @if (questions is { Unread: > 0 })
     {
         <div class="column gift-asked">
@@ -40,7 +54,7 @@
     }
 </div>
 
-<div class="live-slot" id="live-gift-again" data-live>
+<div class="live-slot" id="live-gift-again" data-live data-live-pair>
     @if (slip is { RecipientChanged: true })
     {
         <div class="column"><p class="gift-again" role="status">You're giving to someone new. Someone left or joined, so who you're giving to changed.</p></div>
@@ -50,6 +64,7 @@
         <div class="column"><p class="gift-again">Names were drawn again, so this may be someone new.</p></div>
     }
 </div>
+}
 
 @if (Model.WantsToLeave)
 {
@@ -72,16 +87,23 @@
 }
 else
 {
-    var first = Model.FirstTime ? "true" : "false";
-    var name = slip.Recipient.Name;
-    <section id="gift" class="gift@(Model.Unfold ? " untied still" : "")" data-gift data-first="@first" aria-label="Who you're giving to">
+    var first = pair && Model.FirstTime ? "true" : "false";
+    var name = pair ? slip.Recipient.Name : "";
+    <section id="gift" class="gift@(Model.Unfold ? " untied still" : "")" data-gift data-first="@first" @(pair ? null : Html.Raw("data-live-withheld")) aria-label="Who you're giving to">
         <div class="cloth gift-cloth">
             <div class="panel gift-panel">
                 <p class="gift-to">You're giving to</p>
                 <p class="revealed-name@(name.Length > 8 ? " revealed-name-long" : "")" tabindex="-1">@name</p>
                 <div class="gift-more">
                     <div class="gift-more-in">
-                        <section class="gift-group" id="their-notes" data-live aria-labelledby="their-notes-heading">
+                        @if (!pair)
+                        {
+                            <partial name="_Withheld" model="@("their-notes")" />
+                            <partial name="_Withheld" model="@("ask")" />
+                        }
+                        else
+                        {
+                        <section class="gift-group" id="their-notes" data-live data-live-pair aria-labelledby="their-notes-heading">
                             <h2 id="their-notes-heading" class="section-title">@Format.Possessive(name) notes</h2>
                             @if (slip.NotesUpdated)
                             {
@@ -91,7 +113,7 @@ else
                         </section>
                         @if (ask is not null)
                         {
-                            <section class="gift-group" id="ask" data-live aria-labelledby="ask-heading">
+                            <section class="gift-group" id="ask" data-live data-live-pair aria-labelledby="ask-heading">
                                 <h2 id="ask-heading" class="section-title">Ask @name something</h2>
                                 <p class="small soft">@name sees "Your giver asks…", never your name.</p>
                                 <div class="live-slot" id="ask-thread" data-live data-thread>
@@ -136,12 +158,13 @@ else
                                 }
                             </section>
                         }
+                        }
                         <form method="post" asp-page-handler="shopping" id="shopping" class="gift-shopping" data-save-on-change data-live>
                             <label class="check"><input type="checkbox" name="done" value="true" checked="@Model.DoneShopping"> Done shopping</label>
                             <button type="submit" class="button button-start" data-save-button>Save</button>
                         </form>
                         <form method="post" action="/events/@id/seen" asp-antiforgery="true" data-hide>
-                            <input type="hidden" name="upto" value="@(ask?.Upto ?? 0)">
+                            <input type="hidden" name="upto" value="@(pair ? ask?.Upto ?? 0 : 0)">
                             <button type="submit" class="link-button">Hide the name</button>
                         </form>
                     </div>
@@ -170,12 +193,19 @@ else
 }
 
 <div class="column below">
-    <div class="live-slot" id="live-questions-link" data-live>
-        @if (questions is not { Unread: > 0 })
-        {
-            <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
-        }
-    </div>
+    @if (!pair)
+    {
+        <partial name="_Withheld" model="@("live-questions-link")" />
+    }
+    else
+    {
+        <div class="live-slot" id="live-questions-link" data-live data-live-pair>
+            @if (questions is not { Unread: > 0 })
+            {
+                <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
+            }
+        </div>
+    }
     <div class="folds">
         <details class="fold" id="your-notes" data-live>
             <summary><span>Your notes</span><span class="fold-hint">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "None yet")</span></summary>

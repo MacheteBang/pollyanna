@@ -42,6 +42,11 @@ public sealed class EventModel(PollyannaDb db, EventManager events, WhatsNewList
     /// assignment; after a patch the new recipient counts as a first time too.
     /// </summary>
     public bool FirstTime => Slip is { Viewed: false } or { RecipientChanged: true };
+    /// <summary>
+    /// Whether the page carries the parts between the viewer and their recipient or giver; not on
+    /// a live refetch a hint set off (spec §16, <see cref="LiveRefetch.CarriesPairParts"/>).
+    /// </summary>
+    public bool PairParts => Request.CarriesPairParts();
     /// <summary>Today in UTC, for the day lines of the giver's thread (site.js redoes them in local time).</summary>
     public DateOnly Today { get; private set; }
     /// <summary>Once revealed: who drew whom (spec §4).</summary>

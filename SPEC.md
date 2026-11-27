@@ -2844,7 +2844,7 @@ reveals.
 | Public to the event: opened, names drawn or drawn again, revealed, archived, canceled, someone's notes edited, someone joining or leaving, details changed | every connected participant and organizer of the event | a hint naming the event and the area, never a person; the page refetches |
 | For organizers only: has looked, done shopping, wants to leave, invitations taken up, people, organizers and rules changed | the event's connected organizers | a hint, then a refetch |
 | Not about an assignment: made an organizer, added to an event, accepted invitation, redraw needed, taken out of an event | just the person it's for, or the organizers | a hint, then a refetch |
-| Between a giver and a recipient: question, reply, closed or reopened, patched, "your recipient updated their notes" | just that person | the content itself (each affected region's HTML and the menu's rows), inside the connection, with no follow-up fetch |
+| Between a giver and a recipient: question, reply, closed or reopened, patched, "your recipient updated their notes" | just that person: the question's recipient, the giver of whoever replied, closed, reopened or edited their notes, the giver a patch changed | the content itself (each affected region's HTML and the menu's rows), inside the connection, with no follow-up fetch |
 | Your own action: a sent message, a dismissal, saved notes, "Done shopping" | your other tabs and devices | a hint, then a refetch |
 
 - A hint followed by a fetch from only one giver would pair them in the
@@ -2854,8 +2854,28 @@ reveals.
   log line says "online", not where. A keep-alive comment every 15
   seconds, so a visit is one log line, not one a minute.
 - Connections are tracked by person and event only. The target of an
-  assignment happening is worked out in memory when it's sent (as
-  `SealedHat` does) and never stored or subscribed under an assignment.
+  assignment happening is worked out in memory as it happens (as
+  `SealedHat` does; for a patch, by the patch itself, so only the giver
+  it changed), held with it until its change commits, and never stored
+  or subscribed under an assignment.
+- **A hint's refetch leaves the pair parts out** (decided November 27,
+  2026, owner, on review). A public hint makes everyone refetch, but in a
+  drawn event a notes edit or a patch changes one giver's response only
+  (new notes, a new name, a new menu row), which would pair them by
+  response size in the proxy log. So a refetch a hint set off gets the
+  page with the parts between a giver and a recipient left out: the
+  recipient's name, their notes and "Notes updated since you last
+  looked", the question box, the patch line, the recipient's own
+  questions and the lines pointing to them ("Your giver asked you
+  something", "Questions from your giver", home's waiting line in a drawn
+  event), and the five worked-out menu rows and the bell's state from
+  them. Each keeps its place, empty, and the script keeps what it already
+  shows. Those parts arrive only in content frames (so a notes edit in a
+  drawn event also sends one to that recipient's giver, and a patch to the
+  giver it changed), on a real page load, or on a catch-up refetch (shown
+  again or reconnected, or after your own action in a pair, which only
+  your own tabs hear of), which carries everything. The live request
+  header's value tells the two apart; the hint names which to send.
 - Left out: decoy refetches broadcast to the whole event, and releasing
   on a tick or the hour. Both give up instant feedback.
 
@@ -2869,7 +2889,7 @@ Decided on #88.
 | Event page, `open` | "Taking part"; details; state changes |
 | Event page, `drawn` | the giver's question box (replies, closed or reopened); the recipient's notes and "Notes updated since you last looked"; the "Your giver asked you something" line; patched to someone new; the people list; state changes |
 | Event page, over | state changes only (archived, canceled) |
-| Questions | new questions; replies, closing and reopening from your other tabs; the reveal (a state change: read-only, giver named) |
+| Questions | new questions; replies, closing and reopening from your other tabs; the reveal: the refetch gets the server's redirect to the event page, and the page shows "Everyone's been revealed." with "Show", which goes there (decided November 27, 2026, owner) |
 | Organizing | the next step's sentence and button (counts, blockers); each person's row words; invitations taken up; people and organizers changed by another organizer; the "Who can't draw whom" summaries |
 
 Every other signed-in page holds the connection for the menu only. Not
@@ -2880,7 +2900,10 @@ live: the countdown turning over at midnight, and past events.
   words, waiting lines and notes change silently.
 - **State changes** (opened, drawn, drawn again, revealed, archived,
   canceled, you were taken out) change the page's shape:
-  - With nothing on the page being edited, the page body is swapped.
+  - With nothing on the page being edited, the page body is swapped,
+    unless the refetch left pair parts out (names drawn, say: the new
+    page would have no name on the gift); then the line shows with
+    "Show", as below, and loading the page brings them.
   - With something being edited (a draft, an open confirmation, a form in
     flight), a quiet line appears in its place instead and the draft stays
     put: "Names have been drawn." / "Names have been drawn again." / "The
@@ -2894,7 +2917,8 @@ live: the countdown turning over at midnight, and past events.
   a read-only view: it moves no read marker or `notes_version_seen`,
   clears no `recipient_changed` or `thread_change_unseen`, deletes no
   stored notification and sets no `viewed`. Only a real navigation or a
-  deliberate post counts as seeing something.
+  deliberate post counts as seeing something. A refetch a hint set off
+  leaves the pair parts out (above, "Who a live signal goes to").
 - **Drafts are never touched.** A form with focus or unsaved text is left
   alone while the regions around it update. Notes edited in one tab while
   another tab saves them: the draft is kept silently and the last save
@@ -2966,7 +2990,11 @@ back here for the hand checks.
   viewer's whole live frame sequence, masthead menu and `/whats-new` page
   must come out byte-identical. Beside them: no stored notification row is
   ever of the five worked-out kinds; no hint frame holds a person's id or
-  name; a giver-recipient happening causes no request from anyone.
+  name; a giver-recipient happening causes no request from anyone. After
+  a notes edit and a patch in a drawn event, every person's hint refetch
+  of each live page comes out byte-identical across runs with every
+  pairing different, the viewer's own included, and the giver's content
+  frame carries the change.
 - **A live refetch isn't a visit:** for home, the event page, questions
   and organizing, a live `GetPageAsync` moves no read marker, sets no
   `viewed`, clears no flag and deletes no stored row, and a plain

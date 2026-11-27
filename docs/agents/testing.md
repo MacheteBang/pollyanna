@@ -9,7 +9,8 @@ Tests are integration tests against the real app through `tests/Pollyanna.Tests/
 - `await using var app = await TestApp.StartAsync()` runs the whole app with a mock OIDC issuer and its own data directory.
 - `app.SignInAsync(identity)` (in `Seed`) signs a person in through the real OIDC flow and returns a `TestBrowser` and the person's id.
 - `TestBrowser` drives the pages:
-  - `GetPageAsync` parses a page with AngleSharp.
+  - `GetPageAsync` parses a page with AngleSharp; with `live: true` it is a catch-up live refetch.
+  - `RefetchAsync(path, hint)` is a live refetch as the script makes it, not followed: `hint: true` for one a hint set off, which leaves the parts between a giver and a recipient out (spec §16).
   - `SubmitAsync` and `SubmitOnAsync` post a page's own form, so they carry its CSRF token.
   - `PostWithTokenAsync` posts to an action without submitting a form.
   - Assert on the parsed HTML, not on view models.

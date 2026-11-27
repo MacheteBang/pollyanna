@@ -1,3 +1,4 @@
+using AngleSharp.Html.Parser;
 using AngleSharp.Dom;
 using Pollyanna.Data;
 using Pollyanna.MockIssuer;
@@ -216,7 +217,7 @@ public sealed class LivePagesTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_live_refetch_brings_the_recipients_new_notes_and_the_updated_line_under_the_name()
+    public async Task A_notes_edit_reaches_the_giver_as_content_and_a_hint_refetch_leaves_the_pair_parts_out()
     {
         var (rae, raeId) = await app.SignInAsync(new MockIdentity("rae", "Rae", "rae@example.com", true, null));
         var ev = await app.EventAsync("Stockings", EventStatus.Drawn, [ann], [patId, raeId, bob]);
@@ -228,11 +229,71 @@ public sealed class LivePagesTests : IAsyncLifetime
 
         await rae.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/notes", Form(("notes", "Blue socks, size 9")));
         await app.Live.SettleAsync();
-        var notes = (await pat.GetPageAsync($"/events/{ev}", live: true)).QuerySelector("#their-notes")!;
 
+        // Everyone in the event gets the hint; Pat, Rae's giver, gets the change as content too.
         Assert.Equal([new LiveHintData(ev, nameof(Pollyanna.Happenings.HappeningKind.NotesEdited))], tab.Hints);
-        Assert.Contains("Blue socks, size 9", notes.TextContent);
-        Assert.Contains("Notes updated since you last looked", notes.TextContent);
+        var content = new HtmlParser().ParseDocument(Assert.Single(tab.Contents).Pages[$"/events/{ev}"]);
+        Assert.Contains("Blue socks, size 9", content.QuerySelector("#their-notes")!.TextContent);
+        Assert.Contains("Notes updated since you last looked", content.QuerySelector("#their-notes")!.TextContent);
+        Assert.Empty(content.QuerySelectorAll("[data-live-withheld]"));
+
+        // The refetch the hint sets off keeps the pair parts' places, empty (spec §16).
+        var hinted = await TestBrowser.ParseAsync(await pat.RefetchAsync($"/events/{ev}", hint: true));
+        Assert.Equal(["live-asked", "live-gift-again", "their-notes", "ask", "live-questions-link"],
+            hinted.QuerySelectorAll("[data-live-withheld][data-live-pair]").Select(e => e.Id ?? "").ToList());
+        Assert.All(hinted.QuerySelectorAll("[data-live-withheld][data-live-pair]"), e => Assert.Empty(e.InnerHtml));
+        Assert.Equal("", hinted.QuerySelector("#gift .revealed-name")!.TextContent);
+        Assert.NotNull(hinted.QuerySelector("#gift[data-live-withheld]"));
+        Assert.DoesNotContain("Notes updated", hinted.Body!.TextContent);
+        // A catch-up refetch, like a reload, carries everything.
+        var caughtUp = await pat.GetPageAsync($"/events/{ev}", live: true);
+        Assert.Contains("Blue socks, size 9", caughtUp.QuerySelector("#their-notes")!.TextContent);
+        Assert.Empty(caughtUp.QuerySelectorAll("[data-live-withheld]"));
         rae.Dispose();
+    }
+
+    [Fact]
+    public async Task A_hint_refetch_of_home_and_questions_leaves_the_waiting_line_the_thread_and_the_worked_out_rows_out()
+    {
+        var ev = await EventInAsync(EventStatus.Drawn);
+        await app.MessageAsync(ev, bob, MessageSender.Giver, "Socks?");
+
+        var home = await TestBrowser.ParseAsync(await pat.RefetchAsync("/", hint: true));
+        var questions = await TestBrowser.ParseAsync(await pat.RefetchAsync($"/events/{ev}/questions", hint: true));
+        var loaded = await pat.GetPageAsync("/");
+
+        Assert.NotNull(home.QuerySelector($"#event-{ev} #waiting-{ev}[data-live-withheld]"));
+        Assert.NotNull(questions.QuerySelector("#questions[data-live-withheld]"));
+        Assert.Null(questions.QuerySelector("#thread"));
+        foreach (var page in new[] { home, questions })
+        {
+            Assert.NotNull(page.QuerySelector("#whats-new-panel .bell-rows[data-live-withheld]"));
+            Assert.DoesNotContain("Your giver asked you something", page.Body!.TextContent);
+        }
+        // A real load has the line and the row, each marked as a pair part, and nothing withheld.
+        Assert.Contains("Your giver asked you something", loaded.QuerySelector($"#waiting-{ev}[data-live-pair]")!.TextContent);
+        Assert.Contains("Your giver asked you something", loaded.QuerySelector("#whats-new-panel .bell-row[data-live-pair]")!.TextContent);
+        Assert.Empty(loaded.QuerySelectorAll("[data-live-withheld]"));
+    }
+
+    /// <summary>
+    /// Once names are revealed, the questions page's refetch gets the redirect to the event page
+    /// (spec §16): the page names where that goes, and the words for the line the script shows
+    /// with "Show", so the script spells neither.
+    /// </summary>
+    [Fact]
+    public async Task The_questions_page_names_where_a_refetch_is_sent_once_revealed_and_the_line_for_it()
+    {
+        var ev = await EventInAsync(EventStatus.Drawn);
+        var main = (await pat.GetPageAsync($"/events/{ev}/questions")).QuerySelector("main")!;
+        await app.WithDbAsync(async db => { (await db.Events.FindAsync(ev))!.Status = EventStatus.Revealed; await db.SaveChangesAsync(); });
+
+        var refetch = await pat.RefetchAsync($"/events/{ev}/questions", hint: true);
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, refetch.StatusCode);
+        Assert.Equal($"/events/{ev}", refetch.Headers.Location!.OriginalString);
+        Assert.Equal($"/events/{ev}", main.GetAttribute("data-live-moved"));
+        Assert.Equal($"/events/{ev}/questions", main.GetAttribute("data-live-path"));
+        Assert.Contains("\"revealed\":\"Everyone\\u0027s been revealed.\"", System.Net.WebUtility.HtmlDecode(main.GetAttribute("data-live-words")!));
     }
 }

@@ -77,7 +77,7 @@ public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, Liv
         // Your own action: your other tabs and devices.
         if (happening.Actor is { } actor)
             people.Add(actor);
-        connections.Send(people, LiveFrame.Hint(happening.EventId, happening.Kind.ToString()));
+        connections.Send(people, LiveFrame.Hint(happening.EventId, happening.Kind.ToString(), ownOnly: to == LiveTo.Actor));
         foreach (var person in contentTo)
             connections.Send([person], await content.FrameAsync(person, happening.EventId, happening.Kind.ToString()));
     }
@@ -87,7 +87,7 @@ public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, Liv
     /// leaving out <paramref name="tab"/>, the one that did it, when the page named itself.
     /// </summary>
     public void OwnAction(Guid me, Guid eventId, string area, string? tab) =>
-        connections.Send([me], LiveFrame.Hint(eventId, area), tab);
+        connections.Send([me], LiveFrame.Hint(eventId, area, ownOnly: true), tab);
 
     /// <summary>Everyone who can see the event: its organizers, and its participants unless it's a draft.</summary>
     async Task<List<Guid>> EventMembersAsync(Guid eventId)

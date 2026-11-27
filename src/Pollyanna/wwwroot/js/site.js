@@ -261,8 +261,11 @@ function whatsNewPanel() {
         return form ? `${form.elements.event.value}|${form.elements.kind.value}` : "";
     };
     live.onRefetch.push(page => {
-        const fresh = page.querySelector("#whats-new-panel .bell-rows");
+        const fresh = page?.querySelector("#whats-new-panel .bell-rows");
         if (!fresh) return;
+        // A refetch a hint set off leaves out the rows tied to an assignment (data-live-pair):
+        // the ones here stay, where they are.
+        const pairsLeftOut = fresh.matches("[data-live-withheld]");
         const here = new Map([...list.children].map(li => [key(li), li]));
         const arrived = [];
         const rows = [...fresh.children].map(li => {
@@ -288,6 +291,12 @@ function whatsNewPanel() {
             if (form && upto) form.prepend(document.importNode(upto, true));
             return kept;
         });
+        if (pairsLeftOut)
+            [...list.children].forEach((row, i) => {
+                if (!row.matches("[data-live-pair]") || !here.has(key(row))) return;
+                here.delete(key(row));
+                rows.splice(Math.min(i, rows.length), 0, row);
+            });
         let lostFocus = false;
         for (const gone of here.values()) {
             if ("going" in gone.dataset) continue; // its own dismissal is finishing it
@@ -343,11 +352,22 @@ function livePage() {
     const main = document.querySelector("main[data-live-shape]");
     const say = main?.querySelector("[data-live-say]");
     if (!main || !main.dataset.liveShape || !say) return;
+    // The words and hint areas the server gives for what a refetch can't show (LiveShape.Words).
+    let words = {};
+    try { words = JSON.parse(main.dataset.liveWords || "{}"); } catch { /* the lines just don't show */ }
 
     // Each region's HTML as the server sent it, to tell what changed: the page's own script changes
     // the regions (countdowns, folds, times), and every render has a new form token.
+    // A part between a giver and a recipient (data-live-pair) is compared on its own: a refetch a
+    // hint set off leaves it out (data-live-withheld, spec §16), so a region around it is compared
+    // without it, and what this page shows of it stays put.
     const sent = new Map();
-    const html = el => el.outerHTML.replace(/<input name="__RequestVerificationToken"[^>]*>/g, "");
+    const html = el => {
+        const copy = el.cloneNode(true);
+        for (const part of copy.querySelectorAll("[data-live-pair]")) part.replaceWith(`[${part.id}]`);
+        return copy.outerHTML.replace(/<input name="__RequestVerificationToken"[^>]*>/g, "");
+    };
+    const withheld = el => el.matches("[data-live-withheld]");
     const keep = root => {
         for (const el of all(root, "[data-live][id]")) sent.set(el.id, html(el));
     };
@@ -388,6 +408,11 @@ function livePage() {
     };
     const swap = (was, fresh) => {
         const now = document.importNode(fresh, true);
+        // A pair part the refetch left out keeps what this page shows of it.
+        for (const part of all(now, "[data-live-pair][data-live-withheld]")) {
+            const shown = was.querySelector(`#${CSS.escape(part.id)}`);
+            if (shown) part.replaceWith(shown);
+        }
         keepFolds(was, now);
         const focused = focusable(was).indexOf(document.activeElement);
         was.replaceWith(now);
@@ -420,7 +445,7 @@ function livePage() {
         for (const region of main.querySelectorAll("[data-live][id]")) {
             if (!region.isConnected) continue; // inside one already replaced
             const fresh = page.getElementById(region.id);
-            if (!fresh || html(fresh) === sent.get(region.id) || editing(region)) continue;
+            if (!fresh || withheld(fresh) || html(fresh) === sent.get(region.id) || editing(region)) continue;
             swap(region, fresh);
         }
     };
@@ -445,7 +470,7 @@ function livePage() {
     const retie = page => {
         const gift = main.querySelector("#gift[data-gift]");
         const fresh = page.getElementById("gift");
-        if (!gift || !fresh) return;
+        if (!gift || !fresh || withheld(fresh)) return;
         const now = document.importNode(fresh, true);
         now.classList.remove("untied", "still");
         gift.replaceWith(now);
@@ -530,10 +555,19 @@ function livePage() {
     };
 
     live.onRefetch.push((page, hint) => {
+        // Moved: the questions page sends a refetch on to the event page once names are revealed
+        // (or the event archived). That's a state change; the line shows with "Show", which goes there.
+        if (hint.moved) {
+            if (!main.dataset.liveMoved) return;
+            const text = (hint.areas.has(words.archivedArea) ? words.archived : words.revealed) ?? "";
+            if (text) line(text, "Show", main.dataset.liveMoved);
+            stale = true;
+            return;
+        }
         if (hint.gone) {
-            const text = hint.areas.has("EventCanceled") ? "This event was canceled" : "You're no longer in this event";
+            const text = (hint.areas.has(words.canceledArea) ? words.canceled : words.out) ?? "";
             if (!editing(main)) main.replaceChildren(say);
-            line(text, "Back to your events", "/");
+            line(text, words.back ?? "", "/");
             stale = true;
             return;
         }
@@ -543,7 +577,7 @@ function livePage() {
         if (!fresh?.dataset.liveShape) return;
         if (fresh.dataset.liveShape === main.dataset.liveShape) {
             if (!stale) {
-                if (hint.areas.has("Patched")) retie(page);
+                if (hint.areas.has(words.patchedArea)) retie(page);
                 const threads = watchThreads();
                 lists(page);
                 regions(page);
@@ -553,7 +587,9 @@ function livePage() {
             return;
         }
         const text = fresh.dataset.liveLine ?? "";
-        if (!stale && !editing(main)) {
+        // A refetch a hint set off left the pair parts out (the gift's name, say), so it can't
+        // stand as the page: the line shows with "Show", whose load brings them.
+        if (!stale && !editing(main) && fresh.querySelector("[data-live-withheld]") === null) {
             body(page, fresh);
             if (text) line(text);
             return;
@@ -574,14 +610,22 @@ function liveConnection() {
     // The areas (happening kinds) of the hints since the last refetch: a page can tell a
     // cancellation from being taken out. A catch-up refetch has none.
     let areas = new Set();
+    // What the next refetch sends in its Pollyanna-Live header (LiveRefetch): the value a hint
+    // names ("hint" leaves the parts between a giver and a recipient out, since everyone the hint
+    // reached refetches with it), or a catch-up, which carries everything. A catch-up wins: it's
+    // after being away, or after your own action in a pair, which only your own tabs hear of.
+    const catchUp = "catch-up"; // any value but the hint's
+    let as = null;
     const hinted = event => {
+        let named = null;
         try {
-            const area = JSON.parse(event.data).area;
-            if (typeof area === "string") areas.add(area);
+            const data = JSON.parse(event.data);
+            if (typeof data.area === "string") areas.add(data.area);
+            if (typeof data.refetch === "string") named = data.refetch;
         } catch {
             // A hint without data still refetches.
         }
-        refetch();
+        refetch(named ?? catchUp);
     };
 
     // A giver-recipient happening (spec §16) comes as content: the pages it touches, as this person
@@ -598,7 +642,8 @@ function liveConnection() {
             return;
         }
         const pages = frame?.pages ?? {};
-        const path = location.pathname.replace(/\/untie$/, "");
+        // This page's own path as the server files its content (data-live-path; /untie is the event page).
+        const path = document.querySelector("main")?.dataset.livePath || location.pathname;
         const html = pages[path] ?? pages["/"] ?? Object.values(pages)[0];
         if (typeof html !== "string") return;
         const page = new DOMParser().parseFromString(html, "text/html");
@@ -608,16 +653,25 @@ function liveConnection() {
         for (const listener of live.onRefetch) listener(page, hint);
     };
 
-    const refetch = async () => {
+    const refetch = async value => {
+        as = as === catchUp || value === catchUp ? catchUp : value;
         if (live.posting || document.hidden) return;
         if (fetching) { again = true; return; }
         fetching = true;
-        const hint = { areas, gone: false };
+        const hint = { areas, gone: false, moved: false };
+        const header = as;
         areas = new Set();
+        as = null;
         try {
             const response = await fetch(location.href, {
-                headers: { "Pollyanna-Live": "1" }, redirect: "manual", credentials: "same-origin", cache: "no-store",
+                headers: { "Pollyanna-Live": header }, redirect: "manual", credentials: "same-origin", cache: "no-store",
             });
+            // Sent on elsewhere: the questions page, once names are revealed (a state change).
+            hint.moved = response.type === "opaqueredirect";
+            if (hint.moved && !live.posting) {
+                for (const listener of live.onRefetch) listener(null, hint);
+                return;
+            }
             // Not found: the event was canceled, or this person is no longer in it. That page
             // still has the masthead, so the bell's panel is brought up to date all the same.
             hint.gone = response.status === 404;
@@ -629,7 +683,7 @@ function liveConnection() {
             // The next hint or reconnect tries again.
         } finally {
             fetching = false;
-            if (again) { again = false; refetch(); }
+            if (again) { again = false; refetch(as ?? catchUp); }
         }
     };
 
@@ -641,7 +695,7 @@ function liveConnection() {
         source.addEventListener("content", content);
         // The first open is the page load itself; any later one (shown again, reconnected) catches up.
         source.addEventListener("open", () => {
-            if (opened) refetch();
+            if (opened) refetch(catchUp);
             opened = true;
         });
         source.addEventListener("error", () => {

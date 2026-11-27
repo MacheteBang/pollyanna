@@ -126,6 +126,11 @@ public sealed class LiveRoutingTests : IAsyncLifetime
             Assert.All(tab.Hints.Where(h => !(c.Name == "patched" && h.Area == nameof(HappeningKind.TakenOut))),
                 h => Assert.Equal(new LiveHintData(ev, area), h));
             Assert.DoesNotContain(tab.Hints, h => h.Event == other);
+            // What the refetch it sets off is (spec §16): one only the actor's own tabs hear of
+            // catches up in full; one others hear of too leaves the pair parts out.
+            var ownOnly = c.Kind is not { } k || HappeningKinds.Of(k).Live == LiveTo.Actor;
+            Assert.All(tab.Frames.Where(f => f.Type == "hint" && f.Data.Contains($"\"area\":\"{area}\"")),
+                f => Assert.Contains($"\"refetch\":\"{(ownOnly ? LiveRefetch.CatchUp : LiveRefetch.Hint)}\"", f.Data));
             foreach (var frame in tab.Frames.Where(f => f.Type == "hint"))
                 foreach (var person in Names)
                     Assert.False(frame.Data.Contains(Id(person).ToString()) || frame.Data.Contains(person), $"{who} got {frame.Data}");

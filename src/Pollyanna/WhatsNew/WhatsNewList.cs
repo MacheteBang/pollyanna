@@ -9,7 +9,11 @@ namespace Pollyanna.WhatsNew;
 /// <param name="Line">The line, a link to <paramref name="Href"/>.</param>
 /// <param name="At">When it happened (UTC); null for the kinds with no time.</param>
 /// <param name="Upto">For a question or reply, the message the row is shown for: its dismiss form reads up to it and no further.</param>
-public sealed record WhatsNewRow(Guid EventId, HappeningKind Kind, string Line, string Href, string EventName, DateTime? At, int? Upto = null);
+public sealed record WhatsNewRow(Guid EventId, HappeningKind Kind, string Line, string Href, string EventName, DateTime? At, int? Upto = null)
+{
+    /// <summary>One of the five kinds tied to an assignment, worked out rather than stored.</summary>
+    public bool WorkedOut => HappeningKinds.Of(Kind).WorkedOut is not null;
+}
 
 /// <summary>
 /// A person's "What's new" (spec §16): what's in it, in order, dismissing a row and seeing the
@@ -20,12 +24,14 @@ public sealed class WhatsNewList(PollyannaDb db, SealedHat hat)
 {
     /// <summary>
     /// The person's rows: the kinds with no time first (patched, notes updated, closed or
-    /// reopened), then everything else newest first (spec §16).
+    /// reopened), then everything else newest first (spec §16). Without
+    /// <paramref name="workedOut"/>, only the stored ones: a live refetch a hint set off leaves out
+    /// the five tied to an assignment (<see cref="Live.LiveRefetch.CarriesPairParts"/>).
     /// </summary>
-    public async Task<IReadOnlyList<WhatsNewRow>> RowsAsync(Guid me) =>
+    public async Task<IReadOnlyList<WhatsNewRow>> RowsAsync(Guid me, bool workedOut = true) =>
         [.. (await ViewsAsync(me, eventId: null))
             .Select(x => new WhatsNewRow(x.Row.EventId, x.Row.Kind, x.Kind.Line(x.View), x.Kind.Href(x.View), x.View.Event.Name, x.Row.At))
-            .Concat(await WorkedOutAsync(me))
+            .Concat(workedOut ? await WorkedOutAsync(me) : [])
             .OrderBy(r => HappeningKinds.Of(r.Kind).WorkedOut?.TimelessRank ?? int.MaxValue)
             .ThenByDescending(r => r.At).ThenBy(r => r.EventName, StringComparer.Ordinal).ThenBy(r => r.Kind)];
 
