@@ -228,7 +228,6 @@ public sealed class RevealArchiveTests : IAsyncLifetime
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, true)));
 
         var page = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains("Ann asked to leave", page.QuerySelector("#reveal")!.TextContent);
         Assert.Contains("Ann asked to leave", page.QuerySelector("#archive")!.TextContent);
 
         await RevealAsync(ev);

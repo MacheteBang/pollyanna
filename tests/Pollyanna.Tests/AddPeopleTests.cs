@@ -110,7 +110,7 @@ public sealed class AddPeopleTests : IAsyncLifetime
 
         Assert.Equal(new[] { me, carol }.Order(), (await app.ParticipantsAsync(ev)).Order());
         Assert.Equal(0, await app.WithDbAsync(db => db.Invitations.CountAsync()));
-        Assert.Equal("Carol has already signed in, so they're in the hat now.", await NoticeAsync(ev));
+        Assert.Equal("Carol has already signed in, so they're taking part now.", await NoticeAsync(ev));
     }
 
     [Fact]

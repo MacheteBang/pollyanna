@@ -111,16 +111,16 @@ public sealed class CancelTests : IAsyncLifetime
             db.Invitations.Add(new Invitation { EventId = open, Email = "sue@example.com", EmailNormalized = "sue@example.com", InvitedBy = me });
             await db.SaveChangesAsync();
         });
-        var text = (await browser.GetPageAsync(Manage(open))).QuerySelector("#cancel")!.TextContent;
+        var text = (await browser.GetPageAsync(Manage(open))).QuerySelector("#cancel details")!.TextContent;
         Assert.Contains("Cousins", text);
         Assert.Contains("can't be undone", text);
         Assert.Contains("4 people", text);
         Assert.Contains("1 invitation", text);
         Assert.Contains("Nobody is emailed", text);
-        Assert.DoesNotContain("slips", text);
+        Assert.DoesNotContain("assignments go", text);
 
         var drawn = await EventInAsync(EventStatus.Drawn);
-        Assert.Contains("slips", (await browser.GetPageAsync(Manage(drawn))).QuerySelector("#cancel")!.TextContent);
+        Assert.Contains("assignments go", (await browser.GetPageAsync(Manage(drawn))).QuerySelector("#cancel details")!.TextContent);
     }
 
     [Fact]

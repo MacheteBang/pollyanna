@@ -421,89 +421,86 @@
         }
     </section>
 
-    @* Until "Bigger changes" (#78): the rare actions keep their old forms here. *@
-    @if (drawn || m.Allows(EventLifecycle.Cancel))
+    @* "Bigger changes" (spec §7): always open, at the very bottom. Each change is an outlined
+       button that opens its confirmation in place, with one small line on what it does. Before the
+       draw the group holds cancel alone; once revealed, cancel and a line saying nothing else can
+       change. Only cancel is red. *@
+    @if (m.Allows(EventLifecycle.Cancel))
     {
         <section id="changes" aria-labelledby="changes-heading">
             <h2 id="changes-heading" class="group-title">Bigger changes</h2>
-            @if (drawn)
-            {
-                <details class="editor">
-                    <summary>Someone dropping out?</summary>
-                    <form method="post" asp-page-handler="RemovePerson" class="stack">
-                        <div class="field">
-                            <label for="dropout">Who's leaving</label>
-                            <select id="dropout" name="personId" required>
-                                <option value="">Pick a person…</option>
-                                @foreach (var p in Model.Participants)
+            <div class="changes">
+                @if (drawn)
+                {
+                    <div class="change" id="dropout">
+                        <details>
+                            <summary class="button">Someone is dropping out</summary>
+                            <form method="post" asp-page-handler="RemovePerson" class="change-confirm">
+                                <div class="field">
+                                    <label for="dropout-person">Who's dropping out</label>
+                                    <select id="dropout-person" name="personId" required>
+                                        <option value="">Pick a person…</option>
+                                        @foreach (var p in Model.Participants)
+                                        {
+                                            <option value="@p.Id">@p.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <p class="small">Patch: whoever gives to them takes over who they were giving to, if the draw rules allow it. Only that one person's recipient changes, and nobody, you included, is told whose.</p>
+                                <button type="submit" name="change" value="Patch" class="button button-start">Take them out and patch</button>
+                                <button type="submit" name="change" value="Redraw" class="button button-start">Take them out and draw names again</button>
+                            </form>
+                        </details>
+                        <p class="change-line small soft">Only that one person's recipient changes, and nobody, you included, is told whose.</p>
+                    </div>
+                    <div class="change" id="late">
+                        <details>
+                            <summary class="button">Someone is joining late</summary>
+                            <form method="post" asp-page-handler="AddPerson" class="change-confirm add-people" data-add-people>
+                                <partial name="_PickOne" model="lateJoiner" />
+                                <p class="small">They need to have signed in. Invitations by email wait until names are drawn again.</p>
+                                @if (Model.Households.Count > 0)
                                 {
-                                    <option value="@p.Id">@p.Name</option>
+                                    <div class="field">
+                                        <label for="late-household">Household</label>
+                                        <select id="late-household" name="householdId">
+                                            <option value="">None</option>
+                                            @foreach (var h in Model.Households)
+                                            {
+                                                <option value="@h.Id">@h.Name</option>
+                                            }
+                                        </select>
+                                    </div>
                                 }
-                            </select>
+                                <p class="small">Patch: one person who may give to them gives to them instead, and they take over who that person was giving to. Only that one person's recipient changes.</p>
+                                <button type="submit" name="change" value="Patch" class="button button-start">Add them and patch</button>
+                                <button type="submit" name="change" value="Redraw" class="button button-start">Add them and draw names again</button>
+                            </form>
+                        </details>
+                        <p class="change-line small soft">One person gives to someone new to make room. Nobody else changes.</p>
+                    </div>
+                    @* While someone waits to leave, drawing again is the next step itself. *@
+                    @if (Model.Leaving.Count == 0)
+                    {
+                        <div class="change" id="redraw">
+                            <details>
+                                <summary class="button">Draw names again</summary>
+                                <form method="post" asp-page-handler="Redraw" class="change-confirm">
+                                    <p>Every assignment is deleted and the event goes back to open, so people and rules can change before you draw again. Everyone is told names were drawn again.</p>
+                                    <button type="submit" class="button button-start">Draw names again</button>
+                                </form>
+                            </details>
+                            <p class="change-line small soft">Every assignment is deleted and the event goes back to open. Everyone is told names were drawn again.</p>
                         </div>
-                        <p class="hint">Patch: whoever drew them takes over their recipient, if the rules allow it. Only that one slip changes, and nobody, you included, is told whose.</p>
-                        <button type="submit" name="change" value="Patch" class="button button-start">Take them out and patch</button>
-                        <button type="submit" name="change" value="Redraw" class="button button-start">Take them out and redraw everyone</button>
-                    </form>
-                </details>
-                <details class="editor">
-                    <summary>Someone joining late?</summary>
-                    <form method="post" asp-page-handler="AddPerson" class="stack add-people" data-add-people>
-                        <partial name="_PickOne" model="lateJoiner" />
-                        <p class="hint">They need to have signed in. Invitations by email wait until the names are back in the hat.</p>
-                        @if (Model.Households.Count > 0)
-                        {
-                            <div class="field">
-                                <label for="late-household">Household</label>
-                                <select id="late-household" name="householdId">
-                                    <option value="">None</option>
-                                    @foreach (var h in Model.Households)
-                                    {
-                                        <option value="@h.Id">@h.Name</option>
-                                    }
-                                </select>
-                            </div>
-                        }
-                        <p class="hint">Patch: one person who may give to them gives to them instead, and they take over that person's recipient. Only that one slip changes.</p>
-                        <button type="submit" name="change" value="Patch" class="button button-start">Add them and patch</button>
-                        <button type="submit" name="change" value="Redraw" class="button button-start">Add them and redraw everyone</button>
-                    </form>
-                </details>
-                <details class="editor">
-                    <summary>Draw names again…</summary>
-                    <p class="small">Every assignment is deleted and the event goes back to open, so people and rules can change before you draw again. Everyone is told names were drawn again.</p>
-                    <form method="post" asp-page-handler="Redraw" class="stack">
-                        <button type="submit" class="button button-start">Draw names again</button>
-                    </form>
-                </details>
-            }
-            @if (Model.Leaving.Count > 0)
-            {
-                @* While someone waits to leave, the blocker stands in for the reveal; revealing anyway keeps them in. *@
-                <details class="editor" id="reveal">
-                    <summary>Reveal who drew whom…</summary>
-                    <p class="small">Everyone in the event, and every organizer, sees the full list of who drew whom. This can't be undone, and the question threads become read-only.</p>
-                    <partial name="_LeaveRequests" model="Model.Participants" />
-                    <form method="post" asp-page-handler="Reveal" class="stack">
-                        @if (Model.RevealNeedsConfirmation)
-                        {
-                            <label class="check">
-                                <input type="checkbox" name="confirmed" value="true" required>
-                                <span>The exchange isn't until @Format.Date(Model.Event.ExchangeDate). Reveal anyway.</span>
-                            </label>
-                        }
-                        <button type="submit" class="button button-start">Reveal who drew whom</button>
-                    </form>
-                </details>
-            }
-            @if (Model.Event.Status == EventStatus.Drawn)
-            {
-                <partial name="_Archive" model="Model.Participants" />
-            }
-            @if (m.Allows(EventLifecycle.Cancel))
-            {
+                    }
+                    <partial name="_Archive" model="Model.Participants" />
+                }
                 <partial name="_Cancel" model="Model" />
-            }
+                @if (Model.Event.Status == EventStatus.Revealed)
+                {
+                    <p class="small soft">Nothing to change now that everyone's been revealed.</p>
+                }
+            </div>
         </section>
     }
 </div>

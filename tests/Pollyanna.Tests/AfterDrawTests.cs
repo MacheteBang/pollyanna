@@ -122,7 +122,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
         // The organizer is told one slip changed, never whose or to whom.
         var notice = await NoticeAsync(Manage(ev));
         Assert.Contains("Took Carol out", notice);
-        Assert.Contains("One person's slip changed", notice);
+        Assert.Contains("One person is now giving to someone new", notice);
         foreach (var name in new[] { "Ann", "Bob", "Dave", "Erin" })
             Assert.DoesNotContain(name, notice);
     }
@@ -145,7 +145,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
         Assert.DoesNotContain(ann, await app.ParticipantsAsync(ev));
         Assert.Equal(EventStatus.Open, await app.StatusAsync(ev));
         Assert.Empty(await RowsAsync(ev));
-        Assert.Contains("Took Ann out and put the names back in the hat", await NoticeAsync(Manage(ev)));
+        Assert.Contains("Took Ann out. The draw is undone.", await NoticeAsync(Manage(ev)));
     }
 
     [Theory]

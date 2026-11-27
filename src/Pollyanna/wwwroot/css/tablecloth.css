@@ -839,3 +839,23 @@ details.editor > form, details.editor > p, details.editor > div { margin-bottom:
 .pairing-person { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; }
 
 .people { list-style: none; padding: 0; }
+
+/* ---------- Organizing page (#78): fold-open rows and "Bigger changes" ---------- */
+
+/* "Bigger changes": each change is an outlined button (a summary) that opens its confirmation in
+   place, with its one small line underneath. */
+#changes { gap: var(--space-3); }
+.changes { display: flex; flex-direction: column; gap: var(--space-4); }
+.change { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.change > details { display: flex; flex-direction: column; align-self: stretch; }
+.change > details > summary { list-style: none; align-self: flex-start; }
+.change > details > summary::-webkit-details-marker { display: none; }
+.change-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-block: var(--space-3) var(--space-2);
+    padding-left: var(--space-4);
+    border-left: var(--line) solid var(--pale);
+}
+.change-costs { padding-left: var(--space-5); }

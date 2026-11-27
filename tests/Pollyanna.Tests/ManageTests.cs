@@ -92,7 +92,7 @@ public sealed class ManageTests : IAsyncLifetime
         Assert.Equal("Added Carol.", await NoticeAsync(ev));
 
         await ActAsync(ev, "addpeople", Form(("email", "carol@example.com")));
-        Assert.Contains("already in the hat", await NoticeAsync(ev));
+        Assert.Contains("already taking part", await NoticeAsync(ev));
 
         // Removing someone takes their rules with them.
         await ActAsync(ev, "removeperson", match: With("personId", dave));

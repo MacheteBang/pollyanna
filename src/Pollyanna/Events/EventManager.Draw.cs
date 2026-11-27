@@ -175,7 +175,7 @@ public sealed partial class EventManager
             return Outcome.Fail(refusal);
         return await InTransactionAsync(async () =>
             await ResetToOpenAsync(m.Event.Id) is { } left
-                ? Outcome.Done("The names are back in the hat. Draw again when you're ready." + LeftNote(left))
+                ? Outcome.Done("The draw is undone. Draw again when you're ready." + LeftNote(left))
                 : Outcome.Fail("Names haven't been drawn."));
     }
 
@@ -215,9 +215,9 @@ public sealed partial class EventManager
         if (!people.Contains(personId))
             return Outcome.Fail("They aren't in this event.");
         if (change is null)
-            return Outcome.Fail("Choose whether to patch the draw or redraw everyone.");
+            return Outcome.Fail("Choose whether to patch the draw or draw names again.");
         if (people.Count - 1 < Draw.MinPeople)
-            return Outcome.Fail($"Taking {name} out would leave fewer than {Draw.MinPeople} people in the hat. Redraw first, then take them out.");
+            return Outcome.Fail($"Taking {name} out would leave fewer than {Draw.MinPeople} people taking part. Draw names again first, then take them out.");
 
         return await InTransactionAsync(async () =>
         {
@@ -225,13 +225,13 @@ public sealed partial class EventManager
             {
                 await RemoveAsync(id, personId);
                 return await ResetToOpenAsync(id) is { } left
-                    ? Outcome.Done($"Took {name} out and put the names back in the hat. Draw again when you're ready." + LeftNote(left))
+                    ? Outcome.Done($"Took {name} out. The draw is undone. Draw again when you're ready." + LeftNote(left))
                     : Outcome.Fail("Names haven't been drawn.");
             }
 
             return await TakeOutAfterDrawAsync(id, personId)
-                ? Outcome.Done($"Took {name} out of the hat. One person's slip changed to cover it, and they'll see a notice. Nobody else's changed.")
-                : Outcome.Fail($"A patch isn't possible for {name}: their giver can't take over their recipient under the draw rules. Redraw everyone instead.");
+                ? Outcome.Done($"Took {name} out. One person is now giving to someone new, and they'll see a notice. Nobody else changed.")
+                : Outcome.Fail($"A patch isn't possible for {name}: their giver can't take over their recipient under the draw rules. Draw names again instead.");
         });
     }
 
@@ -309,9 +309,9 @@ public sealed partial class EventManager
     {
         var id = m.Event.Id;
         if (await db.Participants.AnyAsync(p => p.EventId == id && p.PersonId == person.Id))
-            return Outcome.Fail($"{person.DisplayName} is already in the hat.");
+            return Outcome.Fail($"{person.DisplayName} is already taking part.");
         if (change is null)
-            return Outcome.Fail("Choose whether to patch the draw or redraw everyone.");
+            return Outcome.Fail("Choose whether to patch the draw or draw names again.");
         if (householdId is { } h && !await db.Households.AnyAsync(x => x.Id == h && x.EventId == id))
             return Outcome.Fail("That household is gone already.");
 
@@ -323,12 +323,12 @@ public sealed partial class EventManager
 
             if (change == DrawChange.Redraw)
                 return await ResetToOpenAsync(id) is { } left
-                    ? Outcome.Done($"Added {person.DisplayName} and put the names back in the hat. Draw again when you're ready." + LeftNote(left))
+                    ? Outcome.Done($"Added {person.DisplayName}. The draw is undone. Draw again when you're ready." + LeftNote(left))
                     : Outcome.Fail("Names haven't been drawn.");
 
             return await PatchInAsync(id, person.Id)
-                ? Outcome.Done($"Added {person.DisplayName}. One person's slip changed to make room, and they'll see a notice. Nobody else's changed.")
-                : Outcome.Fail($"A patch isn't possible: no pairing can make room for {person.DisplayName} under the draw rules. Add them with a redraw instead.");
+                ? Outcome.Done($"Added {person.DisplayName}. One person is now giving to someone new to make room, and they'll see a notice. Nobody else changed.")
+                : Outcome.Fail($"A patch isn't possible: no pairing can make room for {person.DisplayName} under the draw rules. Add them and draw names again instead.");
         });
     }
 
