@@ -1,21 +1,22 @@
-@using Pollyanna.Infrastructure
 @*
-    The HTML part of every email (spec §11, §15): the "gift tag". On a kraft ground, a slip-paper
-    tag with a ribbon-blue band across its top holds the wordmark, the event's status as a red
-    stamp, the event's name, the kind's text, an ink button to its link and the link as small
-    text; the footer is a second, smaller bright-paper tag. No text sits on the kraft.
+    The HTML part of every email (spec §12, §15): "the panel on the band". From the top: the
+    wordmark on white (the bow, then "pollyanna" in bold lowercase text); a pale-blue band, the
+    email's stand-in for the cloth, holding one white panel with the event's name, the kind's text,
+    a full-width ink button to its link and the link as small soft text; the footer on white. No
+    text sits on the band, and there is no status stamp.
 
-    Before the tag comes hidden preview text for inbox lists: the kind's text, then a run of
+    Before it all comes hidden preview text for inbox lists: the kind's text, then a run of
     invisible spacers so the snippet stops there. Both are aria-hidden, so screen readers read
-    the kind's text once, in the tag.
+    the kind's text once, in the panel.
 
-    Styles are inline; the <style> block holds only the stamp's reset for narrow screens, so
-    clients that strip it lose nothing but that. Nothing is loaded from anywhere. Every value is
-    HTML-encoded by the renderer, so names can't inject markup. Rendered by MailHtml.
+    Styles are inline, and every surface sets its own background, so a client that darkens the
+    email swaps whole surfaces. The one image is the bow, carried inside the message as a CID part
+    (EmailBow); nothing is loaded from anywhere. Every value is HTML-encoded by the renderer, so
+    names can't inject markup. Rendered by MailHtml.
 
-    Contrast (WCAG AA, spec §15): ink #1E1A16 on slip #F4EDE0, the stamp's red #B3261E on slip,
-    the small URL #5A5048 on slip, the footer #5A5048 on bright paper #FFFDF8, and the button's
-    slip text on ink. The blue band holds no text.
+    Contrast (WCAG AA, spec §15): ink #1E1A16 on white 17.3 (wordmark, heading, text, footer
+    link) and white on the ink button the same; soft ink #5B5650 on white 7.3 (the small URL and
+    the footer). The pale-blue band holds no text.
 *@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
@@ -25,59 +26,65 @@
 <meta name="color-scheme" content="light only">
 <meta name="supported-color-schemes" content="light only">
 <title>@Content.Subject</title>
-<style>@@media (max-width:480px) { .stamp { transform:none !important; } }</style>
 </head>
-<body style="margin:0; padding:0; background-color:@Kraft;">
-<div lang="en" dir="ltr" style="margin:0; padding:0; background-color:@Kraft; color:@Ink; color-scheme:light only; font-family:@Font; font-size:16px; line-height:1.5;">
+<body style="margin:0; padding:0; background-color:@White;">
+<div lang="en" dir="ltr" style="margin:0; padding:0; background-color:@White; color:@Ink; color-scheme:light only; font-family:@Font; font-size:16px; line-height:1.5;">
 <div aria-hidden="true" style="@HiddenStyle">@string.Join(' ', Lines(Content.Body))</div>
 <div aria-hidden="true" style="@HiddenStyle">@Spacer</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background-color:@Kraft;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background-color:@White;">
 <tr>
-<td align="center" style="padding:28px 12px 36px 12px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; max-width:520px;">
+<td align="center" style="background-color:@White; padding:16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; max-width:560px;">
 <tr>
-<td style="background-color:@Blue; height:10px; line-height:10px; font-size:0;">&nbsp;</td>
-</tr>
+<td style="background-color:@White;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
 <tr>
-<td style="background-color:@SlipPaper; padding:18px 26px 26px 26px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-<tr>
-<td style="font-family:@Font; color:@Ink; font-size:12px; font-weight:bold; letter-spacing:4px;">POLLYANNA</td>
-<td align="right"><span class="stamp" style="display:inline-block; border:2px solid @Red; padding:2px 8px; font-family:@Font; font-size:12px; font-weight:bold; letter-spacing:2px; color:@Red; transform:rotate(4deg);">@Format.Stamp(Event.Status)</span></td>
+<td width="26" valign="middle" style="padding:0 8px 0 0; line-height:0; font-size:0;"><img src="cid:@EmailBow.ContentId" width="26" height="26" alt="" style="display:block; border:0; width:26px; height:26px;"></td>
+<td valign="middle" style="font-family:@Font; color:@Ink; font-size:22px; line-height:26px; font-weight:800; letter-spacing:-0.44px;">pollyanna</td>
 </tr>
 </table>
-<h1 style="margin:22px 0 18px 0; font-family:@Font; color:@Ink; font-size:26px; line-height:1.2; font-weight:bold;">@Event.Name</h1>
-@foreach (var line in Lines(Content.Body))
-{
-<p style="margin:0 0 14px 0; font-family:@Font; color:@Ink; font-size:15px; line-height:1.6;">@line</p>
-}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; margin-top:20px;">
-<tr>
-<td align="center" style="background-color:@Ink;"><a href="@Content.Link" style="display:block; padding:14px 10px; font-family:@Font; font-size:15px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:@SlipPaper; text-decoration:none;">@ButtonLabel(Content.Link)</a></td>
+</td>
 </tr>
 </table>
-<p style="margin:10px 0 0 0; font-family:@Font; color:@InkSoft; font-size:11px; line-height:1.5; word-break:break-all;">@Content.Link</p>
 </td>
 </tr>
 <tr>
-<td style="padding:18px 40px 0 40px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+<td align="center" style="background-color:@PaleBlue; padding:24px 16px 56px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate; max-width:560px;">
 <tr>
-<td style="background-color:@Bright; border-top:2px dashed @InkSoft; padding:12px 16px 8px 16px;">
+<td style="background-color:@White; border-radius:10px; padding:24px;">
+<h1 style="margin:0 0 12px 0; font-family:@Font; color:@Ink; font-size:23px; line-height:1.15; font-weight:800; letter-spacing:-0.46px;">@Event.Name</h1>
+@foreach (var line in Lines(Content.Body))
+{
+<p style="margin:0 0 12px 0; font-family:@Font; color:@Ink; font-size:16px; line-height:1.5;">@line</p>
+}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate; margin-top:12px;">
+<tr>
+<td align="center" style="background-color:@Ink; border-radius:10px;"><a href="@Content.Link" style="display:block; padding:13px 16px; font-family:@Font; font-size:18px; line-height:1.3; font-weight:800; color:@White; background-color:@Ink; text-decoration:none; border-radius:10px;">@ButtonLabel(Content.Link)</a></td>
+</tr>
+</table>
+<p style="margin:12px 0 0 0; font-family:@Font; color:@SoftInk; font-size:14px; line-height:1.5; word-break:break-all;">@Content.Link</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td align="center" style="background-color:@White; padding:24px 16px 32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; max-width:560px;">
+<tr>
+<td style="background-color:@White;">
 @foreach (var line in Audience.FooterLines(Event, PublicUrl))
 {
 @if (line.Link is { } link)
 {
-<p style="margin:0 0 6px 0; font-family:@Font; color:@InkSoft; font-size:12px; line-height:1.5; word-break:break-word;">@line.Text <a href="@link" style="color:@Ink; text-decoration:underline;">@link</a></p>
+<p style="margin:0 0 4px 0; font-family:@Font; color:@SoftInk; font-size:14px; line-height:1.5; word-break:break-word;">@line.Text <a href="@link" style="color:@Ink; font-weight:600; text-decoration:underline;">@link</a></p>
 }
 else
 {
-<p style="margin:0 0 6px 0; font-family:@Font; color:@InkSoft; font-size:12px; line-height:1.5;">@line.Text</p>
+<p style="margin:0 0 4px 0; font-family:@Font; color:@SoftInk; font-size:14px; line-height:1.5;">@line.Text</p>
 }
 }
-</td>
-</tr>
-</table>
 </td>
 </tr>
 </table>
@@ -89,12 +96,11 @@ else
 </html>
 
 @code {
-    // The "Paper slips" palette (spec §12), and the softened ink only email uses (§15).
-    const string Kraft = "#C9A77C", SlipPaper = "#F4EDE0", Bright = "#FFFDF8", Ink = "#1E1A16",
-        InkSoft = "#5A5048", Red = "#B3261E", Blue = "#3F6E8C";
+    // The "Tablecloth" colors the email uses (spec §12), all solid.
+    const string White = "#FFFFFF", Ink = "#1E1A16", SoftInk = "#5B5650", PaleBlue = "#DCE7EE";
 
-    /// <summary>Courier Prime can't be loaded (nothing remote), so the stack starts at Courier New.</summary>
-    const string Font = "Courier New, Courier, monospace";
+    /// <summary>Figtree can't be loaded (nothing remote), so the email uses the system font stack (spec §15).</summary>
+    const string Font = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
     /// <summary>
     /// Hides the preview text and its spacer run from view in every client: Outlook keeps it out with
@@ -104,7 +110,7 @@ else
 
     /// <summary>
     /// Invisible characters after the preview text, so inbox lists don't carry on into the wordmark
-    /// and stamp (spec §15). A fixed string, so written as markup rather than encoded.
+    /// and heading (spec §15). A fixed string, so written as markup rather than encoded.
     /// </summary>
     static readonly MarkupString Spacer = new(string.Concat(Enumerable.Repeat("&#847;&zwnj;&nbsp;", 100)));
 
@@ -114,7 +120,7 @@ else
     /// <summary>Who it is for, which decides the footer.</summary>
     [Parameter, EditorRequired] public Audience Audience { get; set; }
 
-    /// <summary>The event as it is when the email is sent: its name heads the tag, its status is the stamp.</summary>
+    /// <summary>The event as it is when the email is sent: its name heads the panel.</summary>
     [Parameter, EditorRequired] public Pollyanna.Data.Event Event { get; set; } = null!;
 
     /// <summary>The public URL, without a trailing slash.</summary>

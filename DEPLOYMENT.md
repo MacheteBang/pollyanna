@@ -258,9 +258,10 @@ provider.
 ### Email notifications (optional)
 
 With a mail relay, Pollyanna emails people when something in an event needs them: "Event is
-open — write your notes" and so on. Emails carry an HTML part and a plain-text part, load
-nothing remote (no images, fonts or tracking), link to the page in Pollyanna, and never
-contain a message, anyone's notes, or who drew whom. Without a relay there are no emails and
+open — write your notes" and so on. Emails carry an HTML part and a plain-text part. The
+HTML's one image, a small bow, travels inside the message as an inline attachment, so
+opening an email loads nothing remote (no images, fonts or tracking). Emails link to the
+page in Pollyanna, and never contain a message, anyone's notes, or who drew whom. Without a relay there are no emails and
 Pollyanna works as before.
 
 | Variable | What it is |
