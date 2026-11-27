@@ -133,13 +133,16 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         if (viewer != Viewer.Organizer)
         {
             var eventPage = before.Single(p => p.StartsWith($"/events/{ev} "));
-            Assert.Contains("<p class=\"reveal-name\">Ann</p>", eventPage);
+            if (archived)
+                Assert.Contains("<p class=\"over-line\">You gave to <strong>Ann</strong></p>", eventPage);
+            else
+                Assert.Contains("<p class=\"reveal-name\">Ann</p>", eventPage);
             Assert.Contains("Gloves, please.", eventPage);
             Assert.Contains(archived ? "Your giver asked you" : "Your giver asked you something", eventPage);
             var questions = before.Single(p => p.StartsWith($"/events/{ev}/questions "));
             Assert.Contains("Wide?", questions);
             if (archived)
-                Assert.Contains("You got", eventPage);
+                Assert.Contains("The pairings were never revealed", eventPage);
         }
         else
         {
@@ -151,6 +154,8 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         Assert.Contains($"for=\"add-{a}\"", before.Single(p => p.StartsWith($"/events/{upcoming}/manage ")));
         Assert.DoesNotContain(" asks ", string.Concat(before));
         Assert.DoesNotContain("class=\"pairings\"", string.Concat(before));
+        Assert.DoesNotContain("who-drew-whom", string.Concat(before));
+        Assert.DoesNotContain(" gave to you", string.Concat(before));
         if (archived)
             Assert.Contains("Gifts", before.Single(p => p.StartsWith("/past ")));
 

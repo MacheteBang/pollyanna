@@ -69,6 +69,10 @@ public sealed class RevealArchiveTests : IAsyncLifetime
             return $"{people[0]} → {people[1]}";
         })];
 
+    /// <summary>The event page's "Who drew whom" rows as their words ("Ann gave to Bob"), without the picture.</summary>
+    static List<string> Pairs(AngleSharp.Html.Dom.IHtmlDocument page) =>
+        [.. page.QuerySelectorAll(".who-drew-whom > li").Select(li => li.Children.Last().TextContent.Trim())];
+
     Task<int> MessageCountAsync(Guid ev) =>
         app.WithDbAsync(db => db.Messages.CountAsync(x => db.Assignments.Any(a => a.Id == x.AssignmentId && a.EventId == ev)));
 
@@ -147,8 +151,8 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         await RevealAsync(ev);
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Equal(["Ann → Bob", "Bob → Carol", "Carol → Pat (you)", "Pat (you) → Ann"], Lines(page).Order());
-        Assert.Equal(2, page.QuerySelectorAll("li.pairing-mine").Length);
+        Assert.Equal(["Ann gave to Bob", "Bob gave to Carol", "Carol gave to you", "You gave to Ann"], Pairs(page).Order());
+        Assert.Equal(["You gave to Ann", "Carol gave to you"], page.QuerySelectorAll("#slip .over-line").Select(p => p.TextContent));
         Assert.Null(page.QuerySelector("[data-reveal]"));
 
         // An organizer who isn't in the hat sees it on the manage page.
@@ -169,9 +173,9 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         await RevealAsync(ev);
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        var lines = Lines(page);
+        var lines = Pairs(page);
         Assert.Equal(4, lines.Count);
-        Assert.Equal("Someone → Carol", lines[^1]);
+        Assert.Equal("Someone gave to Carol", lines[^1]);
         Assert.Contains("can't be read any more", page.QuerySelector("#pairings")!.TextContent);
     }
 
@@ -251,10 +255,9 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         Assert.Contains("deleted", await NoticeAsync(Manage(ev)));
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Contains("You got", page.QuerySelector("#slip")!.TextContent);
-        Assert.Contains("Ann", page.QuerySelector(".reveal-name")!.TextContent);
-        Assert.Null(page.QuerySelector(".pairings"));
-        Assert.Null(page.QuerySelector(".passed-note"));
+        Assert.Equal("You gave to Ann", page.QuerySelector("#slip .over-line")!.TextContent);
+        Assert.Null(page.QuerySelector(".who-drew-whom"));
+        Assert.Null(page.QuerySelector(".bubble"));
         Assert.Null(page.QuerySelector("#your-notes textarea"));
         Assert.Null((await browser.GetPageAsync(Manage(ev))).QuerySelector(".pairings"));
     }
@@ -288,9 +291,9 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         await ArchiveAsync(ev, keep: true);
 
         var page = await browser.GetPageAsync($"/events/{ev}");
-        Assert.Equal(4, Lines(page).Count);
+        Assert.Equal(4, Pairs(page).Count);
         Assert.Equal("Carol asked you", page.QuerySelector("#questions-heading")!.TextContent);
-        Assert.Equal("ARCHIVED", page.QuerySelector(".stamp")!.TextContent);
+        Assert.EndsWith(" · over", page.QuerySelector(".page-head-line")!.TextContent);
     }
 
     [Theory]

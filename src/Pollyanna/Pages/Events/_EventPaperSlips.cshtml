@@ -3,8 +3,9 @@
 @using Pollyanna.Events
 @using Pollyanna.Infrastructure
 @using Pollyanna.Pages.Shared
-@* The event page once names are drawn, still in "Paper slips" under _Layout: the reveal (#76) and
-   the event once it's over (#77) move these states to "Tablecloth" and replace this partial. *@
+@* The event page once names are drawn and before the reveal, still in "Paper slips" under
+   _Layout: the reveal (#76) moves this state to "Tablecloth" and replaces this partial. The
+   event once it's over is _EventOver (#77). *@
 @{
     var others = Model.Participants.Where(p => p.Id != User.PersonId()).ToList();
 }
@@ -148,76 +149,6 @@
             <button type="submit" class="button button-outline">@(Model.DoneShopping ? "Not done after all" : "I'm done shopping")</button>
         </form>
     </section>
-}
-else
-{
-    @* Revealed or archived: the exchange is over, and everything here is read-only. *@
-    var archived = Model.Event.Status == EventStatus.Archived;
-    if (archived)
-    {
-        <section class="slip slip-plain" aria-labelledby="status-heading">
-            <div class="slip-head">
-                <h2 id="status-heading">This exchange is over</h2>
-                <span class="stamp">ARCHIVED</span>
-            </div>
-            <p>The event is archived, so nothing here changes any more.</p>
-        </section>
-    }
-
-    if (Model.Pairings is { } pairings)
-    {
-        <section class="slip slip-plain" id="pairings" aria-labelledby="pairings-heading">
-            <div class="slip-head">
-                <h2 id="pairings-heading">Who drew whom</h2>
-                @if (!archived)
-                {
-                    <span class="stamp">REVEALED</span>
-                }
-            </div>
-            <partial name="_Pairings" model="pairings" />
-        </section>
-    }
-    else if (Model.Slip is { } past)
-    {
-        <div class="reveal-slip" id="slip">
-            <p>You got</p>
-            <p class="reveal-name">@past.Recipient.Name</p>
-            <p class="reveal-end">a gift.</p>
-        </div>
-        <p class="small center">The pairings were never revealed, so nobody else's is shown.</p>
-    }
-    else
-    {
-        <section class="slip slip-plain" id="slip" aria-labelledby="slip-heading">
-            <h2 id="slip-heading">Can't find your slip</h2>
-            <p>Your assignment for this event can't be read any more.</p>
-        </section>
-    }
-
-    var giverName = Model.Slip?.Recipient.Name;
-    if (Model.AskThread is { Notes.Count: > 0 } asked && giverName is not null)
-    {
-        var notes = new NotesView(asked, MessageSender.Giver, $"{giverName} replied");
-        <section class="thread" id="ask" aria-labelledby="ask-heading">
-            <div class="thread-head">
-                <h2 id="ask-heading">You asked @giverName</h2>
-                <p class="small">Read-only now. Only the two of you see this.</p>
-            </div>
-            <partial name="_Notes" model="notes" />
-        </section>
-    }
-    if (Model.QuestionsThread is { Notes.Count: > 0 } questions)
-    {
-        var giver = Model.MyGiver?.Name;
-        var notes = new NotesView(questions, MessageSender.Recipient, giver is null ? "Giver" : $"{giver} asked");
-        <section class="thread" id="questions" aria-labelledby="questions-heading">
-            <div class="thread-head">
-                <h2 id="questions-heading">@(giver is null ? "Your giver asked you" : $"{giver} asked you")</h2>
-                <p class="small">Read-only now. Only the two of you see this.</p>
-            </div>
-            <partial name="_Notes" model="notes" />
-        </section>
-    }
 }
 
 <section class="slip slip-plain" id="your-notes" aria-labelledby="notes-heading">
