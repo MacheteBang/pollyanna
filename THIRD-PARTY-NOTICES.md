@@ -1,10 +1,10 @@
 # Third-party notices
 
-## Bow (favicon, touch icon, the gift on the event page, HTML email, README banner)
+## Bow (favicon, touch icon, the gift on the event page, HTML email)
 
 The bow in `src/Pollyanna/wwwroot/favicon.svg`, `src/Pollyanna/wwwroot/apple-touch-icon.png`
-(drawn from `docs/assets/touch-icon.svg`), the gift in `src/Pollyanna/Pages/Events/_EventDrawn.cshtml`
-and `docs/assets/banner.svg` is adapted from
+(drawn from `docs/assets/touch-icon.svg`) and the gift in `src/Pollyanna/Pages/Events/_EventDrawn.cshtml`
+is adapted from
 the "Ribbon" emoji (Flat style) in [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji).
 It has been recolored to the Pollyanna palette, and the favicon leaves out the inner folds.
 The bow in every HTML email, `src/Pollyanna/Notifications/bow.png`, is the same bow with its
@@ -38,5 +38,5 @@ SOFTWARE.
 
 Figtree and Playpen Sans are under the SIL Open Font License; the license texts sit beside the
 font files in `src/Pollyanna/wwwroot/fonts`. The files are the latin and latin-ext subsets
-published by Fontsource (5.3.0). The wordmark in `docs/assets/banner.svg` is Courier Prime Bold
-(SIL Open Font License 1.1) converted to outlines; the app no longer serves that font.
+published by Fontsource (5.3.0). The wordmark in `docs/assets/banner.svg` and
+`docs/assets/social-preview.png` is Figtree ExtraBold converted to outlines.
