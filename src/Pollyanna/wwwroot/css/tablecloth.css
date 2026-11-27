@@ -720,3 +720,5 @@ details.editor > form, details.editor > p, details.editor > div { margin-bottom:
 .pairing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding-block: var(--space-2); border-top: var(--line) solid var(--pale); }
 .pairing:first-child { border-top: 0; }
 .pairing-person { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; }
+
+.people { list-style: none; padding: 0; }
