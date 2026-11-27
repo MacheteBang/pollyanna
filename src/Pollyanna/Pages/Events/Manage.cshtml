@@ -229,8 +229,8 @@
                         </select>
                     </div>
                     <p class="hint">Patch: whoever drew them takes over their recipient, if the rules allow it. Only that one slip changes, and nobody, you included, is told whose.</p>
-                    <button type="submit" name="change" value="Patch" class="button button-small">Take them out and patch</button>
-                    <button type="submit" name="change" value="Redraw" class="button button-small button-outline">Take them out and redraw everyone</button>
+                    <button type="submit" name="change" value="Patch" class="button button-start">Take them out and patch</button>
+                    <button type="submit" name="change" value="Redraw" class="button button-start">Take them out and redraw everyone</button>
                 </form>
             </details>
             <details class="editor">
@@ -252,15 +252,15 @@
                         </div>
                     }
                     <p class="hint">Patch: one person who may give to them gives to them instead, and they take over that person's recipient. Only that one slip changes.</p>
-                    <button type="submit" name="change" value="Patch" class="button button-small">Add them and patch</button>
-                    <button type="submit" name="change" value="Redraw" class="button button-small button-outline">Add them and redraw everyone</button>
+                    <button type="submit" name="change" value="Patch" class="button button-start">Add them and patch</button>
+                    <button type="submit" name="change" value="Redraw" class="button button-start">Add them and redraw everyone</button>
                 </form>
             </details>
             <details class="editor">
                 <summary>Draw names again…</summary>
                 <p class="small">Every assignment is deleted and the event goes back to open, so people and rules can change before you draw again. Everyone is told names were drawn again.</p>
                 <form method="post" asp-page-handler="Redraw" class="stack">
-                    <button type="submit" class="button">Draw names again</button>
+                    <button type="submit" class="button button-start">Draw names again</button>
                 </form>
             </details>
         }
@@ -279,7 +279,7 @@
                             <span>The exchange isn't until @Format.Date(Model.Event.ExchangeDate). Reveal anyway.</span>
                         </label>
                     }
-                    <button type="submit" class="button">Reveal who drew whom</button>
+                    <button type="submit" class="button button-start">Reveal who drew whom</button>
                 </form>
             </details>
         }
@@ -317,17 +317,17 @@
                                 <legend>Who's in it</legend>
                                 @foreach (var p in Model.Participants)
                                 {
-                                    <label class="choice">
+                                    <label class="check">
                                         <input type="checkbox" name="members" value="@p.Id" checked="@(p.HouseholdId == h.Id)">
                                         <span>@p.Name@(p.HouseholdId is { } other && other != h.Id ? $" (now in {Household(other)})" : "")</span>
                                     </label>
                                 }
                             </fieldset>
-                            <button type="submit" class="button button-small">Save household</button>
+                            <button type="submit" class="button button-start">Save household</button>
                         </form>
                         <form method="post" asp-page-handler="DeleteHousehold">
                             <input type="hidden" name="householdId" value="@h.Id">
-                            <button type="submit" class="link-button red-text tap">Remove this household</button>
+                            <button type="submit" class="link-button small">Remove this household</button>
                         </form>
                     </details>
                 }
@@ -349,14 +349,14 @@
                             <legend>Who's in it</legend>
                             @foreach (var p in Model.Participants)
                             {
-                                <label class="choice">
+                                <label class="check">
                                     <input type="checkbox" name="members" value="@p.Id">
                                     <span>@p.Name@(p.HouseholdId is { } other ? $" (now in {Household(other)})" : "")</span>
                                 </label>
                             }
                         </fieldset>
                     }
-                    <button type="submit" class="button button-small">Add household</button>
+                    <button type="submit" class="button button-start">Add household</button>
                 </form>
             </details>
         }
@@ -377,7 +377,7 @@
                         {
                             <form method="post" asp-page-handler="RemoveRule">
                                 <input type="hidden" name="exclusionId" value="@x.Id">
-                                <button type="submit" class="link-button red-text tap" aria-label="Remove the rule for @x.A and @x.B">Remove</button>
+                                <button type="submit" class="link-button small" aria-label="Remove the rule for @x.A and @x.B">Remove</button>
                             </form>
                         }
                     </li>
@@ -409,7 +409,7 @@
                             }
                         </select>
                     </div>
-                    <button type="submit" class="button button-small">Add rule</button>
+                    <button type="submit" class="button button-start">Add rule</button>
                 </form>
             </details>
         }
@@ -427,7 +427,7 @@
                     {
                         <form method="post" asp-page-handler="RemoveOrganizer">
                             <input type="hidden" name="personId" value="@o.Id">
-                            <button type="submit" class="link-button red-text tap" aria-label="@(o.Id == Model.MeId ? "Stop organizing" : $"Remove {o.Name} as organizer")">@(o.Id == Model.MeId ? "Step down" : "Remove")</button>
+                            <button type="submit" class="link-button small" aria-label="@(o.Id == Model.MeId ? "Stop organizing" : $"Remove {o.Name} as organizer")">@(o.Id == Model.MeId ? "Step down" : "Remove")</button>
                         </form>
                     }
                 </li>
@@ -435,13 +435,13 @@
         </ul>
         @if (Model.Organizers.Count == 1)
         {
-            <p class="warning">You're the only organizer. Add a second one so the event isn't stuck if you're away.</p>
+            <p class="small soft">You're the only organizer. Add a second one so the event isn't stuck if you're away.</p>
         }
         @if (m.Editable)
         {
             <form method="post" asp-page-handler="AddOrganizer" class="stack add-people" data-add-people>
                 <partial name="_PickOne" model="newOrganizer" />
-                <button type="submit" class="button button-small">Make organizer</button>
+                <button type="submit" class="button button-start">Make organizer</button>
                 <p class="hint">Organizers manage the event but don't see who drew whom. Being one doesn't put them in the hat. They need to have signed in.</p>
             </form>
         }
@@ -451,7 +451,7 @@
         <h2 id="details-heading" class="group-title">Details</h2>
         @if (Model.DetailsError is not null)
         {
-            <p class="red-text" role="alert">@Model.DetailsError</p>
+            <p class="error" role="alert">@Model.DetailsError</p>
         }
         @if (m.Editable)
         {
@@ -498,7 +498,7 @@
                     <input type="hidden" name="PreviousEventId" value="@Model.PreviousEventId">
                     <input type="hidden" name="NoRepeatDepth" value="@Model.NoRepeatDepth">
                 }
-                <button type="submit" class="button">Save details</button>
+                <button type="submit" class="button button-start">Save details</button>
             </form>
         }
     </section>
