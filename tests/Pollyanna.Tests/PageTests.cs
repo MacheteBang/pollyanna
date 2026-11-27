@@ -145,7 +145,7 @@ public sealed class PageTests : IAsyncLifetime
         using var _b = browser;
         var page = await browser.GetPageAsync("/account");
 
-        Assert.Contains("Pat Example", page.QuerySelector(".whoami")!.TextContent);
+        Assert.Contains("Pat Example", page.QuerySelector(".page-head-line")!.TextContent);
         Assert.Contains("pat@example.com", page.QuerySelector("#logins")!.TextContent);
         var form = page.QuerySelector("main form[action='/auth/signout']")!;
         Assert.Equal("post", form.GetAttribute("method"));
