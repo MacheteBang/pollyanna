@@ -169,6 +169,6 @@ public sealed class PageTests : IAsyncLifetime
         using var _b = browser;
         var response = await browser.GetAsync("/no/such/page");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Contains("Not here", await response.Content.ReadAsStringAsync());
+        Assert.Contains("We can't find that page", (await TestBrowser.ParseAsync(response)).Body!.TextContent);
     }
 }
