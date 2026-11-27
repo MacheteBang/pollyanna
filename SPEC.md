@@ -1575,6 +1575,11 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     `QuestionTests` (exact times on both sides, older hour-stored
     messages), `QuestionConversationTests`; `Seed.MessageAsync` stores the
     clock's time or a given `at`.
+  - One place for happenings (#95): every happening is announced through
+    one entry point, `Announcer` in `src/Pollyanna/Happenings/`, inside the
+    caller's transaction. Each kind is declared once in `HappeningKinds`;
+    email (`EmailOnHappening`) is the first listener behind it. The emails
+    themselves are unchanged. Tests: `HappeningTests`.
 
 ### Done: the "Tablecloth" identity
 
