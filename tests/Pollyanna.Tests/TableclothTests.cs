@@ -120,6 +120,9 @@ public sealed class TableclothTests : IAsyncLifetime
     [InlineData("/auth/login")]
     [InlineData("/auth/signed-out")]
     [InlineData("/auth/deleted")]
+    [InlineData("/auth/failed")]
+    [InlineData("/auth/failed?reason=provider")]
+    [InlineData("/error")]
     public async Task Moved_pages_declare_light_only_and_load_only_the_apps_own_files(string path)
     {
         using var browser = app.NewBrowser();

@@ -1,13 +1,14 @@
 @page "/error/{code:int?}"
 @model ErrorModel
 @{
+    Layout = "_Tablecloth";
     ViewData["Title"] = Model.Heading;
 }
 
-<div class="empty">
-    <h1>@Model.Heading</h1>
+@* An error page (spec §7, §12): the girl large, a heading, one or two sentences, one way out. No cloth. *@
+<div class="column lone">
+    <partial name="_TableclothGirl" model="130" />
+    <h1 class="page-title">@Model.Heading</h1>
     <p>@Model.Message</p>
-</div>
-<div class="actions">
-    <a class="button" href="/">Back to your exchanges</a>
+    <a class="lone-way-out" href="/">Back to your events</a>
 </div>
