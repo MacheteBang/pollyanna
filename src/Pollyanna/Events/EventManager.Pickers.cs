@@ -15,7 +15,7 @@ public sealed partial class EventManager
         "Nobody uses that address in Pollyanna yet. An organizer needs to have signed in first.";
 
     public const string NobodyForLateJoiner =
-        "Nobody uses that address in Pollyanna yet. Invitations wait until the names are back in the hat, so they need to sign in first.";
+        "Nobody uses that address in Pollyanna yet. Invitations wait until names are drawn again, so they need to sign in first.";
 
     /// <summary>
     /// The person behind a picker post: <paramref name="personId"/>, or whoever uses

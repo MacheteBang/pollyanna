@@ -1,14 +1,18 @@
-@* "Archive this event…" on the manage page, for drawn and revealed events (spec §4, §6). *@
+@* "Archive this event" under "Bigger changes" on the organizing page, for a drawn event (spec §4, §6, §7).
+   Once revealed, archiving is the next step on the cloth instead. *@
 @model IReadOnlyList<Pollyanna.Pages.Events.ManageModel.ParticipantRow>
-<details class="editor" id="archive">
-    <summary>Archive this event…</summary>
-    <p class="small">The event becomes read-only and moves to everyone's past events. This can't be undone. Pairings that haven't been revealed stay sealed for good.</p>
-    <partial name="_LeaveRequests" model="Model" />
-    <form method="post" asp-page-handler="Archive" class="stack">
-        <label class="check">
-            <input type="checkbox" name="keepMessages" value="true">
-            <span>Keep the question threads. Each stays readable by its own two people only. Otherwise they're deleted.</span>
-        </label>
-        <button type="submit" class="button button-start">Archive the event</button>
-    </form>
-</details>
+<div class="change" id="archive">
+    <details>
+        <summary class="button">Archive this event</summary>
+        <form method="post" asp-page-handler="Archive" class="change-confirm">
+            <p>The event becomes read-only and moves to everyone's past events. This can't be undone. Pairings that haven't been revealed stay hidden for good.</p>
+            <partial name="_LeaveRequests" model="Model" />
+            <label class="check">
+                <input type="checkbox" name="keepMessages" value="true">
+                <span>Keep the question threads. Each stays readable by its own two people only. Otherwise they're deleted.</span>
+            </label>
+            <button type="submit" class="button button-start">Archive this event</button>
+        </form>
+    </details>
+    <p class="change-line small soft">Pairings that haven't been revealed stay hidden for good.</p>
+</div>

@@ -239,6 +239,8 @@ public sealed class NotificationSecrecyTests
             var annabel = Id("Annabel");
             Assert.True(await app.WithDbAsync(db => db.Participants.AnyAsync(p => p.EventId == ev && p.PersonId == annabel && p.WantsToLeave)));
             await StepAsync("request to leave");
+            // The page settles a request to leave first ("Keep Annabel in instead"), then reveals.
+            await ManageAsync(org, ev, "keepin");
             await ManageAsync(org, ev, "reveal", Form(("confirmed", "true")));
             Assert.Equal(EventStatus.Revealed, await app.StatusAsync(ev));
             await StepAsync("revealed");

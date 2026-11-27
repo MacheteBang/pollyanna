@@ -129,45 +129,48 @@
 
     @if (Model.Pairings is { } pairings)
     {
+        @* Once revealed, the full list takes the place of the people (spec §7): it names everyone. *@
         <section id="pairings" aria-labelledby="pairings-heading">
             <h2 id="pairings-heading" class="group-title">Who drew whom</h2>
-            <partial name="_Pairings" model="pairings" />
+            <partial name="_WhoDrewWhom" model="pairings" />
         </section>
     }
-
-    @* The people (spec §7): a row says in small words what is missing, or "done shopping"; a row
-       with nothing to say stays quiet. What organizers may see is §5.5: never who drew whom. *@
-    <section id="people" aria-labelledby="people-heading">
-        <h2 id="people-heading" class="group-title">Taking part (@Model.Participants.Count)</h2>
-        @if (Model.Participants.Count == 0)
-        {
-            <p class="soft">Nobody's taking part yet.</p>
-        }
-        else
-        {
-            <ul class="rows" role="list">
-                @foreach (var p in Model.Participants)
-                {
-                    var words = Model.WordsFor(p);
-                    <li class="row">
-                        <partial name="_Avatar" model="p" />
-                        <span class="row-name">@p.Name@(p.Id == Model.MeId ? " (you)" : "")</span>
-                        @if (words is not null)
-                        {
-                            <span class="row-words small soft">@words</span>
-                        }
-                        @if (editable)
-                        {
-                            <form method="post" asp-page-handler="RemovePerson" class="row-end">
-                                <input type="hidden" name="personId" value="@p.Id">
-                                <button type="submit" class="link-button small" aria-label="Remove @p.Name">Remove</button>
-                            </form>
-                        }
-                    </li>
-                }
-            </ul>
-        }
-    </section>
+    else
+    {
+        @* The people (spec §7): a row says in small words what is missing, or "done shopping"; a row
+           with nothing to say stays quiet. What organizers may see is §5.5: never who drew whom. *@
+        <section id="people" aria-labelledby="people-heading">
+            <h2 id="people-heading" class="group-title">Taking part (@Model.Participants.Count)</h2>
+            @if (Model.Participants.Count == 0)
+            {
+                <p class="soft">Nobody's taking part yet.</p>
+            }
+            else
+            {
+                <ul class="rows" role="list">
+                    @foreach (var p in Model.Participants)
+                    {
+                        var words = Model.WordsFor(p);
+                        <li class="row">
+                            <partial name="_Avatar" model="p" />
+                            <span class="row-name">@p.Name@(p.Id == Model.MeId ? " (you)" : "")</span>
+                            @if (words is not null)
+                            {
+                                <span class="row-words small soft">@words</span>
+                            }
+                            @if (editable)
+                            {
+                                <form method="post" asp-page-handler="RemovePerson" class="row-end">
+                                    <input type="hidden" name="personId" value="@p.Id">
+                                    <button type="submit" class="link-button small" aria-label="Remove @p.Name">Remove</button>
+                                </form>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    }
 
     @if (Model.Invitations.Count > 0)
     {
@@ -210,300 +213,320 @@
         <p class="small soft">Invitations by email wait until names are drawn again.</p>
     }
 
-
-
-    <section id="rules" aria-labelledby="rules-heading">
-        <h2 id="rules-heading" class="group-title">Who can't draw whom</h2>
-        <p class="small">People in the same household never draw each other.@(drawn ? " These stay as they are while names are drawn; redraw to change them." : "")</p>
-
-        @foreach (var h in Model.Households)
-        {
-            <div class="household">
-                <p class="household-name">@h.Name</p>
-                <p class="small">@(h.Members.Count == 0 ? "Nobody yet" : string.Join(", ", h.Members.Select(x => x.Name)))</p>
+    @* "Who can't draw whom" and "Details and organizers" (spec §7): closed rows with a summary on
+       the right that open in place. A redirect back here names a spot inside one, which opens it. *@
+    <div class="folds">
+        <details class="fold" id="rules">
+            <summary><span id="rules-heading">Who can't draw whom</span><span class="fold-hint">@Model.RulesSummary</span></summary>
+            <div class="fold-body">
+                <p class="small soft">People in the same household never draw each other.</p>
+                @if (Model.Households.Count > 0 || Model.Exclusions.Count > 0)
+                {
+                    <ul class="rows" role="list">
+                        @foreach (var h in Model.Households)
+                        {
+                            <li class="row household">
+                                <span class="row-stack">
+                                    <span class="household-name">@h.Name</span>
+                                    <span class="small soft">@(h.Members.Count == 0 ? "Nobody yet" : string.Join(", ", h.Members.Select(x => x.Name)))</span>
+                                </span>
+                            </li>
+                            @if (editable)
+                            {
+                                <li class="row-more">
+                                    <details class="editor">
+                                        <summary>Edit <span class="visually-hidden">@h.Name</span></summary>
+                                        <form method="post" asp-page-handler="SaveHousehold" class="stack">
+                                            <input type="hidden" name="householdId" value="@h.Id">
+                                            <div class="field">
+                                                <label for="hh-name-@h.Id">Name</label>
+                                                <input id="hh-name-@h.Id" name="householdName" value="@h.Name" required maxlength="@EventManager.HouseholdNameMax" autocomplete="off">
+                                            </div>
+                                            <fieldset class="choices">
+                                                <legend>Who's in it</legend>
+                                                @foreach (var p in Model.Participants)
+                                                {
+                                                    <label class="check">
+                                                        <input type="checkbox" name="members" value="@p.Id" checked="@(p.HouseholdId == h.Id)">
+                                                        <span>@p.Name@(p.HouseholdId is { } other && other != h.Id ? $" (now in {Household(other)})" : "")</span>
+                                                    </label>
+                                                }
+                                            </fieldset>
+                                            <button type="submit" class="button button-start">Save household</button>
+                                        </form>
+                                        <form method="post" asp-page-handler="DeleteHousehold">
+                                            <input type="hidden" name="householdId" value="@h.Id">
+                                            <button type="submit" class="link-button small">Remove this household</button>
+                                        </form>
+                                    </details>
+                                </li>
+                            }
+                        }
+                        @foreach (var x in Model.Exclusions)
+                        {
+                            <li class="row">
+                                <span class="row-stack">
+                                    <strong>@x.A can't draw @x.B</strong>
+                                    <span class="small soft">extra rule (both ways)</span>
+                                </span>
+                                @if (editable)
+                                {
+                                    <form method="post" asp-page-handler="RemoveRule" class="row-end">
+                                        <input type="hidden" name="exclusionId" value="@x.Id">
+                                        <button type="submit" class="link-button small" aria-label="Remove the rule for @x.A and @x.B">Remove</button>
+                                    </form>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+                @if (drawn || Model.Event.Status == EventStatus.Revealed)
+                {
+                    <p class="small soft">Names are drawn, so these can't change unless you draw names again.</p>
+                }
                 @if (editable)
                 {
-                    <details class="editor">
-                        <summary>Edit <span class="visually-hidden">@h.Name</span></summary>
+                    <details class="disclose">
+                        <summary class="button">Add a household</summary>
                         <form method="post" asp-page-handler="SaveHousehold" class="stack">
-                            <input type="hidden" name="householdId" value="@h.Id">
                             <div class="field">
-                                <label for="hh-name-@h.Id">Name</label>
-                                <input id="hh-name-@h.Id" name="householdName" value="@h.Name" required maxlength="@EventManager.HouseholdNameMax" autocomplete="off">
+                                <label for="hh-name-new">Name</label>
+                                <input id="hh-name-new" name="householdName" required maxlength="@EventManager.HouseholdNameMax" autocomplete="off" placeholder="e.g. Mom &amp; Dad">
                             </div>
-                            <fieldset class="choices">
-                                <legend>Who's in it</legend>
-                                @foreach (var p in Model.Participants)
-                                {
-                                    <label class="check">
-                                        <input type="checkbox" name="members" value="@p.Id" checked="@(p.HouseholdId == h.Id)">
-                                        <span>@p.Name@(p.HouseholdId is { } other && other != h.Id ? $" (now in {Household(other)})" : "")</span>
-                                    </label>
-                                }
-                            </fieldset>
-                            <button type="submit" class="button button-start">Save household</button>
-                        </form>
-                        <form method="post" asp-page-handler="DeleteHousehold">
-                            <input type="hidden" name="householdId" value="@h.Id">
-                            <button type="submit" class="link-button small">Remove this household</button>
+                            @if (Model.Participants.Count > 0)
+                            {
+                                <fieldset class="choices">
+                                    <legend>Who's in it</legend>
+                                    @foreach (var p in Model.Participants)
+                                    {
+                                        <label class="check">
+                                            <input type="checkbox" name="members" value="@p.Id">
+                                            <span>@p.Name@(p.HouseholdId is { } other ? $" (now in {Household(other)})" : "")</span>
+                                        </label>
+                                    }
+                                </fieldset>
+                            }
+                            <button type="submit" class="button button-start">Add household</button>
                         </form>
                     </details>
+                    @if (Model.Participants.Count >= 2)
+                    {
+                        <details class="disclose">
+                            <summary class="button">Add a rule</summary>
+                            <form method="post" asp-page-handler="AddRule" class="stack">
+                                <div class="field">
+                                    <label for="rule-a">This person</label>
+                                    <select id="rule-a" name="personA" required>
+                                        <option value="">Pick a person…</option>
+                                        @foreach (var p in Model.Participants)
+                                        {
+                                            <option value="@p.Id">@p.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label for="rule-b">never draws, and is never drawn by</label>
+                                    <select id="rule-b" name="personB" required>
+                                        <option value="">Pick a person…</option>
+                                        @foreach (var p in Model.Participants)
+                                        {
+                                            <option value="@p.Id">@p.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <button type="submit" class="button button-start">Add rule</button>
+                            </form>
+                        </details>
+                    }
                 }
             </div>
-        }
+        </details>
 
-        @if (editable)
-        {
-            <details class="editor">
-                <summary>+ Add a household</summary>
-                <form method="post" asp-page-handler="SaveHousehold" class="stack">
-                    <div class="field">
-                        <label for="hh-name-new">Name</label>
-                        <input id="hh-name-new" name="householdName" required maxlength="@EventManager.HouseholdNameMax" autocomplete="off" placeholder="e.g. Mom &amp; Dad">
-                    </div>
-                    @if (Model.Participants.Count > 0)
+        <details class="fold" id="settings" open="@(Model.DetailsError is not null)">
+            <summary><span id="settings-heading">Details and organizers</span><span class="fold-hint">@Model.OrganizersSummary</span></summary>
+            <div class="fold-body">
+                <div id="details">
+                    <ul class="rows" role="list">
+                        <li class="row"><span>Name</span><strong class="row-value">@Model.Event.Name</strong></li>
+                        <li class="row"><span>Exchange date</span><strong class="row-value">@Format.Date(Model.Event.ExchangeDate)</strong></li>
+                        <li class="row"><span>Budget</span><strong class="row-value">@(string.IsNullOrWhiteSpace(Model.Event.BudgetText) ? "None" : Model.Event.BudgetText)</strong></li>
+                    </ul>
+                    @if (Model.DetailsError is not null)
                     {
-                        <fieldset class="choices">
-                            <legend>Who's in it</legend>
-                            @foreach (var p in Model.Participants)
-                            {
-                                <label class="check">
-                                    <input type="checkbox" name="members" value="@p.Id">
-                                    <span>@p.Name@(p.HouseholdId is { } other ? $" (now in {Household(other)})" : "")</span>
-                                </label>
-                            }
-                        </fieldset>
+                        <p class="error" role="alert">@Model.DetailsError</p>
                     }
-                    <button type="submit" class="button button-start">Add household</button>
-                </form>
-            </details>
-        }
-
-        <h3 class="group-subtitle">Extra rules</h3>
-        @if (Model.Exclusions.Count == 0)
-        {
-            <p class="small">None.</p>
-        }
-        else
-        {
-            <ul class="people" role="list">
-                @foreach (var x in Model.Exclusions)
-                {
-                    <li class="person">
-                        <span class="person-body person-text">@x.A <span aria-hidden="true">✕</span><span class="visually-hidden">and</span> @x.B <span class="small">(both ways)</span></span>
-                        @if (editable)
-                        {
-                            <form method="post" asp-page-handler="RemoveRule">
-                                <input type="hidden" name="exclusionId" value="@x.Id">
-                                <button type="submit" class="link-button small" aria-label="Remove the rule for @x.A and @x.B">Remove</button>
+                    @if (m.Editable)
+                    {
+                        <details class="disclose" open="@(Model.DetailsError is not null)">
+                            <summary class="button">Edit details</summary>
+                            <form method="post" asp-page-handler="Details" class="stack">
+                                <div class="field">
+                                    <label for="name">Name</label>
+                                    <input id="name" name="Name" value="@Model.Name" required maxlength="@EventManager.NameMax" autocomplete="off">
+                                </div>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label for="budget">Budget</label>
+                                        <input id="budget" name="BudgetText" value="@Model.BudgetText" maxlength="@EventManager.BudgetMax" autocomplete="off">
+                                    </div>
+                                    <div class="field">
+                                        <label for="date">Exchange date</label>
+                                        <input id="date" name="ExchangeDate" type="date" value="@(Model.ExchangeDate is { } d ? Format.IsoDate(d) : "")" required min="2000-01-01" max="2100-12-31">
+                                    </div>
+                                </div>
+                                @if (editable)
+                                {
+                                    <div class="field">
+                                        <label for="previous">Last year's event</label>
+                                        <select id="previous" name="PreviousEventId">
+                                            <option value="" selected="@(Model.PreviousEventId is null)">None</option>
+                                            @foreach (var c in Model.PreviousCandidates)
+                                            {
+                                                <option value="@c.Id" selected="@(c.Id == Model.PreviousEventId)">@(c.Status == EventStatus.Canceled ? "a canceled event" : c.Name)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label for="depth">Don't repeat a pairing from the last…</label>
+                                        <select id="depth" name="NoRepeatDepth">
+                                            @for (var n = 1; n <= EventManager.MaxNoRepeatDepth; n++)
+                                            {
+                                                <option value="@n" selected="@(n == Model.NoRepeatDepth)">@(n == 1 ? "1 year" : $"{n} years")</option>
+                                            }
+                                        </select>
+                                        <p class="hint">Only applies when the event is linked to last year's.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="hidden" name="PreviousEventId" value="@Model.PreviousEventId">
+                                    <input type="hidden" name="NoRepeatDepth" value="@Model.NoRepeatDepth">
+                                }
+                                <button type="submit" class="button button-start">Save details</button>
                             </form>
-                        }
-                    </li>
-                }
-            </ul>
-        }
-        @if (editable && Model.Participants.Count >= 2)
-        {
-            <details class="editor">
-                <summary>+ Add a rule</summary>
-                <form method="post" asp-page-handler="AddRule" class="stack">
-                    <div class="field">
-                        <label for="rule-a">This person</label>
-                        <select id="rule-a" name="personA" required>
-                            <option value="">Pick a person…</option>
-                            @foreach (var p in Model.Participants)
-                            {
-                                <option value="@p.Id">@p.Name</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label for="rule-b">never draws, and is never drawn by</label>
-                        <select id="rule-b" name="personB" required>
-                            <option value="">Pick a person…</option>
-                            @foreach (var p in Model.Participants)
-                            {
-                                <option value="@p.Id">@p.Name</option>
-                            }
-                        </select>
-                    </div>
-                    <button type="submit" class="button button-start">Add rule</button>
-                </form>
-            </details>
-        }
-    </section>
-
-    <section id="organizers" aria-labelledby="organizers-heading">
-        <h2 id="organizers-heading" class="group-title">Organizers</h2>
-        <ul class="people" role="list">
-            @foreach (var o in Model.Organizers)
-            {
-                <li class="person">
-                    <partial name="_Avatar" model="o" />
-                    <span class="person-body person-name">@o.Name@(o.Id == Model.MeId ? " (you)" : "")</span>
-                    @if (Model.Organizers.Count > 1 && m.Editable)
-                    {
-                        <form method="post" asp-page-handler="RemoveOrganizer">
-                            <input type="hidden" name="personId" value="@o.Id">
-                            <button type="submit" class="link-button small" aria-label="@(o.Id == Model.MeId ? "Stop organizing" : $"Remove {o.Name} as organizer")">@(o.Id == Model.MeId ? "Step down" : "Remove")</button>
-                        </form>
+                        </details>
                     }
-                </li>
-            }
-        </ul>
-        @if (Model.Organizers.Count == 1)
-        {
-            <p class="small soft">You're the only organizer. Add a second one so the event isn't stuck if you're away.</p>
-        }
-        @if (m.Editable)
-        {
-            <form method="post" asp-page-handler="AddOrganizer" class="stack add-people" data-add-people>
-                <partial name="_PickOne" model="newOrganizer" />
-                <button type="submit" class="button button-start">Make organizer</button>
-                <p class="hint">Organizers manage the event but don't see who drew whom. Being one doesn't put them in the hat. They need to have signed in.</p>
-            </form>
-        }
-    </section>
-
-    <section id="details" aria-labelledby="details-heading">
-        <h2 id="details-heading" class="group-title">Details</h2>
-        @if (Model.DetailsError is not null)
-        {
-            <p class="error" role="alert">@Model.DetailsError</p>
-        }
-        @if (m.Editable)
-        {
-            <form method="post" asp-page-handler="Details" class="stack">
-                <div class="field">
-                    <label for="name">Name</label>
-                    <input id="name" name="Name" value="@Model.Name" required maxlength="@EventManager.NameMax" autocomplete="off">
                 </div>
-                <div class="field-row">
-                    <div class="field">
-                        <label for="budget">Budget</label>
-                        <input id="budget" name="BudgetText" value="@Model.BudgetText" maxlength="@EventManager.BudgetMax" autocomplete="off">
-                    </div>
-                    <div class="field">
-                        <label for="date">Exchange date</label>
-                        <input id="date" name="ExchangeDate" type="date" value="@(Model.ExchangeDate is { } d ? Format.IsoDate(d) : "")" required min="2000-01-01" max="2100-12-31">
-                    </div>
-                </div>
-                @if (editable)
-                {
-                    <div class="field">
-                        <label for="previous">Last year's event</label>
-                        <select id="previous" name="PreviousEventId">
-                            <option value="" selected="@(Model.PreviousEventId is null)">None</option>
-                            @foreach (var c in Model.PreviousCandidates)
-                            {
-                                <option value="@c.Id" selected="@(c.Id == Model.PreviousEventId)">@(c.Status == EventStatus.Canceled ? "a canceled event" : c.Name)</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label for="depth">Don't repeat a pairing from the last…</label>
-                        <select id="depth" name="NoRepeatDepth">
-                            @for (var n = 1; n <= EventManager.MaxNoRepeatDepth; n++)
-                            {
-                                <option value="@n" selected="@(n == Model.NoRepeatDepth)">@(n == 1 ? "1 year" : $"{n} years")</option>
-                            }
-                        </select>
-                        <p class="hint">Only applies when the event is linked to last year's.</p>
-                    </div>
-                }
-                else
-                {
-                    <input type="hidden" name="PreviousEventId" value="@Model.PreviousEventId">
-                    <input type="hidden" name="NoRepeatDepth" value="@Model.NoRepeatDepth">
-                }
-                <button type="submit" class="button button-start">Save details</button>
-            </form>
-        }
-    </section>
 
-    @* Until "Bigger changes" (#78): the rare actions keep their old forms here. *@
-    @if (drawn || m.Allows(EventLifecycle.Cancel))
+                <div id="organizers">
+                    <h3 class="group-subtitle">Organizers</h3>
+                    <ul class="rows" role="list">
+                        @foreach (var o in Model.Organizers)
+                        {
+                            <li class="row">
+                                <partial name="_Avatar" model="o" />
+                                <span class="row-name">@o.Name@(o.Id == Model.MeId ? " (you)" : "")</span>
+                                @if (Model.Organizers.Count > 1 && m.Editable)
+                                {
+                                    <form method="post" asp-page-handler="RemoveOrganizer" class="row-end">
+                                        <input type="hidden" name="personId" value="@o.Id">
+                                        <button type="submit" class="link-button small" aria-label="@(o.Id == Model.MeId ? "Stop organizing" : $"Remove {o.Name} as organizer")">@(o.Id == Model.MeId ? "Step down" : "Remove")</button>
+                                    </form>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    <p class="small soft">Organizers manage the event but don't see who drew whom. Being one doesn't make them a participant.</p>
+                    @if (Model.Organizers.Count == 1)
+                    {
+                        <p class="small soft">You're the only organizer. Add a second one so the event isn't stuck if you're away.</p>
+                    }
+                    @if (m.Editable)
+                    {
+                        <details class="disclose">
+                            <summary class="button">Add an organizer</summary>
+                            <form method="post" asp-page-handler="AddOrganizer" class="stack add-people" data-add-people>
+                                <partial name="_PickOne" model="newOrganizer" />
+                                <p class="hint">They need to have signed in.</p>
+                                <button type="submit" class="button button-start">Make organizer</button>
+                            </form>
+                        </details>
+                    }
+                </div>
+            </div>
+        </details>
+    </div>
+
+    @* "Bigger changes" (spec §7): always open, at the very bottom. Each change is an outlined
+       button that opens its confirmation in place, with one small line on what it does. Before the
+       draw the group holds cancel alone; once revealed, cancel and a line saying nothing else can
+       change. Only cancel is red. *@
+    @if (m.Allows(EventLifecycle.Cancel))
     {
         <section id="changes" aria-labelledby="changes-heading">
             <h2 id="changes-heading" class="group-title">Bigger changes</h2>
-            @if (drawn)
-            {
-                <details class="editor">
-                    <summary>Someone dropping out?</summary>
-                    <form method="post" asp-page-handler="RemovePerson" class="stack">
-                        <div class="field">
-                            <label for="dropout">Who's leaving</label>
-                            <select id="dropout" name="personId" required>
-                                <option value="">Pick a person…</option>
-                                @foreach (var p in Model.Participants)
+            <div class="changes">
+                @if (drawn)
+                {
+                    <div class="change" id="dropout">
+                        <details>
+                            <summary class="button">Someone is dropping out</summary>
+                            <form method="post" asp-page-handler="RemovePerson" class="change-confirm">
+                                <div class="field">
+                                    <label for="dropout-person">Who's dropping out</label>
+                                    <select id="dropout-person" name="personId" required>
+                                        <option value="">Pick a person…</option>
+                                        @foreach (var p in Model.Participants)
+                                        {
+                                            <option value="@p.Id">@p.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <p class="small">Patch: whoever gives to them takes over who they were giving to, if the draw rules allow it. Only that one person's recipient changes, and nobody, you included, is told whose.</p>
+                                <button type="submit" name="change" value="Patch" class="button button-start">Take them out and patch</button>
+                                <button type="submit" name="change" value="Redraw" class="button button-start">Take them out and draw names again</button>
+                            </form>
+                        </details>
+                        <p class="change-line small soft">Only that one person's recipient changes, and nobody, you included, is told whose.</p>
+                    </div>
+                    <div class="change" id="late">
+                        <details>
+                            <summary class="button">Someone is joining late</summary>
+                            <form method="post" asp-page-handler="AddPerson" class="change-confirm add-people" data-add-people>
+                                <partial name="_PickOne" model="lateJoiner" />
+                                <p class="small">They need to have signed in. Invitations by email wait until names are drawn again.</p>
+                                @if (Model.Households.Count > 0)
                                 {
-                                    <option value="@p.Id">@p.Name</option>
+                                    <div class="field">
+                                        <label for="late-household">Household</label>
+                                        <select id="late-household" name="householdId">
+                                            <option value="">None</option>
+                                            @foreach (var h in Model.Households)
+                                            {
+                                                <option value="@h.Id">@h.Name</option>
+                                            }
+                                        </select>
+                                    </div>
                                 }
-                            </select>
+                                <p class="small">Patch: one person who may give to them gives to them instead, and they take over who that person was giving to. Only that one person's recipient changes.</p>
+                                <button type="submit" name="change" value="Patch" class="button button-start">Add them and patch</button>
+                                <button type="submit" name="change" value="Redraw" class="button button-start">Add them and draw names again</button>
+                            </form>
+                        </details>
+                        <p class="change-line small soft">One person gives to someone new to make room. Nobody else changes.</p>
+                    </div>
+                    @* While someone waits to leave, drawing again is the next step itself. *@
+                    @if (Model.Leaving.Count == 0)
+                    {
+                        <div class="change" id="redraw">
+                            <details>
+                                <summary class="button">Draw names again</summary>
+                                <form method="post" asp-page-handler="Redraw" class="change-confirm">
+                                    <p>Every assignment is deleted and the event goes back to open, so people and rules can change before you draw again. Everyone is told names were drawn again.</p>
+                                    <button type="submit" class="button button-start">Draw names again</button>
+                                </form>
+                            </details>
+                            <p class="change-line small soft">Every assignment is deleted and the event goes back to open. Everyone is told names were drawn again.</p>
                         </div>
-                        <p class="hint">Patch: whoever drew them takes over their recipient, if the rules allow it. Only that one slip changes, and nobody, you included, is told whose.</p>
-                        <button type="submit" name="change" value="Patch" class="button button-start">Take them out and patch</button>
-                        <button type="submit" name="change" value="Redraw" class="button button-start">Take them out and redraw everyone</button>
-                    </form>
-                </details>
-                <details class="editor">
-                    <summary>Someone joining late?</summary>
-                    <form method="post" asp-page-handler="AddPerson" class="stack add-people" data-add-people>
-                        <partial name="_PickOne" model="lateJoiner" />
-                        <p class="hint">They need to have signed in. Invitations by email wait until the names are back in the hat.</p>
-                        @if (Model.Households.Count > 0)
-                        {
-                            <div class="field">
-                                <label for="late-household">Household</label>
-                                <select id="late-household" name="householdId">
-                                    <option value="">None</option>
-                                    @foreach (var h in Model.Households)
-                                    {
-                                        <option value="@h.Id">@h.Name</option>
-                                    }
-                                </select>
-                            </div>
-                        }
-                        <p class="hint">Patch: one person who may give to them gives to them instead, and they take over that person's recipient. Only that one slip changes.</p>
-                        <button type="submit" name="change" value="Patch" class="button button-start">Add them and patch</button>
-                        <button type="submit" name="change" value="Redraw" class="button button-start">Add them and redraw everyone</button>
-                    </form>
-                </details>
-                <details class="editor">
-                    <summary>Draw names again…</summary>
-                    <p class="small">Every assignment is deleted and the event goes back to open, so people and rules can change before you draw again. Everyone is told names were drawn again.</p>
-                    <form method="post" asp-page-handler="Redraw" class="stack">
-                        <button type="submit" class="button button-start">Draw names again</button>
-                    </form>
-                </details>
-            }
-            @if (Model.Leaving.Count > 0)
-            {
-                @* While someone waits to leave, the blocker stands in for the reveal; revealing anyway keeps them in. *@
-                <details class="editor" id="reveal">
-                    <summary>Reveal who drew whom…</summary>
-                    <p class="small">Everyone in the event, and every organizer, sees the full list of who drew whom. This can't be undone, and the question threads become read-only.</p>
-                    <partial name="_LeaveRequests" model="Model.Participants" />
-                    <form method="post" asp-page-handler="Reveal" class="stack">
-                        @if (Model.RevealNeedsConfirmation)
-                        {
-                            <label class="check">
-                                <input type="checkbox" name="confirmed" value="true" required>
-                                <span>The exchange isn't until @Format.Date(Model.Event.ExchangeDate). Reveal anyway.</span>
-                            </label>
-                        }
-                        <button type="submit" class="button button-start">Reveal who drew whom</button>
-                    </form>
-                </details>
-            }
-            @if (Model.Event.Status == EventStatus.Drawn)
-            {
-                <partial name="_Archive" model="Model.Participants" />
-            }
-            @if (m.Allows(EventLifecycle.Cancel))
-            {
+                    }
+                    <partial name="_Archive" model="Model.Participants" />
+                }
                 <partial name="_Cancel" model="Model" />
-            }
+                @if (Model.Event.Status == EventStatus.Revealed)
+                {
+                    <p class="small soft">Nothing to change now that everyone's been revealed.</p>
+                }
+            </div>
         </section>
     }
 </div>
