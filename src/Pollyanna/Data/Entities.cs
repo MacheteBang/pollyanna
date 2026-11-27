@@ -263,6 +263,26 @@ public sealed class Notification
 }
 
 /// <summary>
+/// One stored in-app notification in "What's new" (spec §16, docs/adr/0008): one row per person,
+/// event and kind, for the seven kinds that say nothing about who gives to whom. It holds only
+/// what email already sends that person; the words are worked out when shown. Deleted, never
+/// flagged, when dismissed or seen, or when what it says no longer holds. Unrelated to the email
+/// outbox (<see cref="Notification"/>).
+/// </summary>
+public sealed class InAppNotification
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid PersonId { get; set; }
+    public Guid EventId { get; set; }
+    /// <summary>The happening that made it; only kinds the happening table marks as stored.</summary>
+    public Happenings.HappeningKind Kind { get; set; }
+    /// <summary>Who the line names ("Alice made you an organizer", "Sue is taking part"), if anyone. Never a giver.</summary>
+    public Guid? NamedPersonId { get; set; }
+    /// <summary>When the latest happening of this kind happened (UTC).</summary>
+    public DateTime At { get; set; }
+}
+
+/// <summary>
 /// The fixed set of things a notification is about (spec §15, "What is emailed"). Stored by
 /// name, so the order here doesn't matter. Each kind's rules (who gets it, holding, covering,
 /// dropping) and content live in its own <see cref="Pollyanna.Notifications.NotificationKindDefinition"/>

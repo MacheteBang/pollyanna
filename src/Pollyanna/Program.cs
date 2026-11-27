@@ -6,6 +6,7 @@ using Pollyanna.Happenings;
 using Pollyanna.Infrastructure;
 using Pollyanna.Notifications;
 using Pollyanna.People;
+using Pollyanna.WhatsNew;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
@@ -42,6 +43,10 @@ services.AddScoped<EmailSwitch>();
 // Every happening goes through one entry point (spec §16); email is the first listener.
 services.AddScoped<Announcer>();
 services.AddScoped<IHappeningListener, EmailOnHappening>();
+// "What's new": stored rows written and deleted by happenings, read by the bell and /whats-new.
+services.AddScoped<StoredNotifications>();
+services.AddScoped<IHappeningListener, WhatsNewOnHappening>();
+services.AddScoped<WhatsNewList>();
 
 services.AddDbContext<PollyannaDb>((sp, options) => options
     .UseSqlite($"Data Source={sp.GetRequiredService<PollyannaSettings>().DatabasePath}")

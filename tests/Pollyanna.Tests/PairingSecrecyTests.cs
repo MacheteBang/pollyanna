@@ -36,7 +36,7 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
     /// </summary>
     static async Task<List<string>> PagesAsync(TestBrowser browser, Guid ev, Viewer viewer, bool archived, Guid upcoming)
     {
-        var paths = new List<string> { "/", "/account", "/account/delete", "/past", "/events/new", $"/events/{ev}", $"/events/{upcoming}/manage" };
+        var paths = new List<string> { "/", "/account", "/account/delete", "/past", "/whats-new", "/events/new", $"/events/{ev}", $"/events/{upcoming}/manage" };
         if (viewer != Viewer.Participant)
             paths.Add($"/events/{ev}/manage");
         if (viewer != Viewer.Organizer)

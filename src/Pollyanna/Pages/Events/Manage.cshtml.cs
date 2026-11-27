@@ -1,6 +1,7 @@
 using Pollyanna.Infrastructure;
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.WhatsNew;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ namespace Pollyanna.Pages.Events;
 /// Organizers see who has viewed their assignment and who is done shopping, never who drew whom
 /// until the pairings are revealed.
 /// </summary>
-public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPageModel(db)
+public sealed class ManageModel(PollyannaDb db, EventManager events, WhatsNewList whatsNew) : EventPageModel(db)
 {
     public sealed record ParticipantRow(Guid Id, string Name, bool HasPicture, string? Email, bool HasNotes, Guid? HouseholdId,
         bool DoneShopping, bool WantsToLeave) : PersonRow(Id, Name, HasPicture);
@@ -133,6 +134,8 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     {
         if (!await LoadAsOrganizerAsync(id))
             return NotFound();
+        // Seeing the page clears what pointed here, in this same request (spec §16).
+        await whatsNew.SeenAsync(Me, id, $"/events/{id}/manage");
         Name = Event.Name;
         BudgetText = Event.BudgetText;
         ExchangeDate = Event.ExchangeDate;

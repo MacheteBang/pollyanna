@@ -1,5 +1,6 @@
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.WhatsNew;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ namespace Pollyanna.Pages.Events;
 /// isn't a participant goes to manage. Before reveal, only the viewer's own slip and threads are
 /// ever looked up.
 /// </summary>
-public sealed class EventModel(PollyannaDb db, EventManager events, TimeProvider clock) : EventPageModel(db)
+public sealed class EventModel(PollyannaDb db, EventManager events, WhatsNewList whatsNew, TimeProvider clock) : EventPageModel(db)
 {
     public sealed record ParticipantRow(Guid Id, string Name, bool HasPicture, string Notes) : PersonRow(Id, Name, HasPicture);
 
@@ -58,6 +59,8 @@ public sealed class EventModel(PollyannaDb db, EventManager events, TimeProvider
             return NotFound();
         if (!Membership.IsParticipant)
             return Redirect($"/events/{id}/manage");
+        // Seeing the page clears what pointed here, in this same request (spec §16).
+        await whatsNew.SeenAsync(Me, id, $"/events/{id}");
 
         Participants = await Db.Participants.Where(p => p.EventId == id)
             .Join(Db.People, p => p.PersonId, person => person.Id, (p, person) => new ParticipantRow(

@@ -180,12 +180,21 @@ summary::-webkit-details-marker { display: none; }
     min-width: 0;
 }
 
-/* The reserved place for the notification menu: empty until that feature exists. */
-.masthead-slot {
+/* The bell (spec §12): a 44px link to "What's new". With something new it is filled ribbon blue
+   with an ink clapper; with nothing, a soft-ink outline. No number, word, badge or dot. */
+.bell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: var(--tap);
     height: var(--tap);
     flex: none;
+    border-radius: var(--corner);
 }
+.bell svg { width: 26px; height: 26px; }
+.bell path { fill: none; stroke: var(--soft-ink); stroke-width: 1.6; stroke-linejoin: round; }
+.bell-new .bell-body { fill: var(--ribbon); stroke: none; }
+.bell-new .bell-clapper { fill: var(--ink); stroke: none; }
 
 .masthead-account {
     display: flex;
@@ -792,6 +801,15 @@ summary::-webkit-details-marker { display: none; }
 .past-row:hover .past-name { text-decoration: underline; text-decoration-color: var(--ribbon); text-decoration-thickness: var(--line); }
 .past-name { font: var(--type-action); overflow-wrap: anywhere; }
 .past-row .small { font-weight: 400; }
+
+/* "What's new" without the script (spec §7, §16): divided rows, the line as a link with the
+   event and time under it, and a small "Dismiss" on the right. No cloth. */
+.whats-new-rows .row { align-items: flex-start; }
+.whats-new-line { overflow-wrap: anywhere; }
+.whats-new-row form { flex: none; }
+.whats-new-row .link-button { margin-top: -10px; }
+.whats-new-empty { display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-2); }
+.whats-new-empty-title { font-weight: 800; }
 
 /* ---------- Event page once the event is over (#77): no cloth, nothing left to do ---------- */
 

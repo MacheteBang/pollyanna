@@ -1580,6 +1580,21 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     caller's transaction. Each kind is declared once in `HappeningKinds`;
     email (`EmailOnHappening`) is the first listener behind it. The emails
     themselves are unchanged. Tests: `HappeningTests`.
+  - "What's new" for the stored kinds, without the script (#97): the
+    seven stored kinds are one table, `InAppNotifications` (person, event,
+    kind, named person, time; one row per person, event and kind), written
+    and deleted by a listener behind `Announcer` (`WhatsNewOnHappening`)
+    from two What's new columns of `HappeningKinds` (`Stored`: who, line,
+    link; `WhatsNew`: rows a happening clears). `WhatsNewList` gives the
+    rows newest first, dismisses one and clears the rows a page points to
+    when the event page (and `/untie`) or organizing page is seen. An
+    accepted invitation also gives the person who took it up an "added"
+    row, as its email does; a redraw deletes the event's "names are drawn"
+    rows, as it withdraws their emails. The masthead's bell is a link to
+    `/whats-new` (filled or outlined, labeled with the count); the page
+    shows the times in UTC ("Today, 7:42 PM UTC"). Tests: `WhatsNewTests`,
+    plus `/whats-new` in `PairingSecrecyTests` and
+    `NotificationSecrecyTests`.
 
 ### Done: the "Tablecloth" identity
 

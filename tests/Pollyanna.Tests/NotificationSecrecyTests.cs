@@ -1,8 +1,10 @@
 using Pollyanna.Data;
+using Pollyanna.Happenings;
 using Pollyanna.MockIssuer;
 using Pollyanna.Notifications;
 using Pollyanna.Notifications.Kinds;
 using Pollyanna.Tests.Support;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using static Pollyanna.Tests.Support.Seed;
 
@@ -15,7 +17,7 @@ namespace Pollyanna.Tests;
 /// would differ. A second scenario sets off every kind and checks what the emails say, and that
 /// nothing is queued with emails switched off or without a mail relay.
 /// </summary>
-public sealed class NotificationSecrecyTests
+public sealed partial class NotificationSecrecyTests
 {
     /// <summary>What is queued, as an operator reading the outbox would see it, without the event's ID.</summary>
     sealed record Row(NotificationKind Kind, Guid? Person, string? Email, Guid? Named);
@@ -35,6 +37,27 @@ public sealed class NotificationSecrecyTests
             sent.Add(($"To: {m.To}\nSubject: {m.Subject}\n{m.Body}\n{m.Html}\n"
                 + $"{m.Image.ContentId} {m.Image.FileName} {Convert.ToBase64String(m.Image.Png)}").Replace(ev.ToString(), "{event}"));
         return [.. sent.Order(StringComparer.Ordinal)];
+    }
+
+    [GeneratedRegex("name=\"__RequestVerificationToken\" type=\"hidden\" value=\"[^\"]*\"")]
+    private static partial Regex Token();
+
+    [GeneratedRegex("<time datetime=\"[^\"]*\">[^<]*</time>")]
+    private static partial Regex Time();
+
+    /// <summary>
+    /// Everyone's "What's new" page, masthead bell included (spec §16), with the event's ID, the
+    /// form tokens and the times taken out: the times follow the clock, which each run starts later.
+    /// </summary>
+    static async Task<List<string>> WhatsNewAsync(Dictionary<string, (TestBrowser Browser, Guid Id)> people, Guid ev)
+    {
+        var pages = new List<string>();
+        foreach (var (name, (browser, _)) in people.OrderBy(p => p.Key, StringComparer.Ordinal))
+        {
+            var html = await (await browser.GetAsync("/whats-new")).Content.ReadAsStringAsync();
+            pages.Add($"{name}\n" + Time().Replace(Token().Replace(html, ""), "<time/>").Replace(ev.ToString(), "{event}"));
+        }
+        return pages;
     }
 
     static void NextFullHour(TestApp app) =>
@@ -77,10 +100,14 @@ public sealed class NotificationSecrecyTests
         var page = $"/events/{ev}";
         var questions = $"{page}/questions";
         var stages = new List<object>();
+        // Each run starts with nothing in anyone's "What's new".
+        await app.WithDbAsync(db => db.InAppNotifications.ExecuteDeleteAsync());
 
-        // What was queued, then what went out an hour later (questions are held to the hour).
+        // What was queued, then what went out an hour later (questions are held to the hour),
+        // and what everyone's "What's new" shows.
         async Task StageAsync()
         {
+            stages.Add(await WhatsNewAsync(people, ev));
             stages.Add(await RowsAsync(app));
             app.Clock.Advance(TimeSpan.FromHours(1));
             stages.Add(await SentAsync(app, ev));
@@ -137,16 +164,24 @@ public sealed class NotificationSecrecyTests
 
             // And it isn't equal because nothing happens: each recipient hears about their
             // question, and the late joiner that they're in.
-            var (questionRows, questionMail) = ((List<Row>)before[0], (List<string>)before[1]);
+            var (questionRows, questionMail) = ((List<Row>)before[1], (List<string>)before[2]);
             Assert.Equal(5, questionRows.Count);
             Assert.All(questionRows, r => Assert.Equal(NotificationKind.Question, r.Kind));
             Assert.Equal(5, questionMail.Count);
             // Replies, closing, reopening and note edits reach no giver, or anyone.
-            Assert.Empty((List<Row>)before[2]);
-            Assert.Empty((List<string>)before[3]);
+            Assert.Empty((List<Row>)before[4]);
+            Assert.Empty((List<string>)before[5]);
             // The patches tell no giver that their recipient changed; only the new participant hears.
-            Assert.Equal([new Row(NotificationKind.AddedToEvent, people["Eve"].Id, null, null)], (List<Row>)before[4]);
-            Assert.StartsWith("To: eve@example.com\n", Assert.Single((List<string>)before[5]));
+            Assert.Equal([new Row(NotificationKind.AddedToEvent, people["Eve"].Id, null, null)], (List<Row>)before[7]);
+            Assert.StartsWith("To: eve@example.com\n", Assert.Single((List<string>)before[8]));
+            // In "What's new" too, only the late joiner hears anything.
+            var lastWhatsNew = (List<string>)before[6];
+            Assert.Contains("You&#x27;re taking part.", Assert.Single(lastWhatsNew, p => p.StartsWith("Eve\n")));
+            Assert.All(lastWhatsNew.Where(p => !p.StartsWith("Eve\n")), p => Assert.Contains("Nothing new right now.", p));
+            // No stored row is ever tied to an assignment (docs/adr/0008).
+            Assert.All(await app.WithDbAsync(db => db.InAppNotifications.ToListAsync()), n => Assert.Contains(n.Kind,
+                new[] { HappeningKind.AddedToEvent, HappeningKind.MadeOrganizer, HappeningKind.EventOpened, HappeningKind.NamesDrawn,
+                    HappeningKind.EventRevealed, HappeningKind.RedrawNeeded, HappeningKind.InvitationAccepted }));
         }
         finally
         {

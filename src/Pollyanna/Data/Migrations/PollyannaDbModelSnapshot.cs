@@ -15,7 +15,7 @@ partial class PollyannaDbModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261126015407_Logins";
+    public override string LastMigrationId => "20261127200720_StoredWhatsNewRows";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -166,6 +166,40 @@ partial class PollyannaDbModelSnapshot : ModelSnapshot
                 b.HasIndex("EventId");
 
                 b.ToTable("Households");
+            });
+
+        modelBuilder.Entity("Pollyanna.Data.InAppNotification", b =>
+            {
+                b.Property<Guid>("Id")
+                    .HasColumnType("TEXT");
+
+                b.Property<DateTime>("At")
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid>("EventId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Kind")
+                    .IsRequired()
+                    .HasMaxLength(32)
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid?>("NamedPersonId")
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid>("PersonId")
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Id");
+
+                b.HasIndex("NamedPersonId");
+
+                b.HasIndex("EventId", "Kind");
+
+                b.HasIndex("PersonId", "EventId", "Kind")
+                    .IsUnique();
+
+                b.ToTable("InAppNotifications");
             });
 
         modelBuilder.Entity("Pollyanna.Data.Invitation", b =>
@@ -512,6 +546,26 @@ partial class PollyannaDbModelSnapshot : ModelSnapshot
                 b.HasOne("Pollyanna.Data.Event", null)
                     .WithMany("Households")
                     .HasForeignKey("EventId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity("Pollyanna.Data.InAppNotification", b =>
+            {
+                b.HasOne("Pollyanna.Data.Event", null)
+                    .WithMany()
+                    .HasForeignKey("EventId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+
+                b.HasOne("Pollyanna.Data.Person", null)
+                    .WithMany()
+                    .HasForeignKey("NamedPersonId")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne("Pollyanna.Data.Person", null)
+                    .WithMany()
+                    .HasForeignKey("PersonId")
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired();
             });
