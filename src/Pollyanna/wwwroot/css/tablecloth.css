@@ -785,6 +785,84 @@ strong, b { font-weight: 800; }
 .past-name { font: var(--type-action); overflow-wrap: anywhere; }
 .past-row .small { font-weight: 400; }
 
+/* ---------- Event page once the event is over (#77): no cloth, nothing left to do ---------- */
+
+/* The viewer's own pairing first: two lines at the size of an action. */
+.over-pairing {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.over-line { font: var(--type-action); overflow-wrap: anywhere; }
+
+/* "Who drew whom": a row per pairing, the giver's picture beside "Ana gave to Kofi". */
+.who-drew-whom { margin-top: var(--space-2); }
+
+.pairing-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-2);
+    border-top: var(--line) solid var(--pale);
+    overflow-wrap: anywhere;
+}
+
+.pairing-row:first-child { border-top: 0; }
+.pairing-row strong { font-weight: 800; }
+.who-drew-whom + .small { margin-top: var(--space-2); }
+
+/* Folds: a row that opens in place, its title on the left, then a small soft hint and a
+   chevron on the right. Pale-blue lines above each fold and under the last one. */
+.fold { border-top: var(--line) solid var(--pale); }
+.fold:last-child { border-bottom: var(--line) solid var(--pale); }
+
+.fold > summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-3);
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.fold > summary::-webkit-details-marker { display: none; }
+
+.fold-hint {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: var(--type-small);
+    color: var(--soft-ink);
+    text-align: right;
+}
+
+/* The chevron: down while folded, up once open. */
+.fold > summary::after {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin: 0 3px 3px 0;
+    border-right: var(--line) solid var(--ink);
+    border-bottom: var(--line) solid var(--ink);
+    transform: rotate(45deg);
+}
+
+.fold[open] > summary::after { transform: rotate(-135deg); margin-bottom: -3px; }
+
+.fold-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+}
+
 /* ---------- Organizing page (#73): people rows, add people, and the parts #78 reworks ---------- */
 
 /* A person's row: picture, name, the small words on what is missing, then "Remove". */

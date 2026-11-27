@@ -1,0 +1,109 @@
+@model Pollyanna.Pages.Events.EventModel
+@using Pollyanna.Data
+@using Pollyanna.Events
+@using Pollyanna.Infrastructure
+@using Pollyanna.Pages.Events
+@*
+    The event page once the event is over (revealed or archived; spec §7 Event page, once the
+    event is over): no cloth, since nothing is left to do. First the viewer's own pairing, then
+    "Who drew whom", then the old question threads and the viewer's notes, each collapsed in a
+    fold. There is no separate people list: the pairing list names everyone. An event archived
+    straight from drawn stays sealed (spec §4): only who the viewer was giving to, and no list.
+    Threads are read-only, and name the other side only once the pairings were revealed. Times are
+    in UTC on the page; site.js (conversations()) redoes them in the viewer's own time zone.
+*@
+@{
+    var slip = Model.Slip;
+    var giver = Model.MyGiver;
+    var pairings = Model.Pairings;
+    var count = (QuestionThread t) => t.Notes.Count == 1 ? "1 message" : $"{t.Notes.Count} messages";
+
+    void Conversation(QuestionThread thread, MessageSender viewer, string them)
+    {
+        <ol class="conversation" data-conversation>
+            @{ DateOnly? day = null; }
+            @foreach (var note in thread.Notes)
+            {
+                var mine = note.Sender == viewer;
+                var on = DateOnly.FromDateTime(note.CreatedAt);
+                if (on != day)
+                {
+                    day = on;
+                    <li class="day-line" data-day><time datetime="@Format.IsoDate(on)">@on.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)</time></li>
+                }
+                <li class="message @(mine ? "message-mine" : "message-theirs")">
+                    <p class="bubble"><span class="visually-hidden">@(mine ? "You:" : them + ":")</span> <span class="bubble-body">@note.Body</span></p>
+                    <p class="message-meta"><time datetime="@Format.IsoHour(note.CreatedAt)" data-said>@QuestionsModel.About(note.CreatedAt.Hour) UTC</time></p>
+                </li>
+            }
+        </ol>
+    }
+}
+
+<div class="column below over">
+    <section id="slip" class="over-pairing" aria-labelledby="slip-heading">
+        <h2 id="slip-heading" class="visually-hidden">Your pairing</h2>
+        @if (slip is not null)
+        {
+            <p class="over-line">You gave to <strong>@slip.Recipient.Name</strong></p>
+        }
+        else
+        {
+            <p>Your assignment for this event can't be read any more.</p>
+        }
+        @if (giver is not null)
+        {
+            <p class="over-line"><strong>@giver.Name</strong> gave to you</p>
+        }
+        @if (pairings is null)
+        {
+            <p class="small soft">The pairings were never revealed, so nobody else's is shown.</p>
+        }
+    </section>
+
+    @if (pairings is not null)
+    {
+        <section id="pairings" aria-labelledby="pairings-heading">
+            <h2 id="pairings-heading" class="section-title">Who drew whom</h2>
+            <partial name="_WhoDrewWhom" model="pairings" />
+        </section>
+    }
+
+    <div class="folds">
+        @if (Model.AskThread is { Notes.Count: > 0 } asked && slip is not null)
+        {
+            <details class="fold" id="ask">
+                <summary><span id="ask-heading">You asked @slip.Recipient.Name</span><span class="fold-hint">@count(asked)</span></summary>
+                <div class="fold-body">
+                    @{ Conversation(asked, MessageSender.Giver, slip.Recipient.Name); }
+                </div>
+            </details>
+        }
+        @if (Model.QuestionsThread is { Notes.Count: > 0 } questions)
+        {
+            <details class="fold" id="questions">
+                <summary><span id="questions-heading">@(giver is null ? "Your giver asked you" : $"{giver.Name} asked you")</span><span class="fold-hint">@count(questions)</span></summary>
+                <div class="fold-body">
+                    @{ Conversation(questions, MessageSender.Recipient, giver?.Name ?? "Your giver"); }
+                </div>
+            </details>
+        }
+        <details class="fold" id="your-notes">
+            <summary><span id="notes-heading">Your notes</span><span class="fold-hint">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "None")</span></summary>
+            <div class="fold-body">
+                @if (Model.Membership.Editable)
+                {
+                    <form method="post" asp-page-handler="notes" class="field">
+                        <label for="notes">Likes, sizes, no-gos. Everyone taking part can read them.</label>
+                        <textarea id="notes" name="notes" rows="5" maxlength="@EventManager.NotesMax">@Model.MyNotes</textarea>
+                        <button type="submit" class="button button-start">Save notes</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="notes">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "No notes.")</p>
+                }
+            </div>
+        </details>
+    </div>
+</div>

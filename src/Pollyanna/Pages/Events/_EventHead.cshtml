@@ -1,5 +1,4 @@
 @model Pollyanna.Pages.Events.EventModel
-@using Pollyanna.Data
 @using Pollyanna.Infrastructure
 @using Pollyanna.Pages.Shared
 @* The event page's head (spec §7 Page head; §12 Statuses), for every state of the page: the
@@ -8,14 +7,7 @@
    then one small soft line with the date, the budget and the status in plain words. *@
 @{
     var ev = Model.Event;
-    var status = ev.Status switch
-    {
-        EventStatus.Draft => "draft, only organizers can see it",
-        EventStatus.Open => "names not drawn yet",
-        EventStatus.Drawn => "names drawn",
-        EventStatus.Revealed => "everyone's been revealed",
-        _ => "over",
-    };
+    var status = Format.StatusLine(ev.Status);
 }
 <div class="column page-head">
     @if (Model.Membership.IsOrganizer)
