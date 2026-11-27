@@ -1,3 +1,4 @@
+using Pollyanna.Infrastructure;
 using Pollyanna.Data;
 using Pollyanna.Events;
 using Microsoft.AspNetCore.Mvc;
@@ -41,6 +42,57 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     /// <summary>In drawn: revealing now needs the "before the exchange" confirmation (spec §4).</summary>
     public bool RevealNeedsConfirmation { get; private set; }
     public Guid MeId => Me;
+
+    // ---------- The next step and the people's words (spec §7 Organizing an event) ----------
+
+    /// <summary>Before the draw: too few people take part, so adding people is the next step.</summary>
+    public bool TooFewPeople => Membership.PeopleEditable && Participants.Count < Draw.MinPeople;
+
+    /// <summary>In drawn: who asked to leave and waits for a redraw.</summary>
+    public IReadOnlyList<ParticipantRow> Leaving => Event.Status == EventStatus.Drawn ? [.. Participants.Where(p => p.WantsToLeave)] : [];
+
+    /// <summary>In drawn: how many have looked at who they're giving to.</summary>
+    public int Looked => Participants.Count(p => Viewed.Contains(p.Id));
+
+    /// <summary>Open and ready to draw: how many are in and how many have written notes.</summary>
+    public string ReadySentence
+    {
+        get
+        {
+            var withNotes = Participants.Count(p => p.HasNotes);
+            var notes = withNotes == 0 ? "nobody has written notes yet"
+                : withNotes == Participants.Count ? "everyone has written notes"
+                : withNotes == 1 ? "1 has written notes"
+                : $"{withNotes} have written notes";
+            return $"All {Format.People(Participants.Count)} are in and {notes}. Draw names whenever you're ready.";
+        }
+    }
+
+    public string DrawnSentence =>
+        $"Names are drawn, and {Looked} of {Format.People(Participants.Count)} have looked. Reveal who drew whom once the gifts are opened.";
+
+    public string LeavingSentence
+    {
+        get
+        {
+            var names = Leaving.Select(p => p.Name).ToList();
+            var who = names.Count == 1 ? names[0] : string.Join(", ", names[..^1]) + " and " + names[^1];
+            return $"{who} {(names.Count == 1 ? "wants" : "want")} to leave, and that needs a redraw. Drawing names again takes them out.";
+        }
+    }
+
+    /// <summary>
+    /// The small words on a person's row: what is missing, or "done shopping"; null when there is
+    /// nothing to say. Before the draw that is their notes; once drawn, leaving, looking and shopping.
+    /// </summary>
+    public string? WordsFor(ParticipantRow p) => Event.Status switch
+    {
+        EventStatus.Draft or EventStatus.Open => p.HasNotes ? null : "no notes yet",
+        EventStatus.Drawn when p.WantsToLeave => "wants to leave",
+        EventStatus.Drawn when !Viewed.Contains(p.Id) => "hasn't looked yet",
+        EventStatus.Drawn when p.DoneShopping => "done shopping",
+        _ => null,
+    };
 
     // The details form, re-shown with what was typed when it doesn't save.
     [BindProperty] public string? Name { get; set; }
@@ -120,19 +172,23 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
     public IActionResult OnPost() => NotFound();
 
     public async Task<IActionResult> OnPostOpenAsync(Guid id) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.OpenAsync(Membership, Me), Here("status")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.OpenAsync(Membership, Me), Here("next-step")) : NotFound();
 
     public async Task<IActionResult> OnPostDrawAsync(Guid id) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.DrawAsync(Membership, Me), Here("status")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.DrawAsync(Membership, Me), Here("next-step")) : NotFound();
 
     public async Task<IActionResult> OnPostRedrawAsync(Guid id) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.RedrawAsync(Membership), Here("status")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.RedrawAsync(Membership), Here("next-step")) : NotFound();
 
     public async Task<IActionResult> OnPostRevealAsync(Guid id, bool confirmed) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.RevealAsync(Membership, Me, confirmed), Here("status")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.RevealAsync(Membership, Me, confirmed), Here("next-step")) : NotFound();
+
+    /// <summary>"Keep X in instead" (spec §7): drops someone's request to leave rather than drawing again.</summary>
+    public async Task<IActionResult> OnPostKeepInAsync(Guid id, Guid personId) =>
+        await LoadAsOrganizerAsync(id) ? Finish(await events.KeepInAsync(Membership, personId), Here("next-step")) : NotFound();
 
     public async Task<IActionResult> OnPostArchiveAsync(Guid id, bool keepMessages) =>
-        await LoadAsOrganizerAsync(id) ? Finish(await events.ArchiveAsync(Membership, keepMessages), Here("status")) : NotFound();
+        await LoadAsOrganizerAsync(id) ? Finish(await events.ArchiveAsync(Membership, keepMessages), Here("next-step")) : NotFound();
 
     /// <summary>Canceling leaves nothing to come back to: the home page shows the notice.</summary>
     public async Task<IActionResult> OnPostCancelAsync(Guid id)
@@ -140,7 +196,7 @@ public sealed class ManageModel(PollyannaDb db, EventManager events) : EventPage
         if (!await LoadAsOrganizerAsync(id))
             return NotFound();
         var outcome = await events.CancelAsync(Membership);
-        return Finish(outcome, outcome.Ok ? "/" : Here("status"));
+        return Finish(outcome, outcome.Ok ? "/" : Here("next-step"));
     }
 
     /// <summary>A picked person the organizer may not pick (spec §7): refused like any other bad input.</summary>

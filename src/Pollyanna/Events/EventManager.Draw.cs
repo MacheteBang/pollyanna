@@ -110,10 +110,10 @@ public sealed partial class EventManager
         var invitations = await db.Invitations.CountAsync(i => i.EventId == eventId);
         if (invitations > 0)
             return invitations == 1
-                ? "Can't draw yet: 1 invitation is still waiting for someone to sign in. Cancel it or wait."
-                : $"Can't draw yet: {invitations} invitations are still waiting for someone to sign in. Cancel them or wait.";
+                ? "Can't draw yet: 1 invitation is still waiting for someone to sign in. Take it back or wait."
+                : $"Can't draw yet: {invitations} invitations are still waiting for someone to sign in. Take them back or wait.";
         if (rules.People.Count < Draw.MinPeople)
-            return $"Can't draw yet: the hat needs at least {Draw.MinPeople} people.";
+            return $"Can't draw yet: at least {Draw.MinPeople} people need to take part.";
         return null;
     }
 
@@ -282,6 +282,23 @@ public sealed partial class EventManager
         participant.WantsToLeave = false;
         await db.SaveChangesAsync();
         return Outcome.Done("You're staying in. The organizers won't see your request any more.");
+    }
+
+    /// <summary>
+    /// An organizer keeps someone in who asked to leave (spec §7, "Keep X in instead"): the request
+    /// is dropped and nothing else changes, as revealing or archiving would do.
+    /// </summary>
+    public async Task<Outcome> KeepInAsync(Membership m, Guid personId)
+    {
+        if (!m.IsLive)
+            return Outcome.Fail("There's nobody to keep in now.");
+        var participant = await db.Participants.SingleOrDefaultAsync(p => p.EventId == m.Event.Id && p.PersonId == personId);
+        if (participant is null || !participant.WantsToLeave)
+            return Outcome.Fail("They haven't asked to leave.");
+        participant.WantsToLeave = false;
+        await db.SaveChangesAsync();
+        var name = await db.People.Where(p => p.Id == personId).Select(p => p.DisplayName).SingleAsync();
+        return Outcome.Done($"Kept {name ?? "them"} in. Their request to leave is dropped.");
     }
 
     // ---------- Late joiners ----------

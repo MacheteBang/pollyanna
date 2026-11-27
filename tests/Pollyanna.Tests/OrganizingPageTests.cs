@@ -124,4 +124,169 @@ public sealed class OrganizingPageTests : IAsyncLifetime
         Assert.Equal("Home", Squash(back.TextContent));
         Assert.Equal("/", back.GetAttribute("href"));
     }
+
+    // ---------- The next step ----------
+
+    [Fact]
+    public async Task A_draft_says_only_organizers_see_it_and_opens_with_the_filled_button()
+    {
+        var (ann, bob, _) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [ann, bob]);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        var (text, controls) = Panel(page);
+        Assert.Equal(["Only organizers can see this event. Open it so the people you've added can write their notes."], text);
+        Assert.Equal([("Open the event", true)], controls);
+        Assert.NotNull(page.QuerySelector($".panel form[action='{Manage(ev)}/open'] button.button-fill"));
+    }
+
+    [Fact]
+    public async Task An_open_event_ready_to_draw_counts_people_and_notes()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var dee = await app.PersonAsync("Dee");
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy, dee, me]);
+        await app.WithDbAsync(async db =>
+        {
+            (await db.Participants.SingleAsync(p => p.EventId == ev && p.PersonId == ann)).Notes = "Socks";
+            await db.SaveChangesAsync();
+        });
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        var (text, controls) = Panel(page);
+        Assert.Equal(["All 5 people are in and 1 has written notes. Draw names whenever you're ready."], text);
+        Assert.Equal([("Draw names", true)], controls);
+        Assert.NotNull(page.QuerySelector($".panel form[action='{Manage(ev)}/draw']"));
+    }
+
+    [Fact]
+    public async Task Too_few_people_is_the_blocker_with_add_people()
+    {
+        var ann = await app.PersonAsync("Ann");
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me, ann]);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        var (text, controls) = Panel(page);
+        Assert.Equal(["Can't draw yet: at least 3 people need to take part."], text);
+        Assert.Equal([("Add people", true)], controls);
+        Assert.Equal("#add-people", page.QuerySelector(".panel a.button-fill")!.GetAttribute("href"));
+        Assert.NotNull(page.QuerySelector("#add-people form[data-add-people]"));
+        Assert.Null(page.QuerySelector($"form[action='{Manage(ev)}/draw']"));
+    }
+
+    [Fact]
+    public async Task Other_reasons_the_draw_is_refused_stand_in_the_same_place()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [me, ann, bob, cy]);
+        await app.HouseholdAsync(ev, "The Parks", ann, bob, cy);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        var (text, controls) = Panel(page);
+        Assert.Equal(["Can't draw: The household The Parks has more than half the people taking part, so they can't all draw someone outside it."], text);
+        Assert.Empty(controls);
+        Assert.Null(page.QuerySelector($"form[action='{Manage(ev)}/draw']"));
+    }
+
+    [Fact]
+    public async Task Drawn_counts_who_has_looked_and_reveals_with_the_filled_button()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy], date: new DateOnly(2020, 12, 24));
+        await app.SealAsync(ev, Loop(ann, bob, cy));
+        await app.UpdateAssignmentAsync(ev, ann, a => a.Viewed = true);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        var (text, controls) = Panel(page);
+        Assert.Equal(["Names are drawn, and 1 of 3 people have looked. Reveal who drew whom once the gifts are opened."], text);
+        Assert.Equal([("Reveal who drew whom", true)], controls);
+        Assert.NotNull(page.QuerySelector($".panel form[action='{Manage(ev)}/reveal']"));
+    }
+
+    [Fact]
+    public async Task Someone_wanting_to_leave_replaces_the_reveal_with_draw_names_again_or_keep_them_in()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy]);
+        await app.SealAsync(ev, Loop(ann, bob, cy));
+        await app.WithDbAsync(db => db.Participants.Where(p => p.EventId == ev && p.PersonId == ann)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, true)));
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        var (text, controls) = Panel(page);
+        Assert.Equal(["Ann wants to leave, and that needs a redraw. Drawing names again takes them out."], text);
+        Assert.Equal([("Draw names again", true), ("Keep Ann in instead", false)], controls);
+        Assert.Null(page.QuerySelector($".panel form[action='{Manage(ev)}/reveal']"));
+
+        // Keeping them in drops the request, and the reveal is the next step again.
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/keepin");
+        Assert.False(await app.WithDbAsync(db => db.Participants.AnyAsync(p => p.EventId == ev && p.WantsToLeave)));
+        Assert.Contains(ann, await app.ParticipantsAsync(ev));
+        Assert.Equal(EventStatus.Drawn, await app.StatusAsync(ev));
+        page = await browser.GetPageAsync(Manage(ev));
+        Assert.Equal("Kept Ann in. Their request to leave is dropped.", Squash(page.QuerySelector(".notice")!.TextContent));
+        Assert.Equal([("Reveal who drew whom", true)], Panel(page).Controls);
+    }
+
+    [Fact]
+    public async Task Draw_names_again_from_the_blocker_takes_the_leaver_out()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var dee = await app.PersonAsync("Dee");
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy, dee]);
+        await app.SealAsync(ev, Loop(ann, bob, cy, dee));
+        await app.WithDbAsync(db => db.Participants.Where(p => p.EventId == ev && p.PersonId == ann)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, true)));
+
+        await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/redraw");
+
+        Assert.DoesNotContain(ann, await app.ParticipantsAsync(ev));
+        Assert.Equal(EventStatus.Open, await app.StatusAsync(ev));
+    }
+
+    [Fact]
+    public async Task Keeping_someone_in_is_for_organizers_of_a_drawn_event_only()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Open, [me], [ann, bob, cy]);
+        await app.WithDbAsync(db => db.Participants.Where(p => p.EventId == ev && p.PersonId == ann)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, true)));
+
+        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/keepin", Form(("personId", ann.ToString())));
+
+        Assert.True(await app.WithDbAsync(db => db.Participants.AnyAsync(p => p.EventId == ev && p.WantsToLeave)));
+    }
+
+    [Fact]
+    public async Task Revealed_archives_with_the_filled_button()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Revealed, [me], [ann, bob, cy]);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        var (text, controls) = Panel(page);
+        Assert.Equal("Everyone can see who drew whom. Archive the event when you're done with it, and it moves to past events.", text[0]);
+        Assert.Contains(("Archive this event", true), controls);
+        Assert.NotNull(page.QuerySelector($".panel form[action='{Manage(ev)}/archive']"));
+    }
+
+    [Fact]
+    public async Task An_archived_event_has_no_next_step_and_no_cloth()
+    {
+        var (ann, bob, cy) = await ThreeOthersAsync();
+        var ev = await app.EventAsync("Stockings", EventStatus.Archived, [me], [ann, bob, cy]);
+
+        var page = await browser.GetPageAsync(Manage(ev));
+
+        Assert.Null(page.QuerySelector(".cloth"));
+        Assert.Null(page.QuerySelector(".button-fill"));
+        Assert.Empty(page.QuerySelectorAll("ol.steps [aria-current]"));
+    }
 }
