@@ -143,6 +143,15 @@ function counters() {
     }
 }
 
+// A form that saves as soon as its control changes, such as the email switch on /account
+// (spec §15). Without the script its Save button shows and does the same.
+function saveOnChange() {
+    for (const form of document.querySelectorAll("form[data-save-on-change]")) {
+        for (const button of form.querySelectorAll("[data-save-button]")) button.hidden = true;
+        form.addEventListener("change", () => form.requestSubmit());
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     countdowns();
     previousEventPicker();
@@ -150,4 +159,5 @@ document.addEventListener("DOMContentLoaded", () => {
     revealCards();
     messageTimes();
     counters();
+    saveOnChange();
 });

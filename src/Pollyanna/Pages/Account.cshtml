@@ -1,70 +1,66 @@
 @page "/account/{handler?}"
 @model AccountModel
 @{
+    Layout = "_Tablecloth";
     ViewData["Title"] = "Your account";
 }
+@* Account (spec §7): no cloth, three plain groups on white: ways to sign in, emails, then leaving. *@
 
-<a class="back" href="/">← Your exchanges</a>
-<h1>Your account</h1>
+<partial name="_PageHead" model='new Pollyanna.Pages.Shared.PageHeadView("Your account", Model.NameAndEmail, "Home", "/")' />
 
-<section class="slip slip-plain stack" id="logins" aria-labelledby="logins-heading">
-    <h2 id="logins-heading">Ways to sign in</h2>
-    <ul class="people" role="list">
-        @foreach (var login in Model.Logins)
-        {
-            <li class="person">
-                <div class="person-body">
-                    <span class="person-name">@login.Label@if (login.NoLongerSetUp)
-                        {<span class="red-text"> (no longer set up)</span>}</span>
-                    <span class="small break">@(login.LastEmail ?? "No email sent")</span>
-                </div>
-                <form method="post" action="/account/removelogin" asp-antiforgery="true">
-                    <input type="hidden" name="loginId" value="@login.Id">
-                    <button type="submit" class="link-button red-text tap" aria-label="Remove @login.Label@(login.LastEmail is null ? "" : $" ({login.LastEmail})")">Remove</button>
-                </form>
-            </li>
-        }
-    </ul>
-    @if (Model.AddChoices.Count > 0)
-    {
-        <div class="actions">
-            @foreach (var provider in Model.AddChoices)
+<div class="column groups">
+    <section class="group" id="logins" aria-labelledby="logins-heading">
+        <h2 class="group-title" id="logins-heading">Ways to sign in</h2>
+        <ul class="rows" role="list">
+            @foreach (var login in Model.Logins)
             {
-                <form method="post" action="/account/addlogin" asp-antiforgery="true">
-                    <input type="hidden" name="key" value="@provider.Key">
-                    <partial name="_ProviderButton" model='new Pollyanna.Pages.Shared.ProviderButtonView(provider, "Add " + provider.Label, null, Outline: true)' />
-                </form>
+                <li class="row">
+                    <span class="row-stack">
+                        <b>@login.Label@(login.NoLongerSetUp ? " (no longer set up)" : "")</b>
+                        <span class="small soft break">@(login.LastEmail ?? "No email sent")</span>
+                    </span>
+                    <form method="post" action="/account/removelogin" asp-antiforgery="true">
+                        <input type="hidden" name="loginId" value="@login.Id">
+                        <button type="submit" class="link-button small" aria-label="Remove @login.Label@(login.LastEmail is null ? "" : $" ({login.LastEmail})")">Remove</button>
+                    </form>
+                </li>
             }
-        </div>
-    }
-    <p class="small">Your name, email and picture come from your latest sign-in. A removed way to sign in whose verified email matches yours is added back the next time you use it. Your only way to sign in can't be removed: to leave Pollyanna, <a href="/account/delete">delete your account</a> instead.</p>
-</section>
-
-@if (Model.EmailsAvailable)
-{
-    <section class="slip slip-plain" id="emails" aria-labelledby="emails-heading">
-        <h2 id="emails-heading">Emails</h2>
-        <form method="post" action="/account/emails" asp-antiforgery="true" class="stack">
-            <label class="choice">
-                <input type="checkbox" id="emails-on" name="on" value="true" checked="@Model.EmailsOn">
-                <span>Email me about Pollyanna events</span>
-            </label>
-            <p class="small">Pollyanna emails you when something in an event needs you, such as an event opening or names being drawn. Turning this off stops all of them, including any not sent yet.</p>
-            <button type="submit" class="button button-outline">Save</button>
-        </form>
+        </ul>
+        @if (Model.AddChoices.Count > 0)
+        {
+            <div class="group-buttons">
+                @foreach (var provider in Model.AddChoices)
+                {
+                    <form method="post" action="/account/addlogin" asp-antiforgery="true">
+                        <input type="hidden" name="key" value="@provider.Key">
+                        <partial name="_ProviderButton" model='new Pollyanna.Pages.Shared.ProviderButtonView(provider, "Add " + provider.Label, null, Outline: true)' />
+                    </form>
+                }
+            </div>
+        }
+        <p class="small soft group-note">Your name, email and picture come from your latest sign-in. A removed way to sign in whose verified email matches yours is added back the next time you use it. Your only way to sign in can't be removed: to leave Pollyanna, <a href="/account/delete">delete your account</a> instead.</p>
     </section>
-}
 
-<section class="slip slip-plain" aria-labelledby="signout-heading">
-    <h2 id="signout-heading">Sign out</h2>
-    <p class="small">This signs you out of Pollyanna on this device. It doesn't sign you out of your sign-in provider.</p>
-    <form method="post" action="/auth/signout" asp-antiforgery="true">
-        <button type="submit" class="button">Sign out</button>
-    </form>
-</section>
+    @if (Model.EmailsAvailable)
+    {
+        <section class="group" id="emails" aria-labelledby="emails-heading">
+            <h2 class="group-title" id="emails-heading">Emails</h2>
+            @* Saves when flipped (site.js); without the script, the Save button shows (spec §15). *@
+            <form method="post" action="/account/emails" asp-antiforgery="true" class="group" data-save-on-change>
+                <label class="check">
+                    <input type="checkbox" id="emails-on" name="on" value="true" checked="@Model.EmailsOn">
+                    <span>Email me about Pollyanna events</span>
+                </label>
+                <p class="small soft">Pollyanna emails you when something in an event needs you, such as an event opening or names being drawn. Turning this off stops all of them, including any not sent yet.</p>
+                <button type="submit" class="button button-start" data-save-button>Save</button>
+            </form>
+        </section>
+    }
 
-<section class="slip slip-plain" aria-labelledby="delete-heading">
-    <h2 id="delete-heading">Delete your account</h2>
-    <p class="small">Deletes your name, email, picture and notes from Pollyanna, and takes you out of events that aren't over yet.</p>
-    <a class="button button-outline" href="/account/delete">Delete my account…</a>
-</section>
+    <div class="group group-leave">
+        <form method="post" action="/auth/signout" asp-antiforgery="true">
+            <button type="submit" class="button">Sign out</button>
+        </form>
+        <a class="button button-red button-start" href="/account/delete">Delete my account</a>
+    </div>
+</div>
