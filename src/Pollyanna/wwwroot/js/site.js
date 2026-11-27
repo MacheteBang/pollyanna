@@ -115,7 +115,8 @@ function gifts() {
 
 // "Questions for you" as a conversation (spec §7, §12): the page carries its day lines and
 // times in UTC; this redoes them in the viewer's own time zone. A day line is "Today", the
-// weekday within the week, otherwise the date; a time is "about 7 PM".
+// weekday within the week, otherwise the date; a time is "7:42 PM", or "about 7 PM" for a
+// message stored to the hour before times were exact (data-said="hour").
 function conversations() {
     const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -135,7 +136,10 @@ function conversations() {
             const at = new Date(time?.getAttribute("datetime"));
             if (isNaN(at)) continue;
             const h = at.getHours();
-            time.textContent = `about ${h === 0 ? "midnight" : h === 12 ? "noon" : `${h % 12} ${h < 12 ? "AM" : "PM"}`}`;
+            const half = h < 12 ? "AM" : "PM";
+            time.textContent = time.dataset.said === "hour"
+                ? `about ${h === 0 ? "midnight" : h === 12 ? "noon" : `${h % 12} ${half}`}`
+                : `${h % 12 || 12}:${String(at.getMinutes()).padStart(2, "0")} ${half}`;
             const day = new Date(at);
             day.setHours(0, 0, 0, 0);
             if (last !== null && day.getTime() === last) continue;

@@ -81,7 +81,7 @@ else
                         {
                             <section class="gift-group" id="ask" aria-labelledby="ask-heading">
                                 <h2 id="ask-heading" class="section-title">Ask @name something</h2>
-                                <p class="small soft">@name sees "Your giver asks…", never your name. Times are rounded to the hour.</p>
+                                <p class="small soft">@name sees "Your giver asks…", never your name.</p>
                                 @if (ask.Notes.Count > 0)
                                 {
                                     <ol class="conversation" data-conversation>
@@ -97,7 +97,7 @@ else
                                             }
                                             <li class="message @(mine ? "message-mine" : "message-theirs")">
                                                 <p class="bubble"><span class="visually-hidden">@(mine ? "You:" : $"{name}:")</span> <span class="bubble-body">@note.Body</span></p>
-                                                <p class="message-meta"><time datetime="@Format.IsoHour(note.CreatedAt)" data-said>@QuestionsModel.About(note.CreatedAt.Hour) UTC</time>@if (note.IsNew)
+                                                <p class="message-meta"><time datetime="@Format.IsoMinute(note.CreatedAt)" data-said="@(note.OnTheHour ? "hour" : "")">@Format.Said(note)</time>@if (note.IsNew)
                                                     {
                                                         <text> · </text><strong class="message-new">new</strong>
                                                     }</p>

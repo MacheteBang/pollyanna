@@ -33,7 +33,7 @@
                 }
                 <li class="message @(mine ? "message-mine" : "message-theirs")">
                     <p class="bubble"><span class="visually-hidden">@(mine ? "You:" : them + ":")</span> <span class="bubble-body">@note.Body</span></p>
-                    <p class="message-meta"><time datetime="@Format.IsoHour(note.CreatedAt)" data-said>@QuestionsModel.About(note.CreatedAt.Hour) UTC</time></p>
+                    <p class="message-meta"><time datetime="@Format.IsoMinute(note.CreatedAt)" data-said="@(note.OnTheHour ? "hour" : "")">@Format.Said(note)</time></p>
                 </li>
             }
         </ol>

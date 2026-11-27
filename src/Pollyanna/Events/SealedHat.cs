@@ -254,16 +254,16 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
 
     /// <summary>
     /// Adds a message from <paramref name="side"/> to <paramref name="thread"/>, next in line,
-    /// stored under <paramref name="hour"/>, saving whatever else the caller has pending with it.
+    /// sent at <paramref name="at"/> (UTC), saving whatever else the caller has pending with it.
     /// False if the thread is gone (a redraw took it since it was read).
     /// </summary>
-    public async Task<bool> AddMessageAsync(ThreadState thread, MessageSender side, string body, DateTime hour)
+    public async Task<bool> AddMessageAsync(ThreadState thread, MessageSender side, string body, DateTime at)
     {
         var row = thread.Row;
         for (var attempt = 0; ; attempt++)
         {
             var seq = (await db.Messages.Where(x => x.AssignmentId == row).MaxAsync(x => (int?)x.Seq) ?? 0) + 1;
-            var message = new Message { AssignmentId = row, Seq = seq, Sender = side, Body = body, CreatedAt = hour };
+            var message = new Message { AssignmentId = row, Seq = seq, Sender = side, Body = body, CreatedAt = at };
             db.Messages.Add(message);
             try
             {

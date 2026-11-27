@@ -1562,6 +1562,19 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
   HTTP/2), the nginx example an `http2 on;` hint, and §9 an entry for
   "pages don't update by themselves". No new setting, and no change to
   `help`, README.md or the example Compose file.
+- Built so far:
+  - Exact message times (#96): a new message's `CreatedAt` is the app
+    clock's time, no longer floored to the hour (`Message.HourOf` is gone;
+    `Question.NextFullHour` keeps the email hold on its own). The pages
+    carry `<time datetime>` to the minute (`Format.IsoMinute`) and say
+    "7:42 PM UTC" without the script (`Format.Said`); `site.js` shows
+    "7:42 PM" in the viewer's zone. A message stored exactly on the hour
+    (`Note.OnTheHour`, so every one stored before this) is marked
+    `data-said="hour"` and keeps "about 7 PM"; nothing rewrites it. The
+    giver's card drops "Times are rounded to the hour." Tests:
+    `QuestionTests` (exact times on both sides, older hour-stored
+    messages), `QuestionConversationTests`; `Seed.MessageAsync` stores the
+    clock's time or a given `at`.
 
 ### Done: the "Tablecloth" identity
 

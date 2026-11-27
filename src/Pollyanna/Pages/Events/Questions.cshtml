@@ -35,7 +35,7 @@
                 }
                 <li class="message @(mine ? "message-mine" : "message-theirs")">
                     <p class="bubble"><span class="visually-hidden">@(mine ? "You:" : "Your giver:")</span> <span class="bubble-body">@note.Body</span></p>
-                    <p class="message-meta"><time datetime="@Format.IsoHour(note.CreatedAt)" data-said>@QuestionsModel.About(note.CreatedAt.Hour) UTC</time>@if (Model.IsNew(note))
+                    <p class="message-meta"><time datetime="@Format.IsoMinute(note.CreatedAt)" data-said="@(note.OnTheHour ? "hour" : "")">@Format.Said(note)</time>@if (Model.IsNew(note))
                         {
                             <text> · </text><strong class="message-new">new</strong>
                         }</p>

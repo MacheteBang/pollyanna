@@ -4,7 +4,14 @@ using Pollyanna.Happenings;
 namespace Pollyanna.Events;
 
 /// <summary>One passed note as one side of the thread sees it; <see cref="IsNew"/> only for the other side's.</summary>
-public sealed record Note(int Seq, MessageSender Sender, string Body, DateTime CreatedAt, bool IsNew);
+public sealed record Note(int Seq, MessageSender Sender, string Body, DateTime CreatedAt, bool IsNew)
+{
+    /// <summary>
+    /// Stored to the hour before message times were exact (spec §6), so shown as "about 7 PM". A
+    /// message sent since lands exactly on the hour only by a one-in-billions chance.
+    /// </summary>
+    public bool OnTheHour => CreatedAt.Ticks % TimeSpan.TicksPerHour == 0;
+}
 
 /// <summary>
 /// An anonymous question thread (spec §6) as one side sees it. It never says who the giver is:
@@ -93,7 +100,7 @@ public sealed partial class EventManager
         await announcer.AnnounceAsync(sender == MessageSender.Giver
             ? new Happening(HappeningKind.Question, eventId, me, thread.RecipientId)
             : new Happening(HappeningKind.Reply, eventId, me));
-        return await hat.AddMessageAsync(thread, sender, body, Message.HourOf(Now))
+        return await hat.AddMessageAsync(thread, sender, body, Now)
             ? Outcome.Done(sent)
             : Outcome.Fail("Names were drawn again, so that conversation is gone.");
     }

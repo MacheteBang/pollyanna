@@ -209,30 +209,50 @@ public sealed class QuestionTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Messages_are_ordered_by_the_thread_counter_and_stored_on_the_hour()
+    public async Task Messages_are_ordered_by_the_thread_counter_and_stored_at_the_exact_time()
     {
         await AskAsync("one");
         await ReplyAsync("two");
         await AskAsync("three");
-        app.Clock.Advance(TimeSpan.FromMinutes(20)); // 11:07: the next hour
+        app.Clock.Advance(TimeSpan.FromMinutes(20)); // 11:07:12
         await ReplyAsync("four");
 
         var thread = await app.ThreadOfAsync(ev, patId);
         Assert.Equal([1, 2, 3, 4], thread.Select(m => m.Seq));
         Assert.Equal([MessageSender.Giver, MessageSender.Recipient, MessageSender.Giver, MessageSender.Recipient], thread.Select(m => m.Sender));
-        Assert.All(thread.Take(3), m => Assert.Equal(Tomorrow.At(10), m.CreatedAt));
-        Assert.Equal(Tomorrow.At(11), thread[3].CreatedAt);
+        Assert.All(thread.Take(3), m => Assert.Equal(Tomorrow.At(10, 47, 12), m.CreatedAt));
+        Assert.Equal(Tomorrow.At(11, 7, 12), thread[3].CreatedAt);
 
         var notes = (await ann.GetPageAsync(Questions)).QuerySelectorAll(".message").ToList();
         Assert.Equal(["one", "two", "three", "four"], notes.Select(n => n.QuerySelector(".bubble-body")!.TextContent));
-        // The page carries the hour (in UTC, "about 10 AM UTC"); the script puts it in the viewer's time zone.
-        Assert.Equal(Tomorrow.At(10).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture), notes[0].QuerySelector("time[data-said]")!.GetAttribute("datetime"));
-        Assert.Equal("about 10 AM UTC", notes[0].QuerySelector("time")!.TextContent);
-        Assert.Equal("about 11 AM UTC", notes[3].QuerySelector("time")!.TextContent);
+        // The page carries the minute (in UTC, "10:47 AM UTC"); the script puts it in the viewer's time zone.
+        Assert.Equal(Tomorrow.At(10, 47).ToString("yyyy-MM-dd'T'HH:mm'Z'", System.Globalization.CultureInfo.InvariantCulture), notes[0].QuerySelector("time[data-said]")!.GetAttribute("datetime"));
+        Assert.Equal("10:47 AM UTC", notes[0].QuerySelector("time")!.TextContent);
+        Assert.Equal("11:07 AM UTC", notes[3].QuerySelector("time")!.TextContent);
+        // The giver's box inside the card shows the same minutes.
+        var mine = (await pat.GetPageAsync(Page)).QuerySelectorAll("#ask .message time[data-said]").ToList();
+        Assert.Equal(["10:47 AM UTC", "10:47 AM UTC", "10:47 AM UTC", "11:07 AM UTC"], mine.Select(t => t.TextContent));
+        Assert.Equal(notes[3].QuerySelector("time")!.GetAttribute("datetime"), mine[3].GetAttribute("datetime"));
 
         // Another thread counts from 1 on its own.
         await app.MessageAsync(ev, carol, MessageSender.Giver, "Hat size?");
         Assert.Equal(1, (await app.ThreadOfAsync(ev, carol)).Single().Seq);
+    }
+
+    [Fact]
+    public async Task Messages_stored_on_the_hour_before_exact_times_still_show_about_the_hour()
+    {
+        // Stored to the hour before map #82; nothing rewrites them.
+        await app.MessageAsync(ev, patId, MessageSender.Giver, "Old question", at: Tomorrow.At(9));
+        await AskAsync("New question");
+
+        var times = (await ann.GetPageAsync(Questions)).QuerySelectorAll(".message time[data-said]").ToList();
+        Assert.Equal(["about 9 AM UTC", "10:47 AM UTC"], times.Select(t => t.TextContent));
+        Assert.Equal("hour", times[0].GetAttribute("data-said"));
+        Assert.Equal("", times[1].GetAttribute("data-said"));
+        Assert.Equal(Tomorrow.At(9), (await app.ThreadOfAsync(ev, patId))[0].CreatedAt);
+        Assert.Equal(["about 9 AM UTC", "10:47 AM UTC"],
+            (await pat.GetPageAsync(Page)).QuerySelectorAll("#ask .message time[data-said]").Select(t => t.TextContent));
     }
 
     [Fact]
