@@ -386,6 +386,18 @@ button, a { -webkit-tap-highlight-color: transparent }
 .d-og div { background: #fff; border-radius: 10px; padding: 14px 22px; display: flex; align-items: center; gap: 10px }
 .d-og b { font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; display: block; line-height: 1.1 }
 .d-og span { font-size: .85rem }
+
+/* ===== Round 4: other patterns on D's layout. The .gingham class means "the cloth"; the board picks which one. ===== */
+.board[data-pattern="stripe"] .gingham { background-image: linear-gradient(90deg, transparent 0 5px, rgba(63,110,140,.7) 5px 6.5px, transparent 6.5px 9.5px, rgba(63,110,140,.7) 9.5px 16.5px, transparent 16.5px 19.5px, rgba(63,110,140,.7) 19.5px 21px, transparent 21px 26px); background-size: 26px 26px }
+.board[data-pattern="bows"] .gingham { background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 80 80'><g fill='%233F6E8C' fill-opacity='.8'><g transform='translate(4 4)'><path d='M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z'/><rect x='12' y='6' width='8' height='13' rx='2.2' fill='%232C5068'/></g><g transform='translate(44 44)'><path d='M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z'/><rect x='12' y='6' width='8' height='13' rx='2.2' fill='%232C5068'/></g></g></svg>"); background-size: 40px 40px; background-color: #E6EEF3 }
+.board[data-pattern="quilt"] .gingham { background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><g fill='%233F6E8C' fill-opacity='.5'><path d='M0 0h24v24zM48 0v24H24zM48 48H24V24zM0 48V24h24z'/></g></svg>"); background-size: 48px 48px }
+.board[data-pattern="knit"] .gingham { background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='16' viewBox='0 0 18 16'><path d='M2 1l7 13 7-13' fill='none' stroke='%233F6E8C' stroke-opacity='.55' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/></svg>"); background-size: 18px 16px }
+.board[data-pattern="bows"] .d-hem, .board[data-pattern="quilt"] .d-hem { background-size: 28px 28px }
+.pats { display: flex; flex-wrap: wrap; gap: 8px }
+.pats button { font: inherit; font-weight: 700; color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: 6px 12px 6px 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px }
+.pats button i { width: 34px; height: 34px; border-radius: 5px; display: block; color-scheme: light }
+.pats button[aria-pressed="true"] { border-color: var(--fg) }
+.patnote { color: var(--muted); font-size: .95rem; min-height: 4.5em }
 </style>
 
 <!-- Marks. Rough stand-ins drawn as plain SVG so each direction can be judged; not the final bow or girl. -->
@@ -404,8 +416,8 @@ button, a { -webkit-tap-highlight-color: transparent }
 
 <div class="board">
   <header>
-    <h1>Directions for Pollyanna's new look, round 3</h1>
-    <p>The first view applies D to more screens, with a switch to see it without the gingham. D, E and F follow, built on your notes on round 1: the bow and girl you have now are kept as drawn, home is built for someone in one event, nothing imitates paper, any handwriting stays easy to read, and the masthead has a place for notifications. A, B and C from round 1 follow them for comparison. Tap a reveal to untie it; switch with the bar below or the arrow keys.</p>
+    <h1>Directions for Pollyanna's new look, round 4</h1>
+    <p>The first view applies D to more screens, with five patterns to choose between. D, E and F follow, built on your notes on round 1: the bow and girl you have now are kept as drawn, home is built for someone in one event, nothing imitates paper, any handwriting stays easy to read, and the masthead has a place for notifications. A, B and C from round 1 follow them for comparison. Tap a reveal to untie it; switch with the bar below or the arrow keys.</p>
   </header>
 
   <!-- ================= D applied ================= -->
@@ -413,9 +425,16 @@ button, a { -webkit-tap-highlight-color: transparent }
     <div class="row">
       <div class="brief">
         <h2>D · Tablecloth, applied</h2>
-        <p>How far the gingham goes. The rule tried here: the cloth appears once per screen, under the one thing that is yours to do, and around the gift. Nowhere else.</p>
-        <p>The button below swaps the gingham for a plain pale blue, so you can judge the same layouts without the pattern.</p>
-        <button class="toggle" type="button" id="clothtoggle" aria-pressed="false">Show without gingham</button>
+        <p>Five candidate patterns on D's layout, all in ribbon blue on white. The rule stays the same: the pattern appears once per screen, under the one thing that is yours to do, and around the gift. Nowhere else.</p>
+        <p>Pick a pattern to see it on every screen here, and on D's reveal in the next view.</p>
+        <div class="pats" id="pats">
+          <button type="button" data-p="gingham" aria-pressed="true"><i class="gingham" style="background-image:linear-gradient(90deg, rgba(63,110,140,.5) 50%, transparent 50%), linear-gradient(rgba(63,110,140,.5) 50%, transparent 50%);background-size:17px 17px;background-color:#fff"></i>Gingham</button>
+          <button type="button" data-p="stripe"><i style="background:#fff linear-gradient(90deg, transparent 0 3px, rgba(63,110,140,.7) 3px 4px, transparent 4px 6px, rgba(63,110,140,.7) 6px 11px, transparent 11px 13px, rgba(63,110,140,.7) 13px 14px, transparent 14px 17px) 0 0/17px 17px"></i>Ticking stripe</button>
+          <button type="button" data-p="bows"><i style="background:#fff url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 80 80'><g fill='%233F6E8C' fill-opacity='.8'><g transform='translate(4 4)'><path d='M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z'/><rect x='12' y='6' width='8' height='13' rx='2.2' fill='%232C5068'/></g><g transform='translate(44 44)'><path d='M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z'/><rect x='12' y='6' width='8' height='13' rx='2.2' fill='%232C5068'/></g></g></svg>&quot;) 0 0/26px 26px;background-color:#E6EEF3"></i>Bow print</button>
+          <button type="button" data-p="quilt"><i style="background:#fff url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><g fill='%233F6E8C' fill-opacity='.5'><path d='M0 0h24v24zM48 0v24H24zM48 48H24V24zM0 48V24h24z'/></g></svg>&quot;) 0 0/17px 17px"></i>Quilt block</button>
+          <button type="button" data-p="knit"><i style="background:#fff url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='16' viewBox='0 0 18 16'><path d='M2 1l7 13 7-13' fill='none' stroke='%233F6E8C' stroke-opacity='.55' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/></svg>&quot;) 0 0/11px 10px"></i>Knit</button>
+        </div>
+        <p class="patnote" id="patnote"></p>
         <dl>
           <dt>Where it holds</dt><dd>Home, the notes step, the organizer's next step, sign-in, the touch icon and the social preview.</dd>
           <dt>Where it can't go</dt><dd>Email. Mail clients drop patterns made in code and often block images, so the email carries a plain pale-blue band either way.</dd>
@@ -957,8 +976,21 @@ button, a { -webkit-tap-highlight-color: transparent }
     p.querySelector('.cover').addEventListener('click', function () { p.classList.add('untied'); });
     p.parentNode.querySelector('.replay').addEventListener('click', function () { p.classList.remove('untied'); });
   });
-  var ct = document.getElementById('clothtoggle');
-  ct.onclick = function () { var on = document.getElementById('dir-cloth').classList.toggle('plaincloth'); ct.setAttribute('aria-pressed', on); ct.textContent = on ? 'Show with gingham' : 'Show without gingham'; };
+  var notes = {
+    gingham: 'Gingham: a kitchen tablecloth. The most recognizable and the most homey; the risk is picnic or country-kitchen kitsch.',
+    stripe: 'Ticking stripe: tea towels, aprons and old mattress covers. Calmer and more grown-up than gingham, but stripes alone are less distinctly yours.',
+    bows: 'Bow print: wrapping paper made from your own bow. Nobody else can have it, and it says "gift" rather than "kitchen". The busiest at small sizes.',
+    quilt: 'Quilt block: a pinwheel patch, the family quilt. Handmade and warm, but bolder, and triangles can read as generic geometric decoration.',
+    knit: 'Knit: plain sweater stitches. Soft and cozy at a glance; leans toward winter, and up close it is a field of small V shapes.'
+  };
+  var board = document.querySelector('.board');
+  function pick(p) {
+    board.dataset.pattern = p;
+    document.querySelectorAll('#pats button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.p === p); });
+    document.getElementById('patnote').textContent = notes[p];
+  }
+  document.querySelectorAll('#pats button').forEach(function (b) { b.onclick = function () { pick(b.dataset.p); }; });
+  pick('gingham');
   show();
 })();
 </script>
