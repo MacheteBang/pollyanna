@@ -14,7 +14,7 @@ namespace Pollyanna.Pages.Events;
 /// isn't a participant goes to manage. Before reveal, only the viewer's own slip and threads are
 /// ever looked up.
 /// </summary>
-public sealed class EventModel(PollyannaDb db, EventManager events) : EventPageModel(db)
+public sealed class EventModel(PollyannaDb db, EventManager events, TimeProvider clock) : EventPageModel(db)
 {
     public sealed record ParticipantRow(Guid Id, string Name, bool HasPicture, string Notes) : PersonRow(Id, Name, HasPicture);
 
@@ -28,14 +28,31 @@ public sealed class EventModel(PollyannaDb db, EventManager events) : EventPageM
     public QuestionThread? AskThread { get; private set; }
     /// <summary>The viewer's thread with their own giver, on <c>/events/{id}/questions</c>.</summary>
     public QuestionThread? QuestionsThread { get; private set; }
-    /// <summary>Just asked something: show the card unfolded, where the thread is.</summary>
+    /// <summary>
+    /// Show the gift untied, at once and with no motion: just after asking something or setting
+    /// "done shopping" (the viewer's own action, on the same visit), or at <c>/events/{id}/untie</c>,
+    /// where "Untie the bow" goes without the script. Every other visit starts tied (spec §12).
+    /// </summary>
     public bool Unfold { get; private set; }
+    /// <summary>
+    /// Whether untying is a first time (spec §12 The reveal): the full sequence with the name
+    /// written. It comes from the assignment's own viewed flag, which a redraw resets with the new
+    /// assignment; after a patch the new recipient counts as a first time too.
+    /// </summary>
+    public bool FirstTime => Slip is { Viewed: false } or { RecipientChanged: true };
+    /// <summary>Today in UTC, for the day lines of the giver's thread (site.js redoes them in local time).</summary>
+    public DateOnly Today { get; private set; }
     /// <summary>Once revealed: who drew whom (spec §4).</summary>
     public IReadOnlyList<Pairing>? Pairings { get; private set; }
     /// <summary>Once revealed: who drew the viewer, to name them on the viewer's questions thread (spec §6).</summary>
     public PersonRow? MyGiver { get; private set; }
 
-    public async Task<IActionResult> OnGetAsync(Guid id)
+    /// <summary>"Untie the bow" without the script: the same page with the gift untied (spec §5.2).</summary>
+    public Task<IActionResult> OnGetUntieAsync(Guid id) => ShowAsync(id, untie: true);
+
+    public Task<IActionResult> OnGetAsync(Guid id) => ShowAsync(id, untie: false);
+
+    async Task<IActionResult> ShowAsync(Guid id, bool untie)
     {
         if (!await LoadMembershipAsync(id) || !Membership.CanView)
             return NotFound();
@@ -58,15 +75,16 @@ public sealed class EventModel(PollyannaDb db, EventManager events) : EventPageM
         if (Slip is not null)
             AskThread = await events.GiverThreadAsync(Membership, Me);
         QuestionsThread = await events.RecipientThreadAsync(Membership, Me);
-        Unfold = Slip is not null && Membership.IsLive && TempData["Unfold"] is true;
+        Unfold = Slip is not null && Membership.IsLive && (untie || TempData["Unfold"] is true);
+        Today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         Pairings = await events.PairingsAsync(Membership);
         MyGiver = Pairings?.FirstOrDefault(p => p.Recipient.Id == Me)?.Giver;
         return Page();
     }
 
     /// <summary>
-    /// The reveal card was opened: posted by the script when it unfolds, or by "Fold it back up"
-    /// without the script. Clears the card's markers, and marks the thread read up to the last
+    /// The gift was untied: posted by the script when it unties, or by "Hide the name" without
+    /// the script. Clears the card's markers, and marks the thread read up to the last
     /// message the card showed; says nothing back.
     /// </summary>
     public async Task<IActionResult> OnPostSeenAsync(Guid id, int upto)
@@ -74,7 +92,7 @@ public sealed class EventModel(PollyannaDb db, EventManager events) : EventPageM
         if (!await LoadMembershipAsync(id) || !Membership.CanView)
             return NotFound();
         await events.MarkSlipSeenAsync(Membership, Me, upto);
-        return LocalRedirect($"/events/{id}#slip");
+        return LocalRedirect($"/events/{id}#gift");
     }
 
     /// <summary>The giver asks their recipient something; the card comes back unfolded at the thread.</summary>
@@ -90,6 +108,7 @@ public sealed class EventModel(PollyannaDb db, EventManager events) : EventPageM
     {
         if (!await LoadMembershipAsync(id) || !Membership.CanView)
             return NotFound();
+        TempData["Unfold"] = true;
         return Finish(await events.SetDoneShoppingAsync(Membership, Me, done), $"/events/{id}#shopping");
     }
 

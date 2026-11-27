@@ -739,3 +739,221 @@ strong, b { font-weight: 800; }
 /* A confirmation (leave): plain text on white, then the button and the way out. */
 .confirm { padding-top: 0; gap: var(--space-3); }
 .confirm .actions { margin-top: var(--space-3); align-items: stretch; }
+
+/* ---------- The reveal (#76): the gift, untying the bow, folds (spec §7, §12 The reveal) ---------- */
+
+/* Above the gift: an unread question from the viewer's giver, and the notice after a redraw or
+   a patch. */
+.gift-asked { padding-bottom: var(--space-4); }
+.asked-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    font: var(--type-action);
+}
+.gift-again { font: var(--type-small); font-weight: 600; padding-bottom: var(--space-4); }
+.gift-leaving { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-5); }
+
+/* The gift. --k scales every beat: 1 the first time, 0.4 on later visits. Tied, the panel is
+   rendered but hidden under the cloth's two halves, with the ribbons and the bow on top. The
+   beats (spec §12) are each element's transition delay and length, so untying is one class. */
+.gift { --k: 1; }
+.gift-later { --k: 0.4; }
+
+.gift-cloth { position: relative; overflow: hidden; }
+
+.gift-panel {
+    position: relative;
+    min-height: 240px;
+    gap: 2px;
+    transition: min-height calc(var(--k) * 350ms) ease-in-out calc(var(--k) * 1250ms);
+}
+.gift:not(.untied) .gift-panel { visibility: hidden; }
+.gift.untied .gift-panel { min-height: 0; }
+
+.gift-to { font: var(--type-small); font-weight: 600; }
+.revealed-name-long { font-size: 35px; }
+
+/* The first time, the name is written left to right once the cloth starts to part. */
+.gift-first .revealed-name { clip-path: inset(-10% 100% -10% 0); }
+.gift-first.untied .revealed-name {
+    clip-path: inset(-10% 0 -10% 0);
+    transition: clip-path calc(var(--k) * 550ms) cubic-bezier(0.4, 0, 0.6, 1) calc(var(--k) * 900ms);
+}
+
+/* Notes, the question box, "Done shopping" and "Hide the name" open below the name. The inner
+   padding leaves room for focus rings inside the clip. */
+.gift-more { display: grid; grid-template-rows: 1fr; }
+.gift:not(.untied) .gift-more { grid-template-rows: 0fr; }
+.gift.untied .gift-more { transition: grid-template-rows calc(var(--k) * 350ms) ease-in-out calc(var(--k) * 1250ms); }
+.gift-more > div { min-height: 0; overflow: hidden; }
+.gift-more-in {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: calc(var(--space-4) + 6px) 6px 6px;
+    margin: 0 -6px -6px;
+}
+.gift-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.gift-group .conversation { margin-block: var(--space-2); }
+.gift-shopping { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.gift-more-in > [data-hide] .link-button { text-align: left; }
+
+/* The cloth's two halves: each carries the whole band's checks, so tied they read as one cloth. */
+.gift-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+    transition: visibility 0s linear calc(var(--k) * 1250ms);
+}
+.gift-cover:focus-visible { outline: none; }
+.gift.untied .gift-cover { visibility: hidden; }
+
+.gift-half {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    overflow: hidden;
+    transition: transform calc(var(--k) * 500ms) cubic-bezier(0.6, 0, 0.3, 1) calc(var(--k) * 750ms);
+}
+.gift-half::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 200%;
+    background-color: var(--white);
+    background-image:
+        linear-gradient(90deg, var(--thread) 50%, transparent 50%),
+        linear-gradient(var(--thread) 50%, transparent 50%);
+    background-size: 28px 28px;
+}
+.gift-half-left { left: 0; }
+.gift-half-left::before { left: 0; }
+.gift-half-right { right: 0; }
+.gift-half-right::before { right: 0; }
+.gift.untied .gift-half-left { transform: translateX(-101%); }
+.gift.untied .gift-half-right { transform: translateX(101%); }
+
+/* Two ribbons, 30px wide with the 3px white edge, edge to edge across the band and top to bottom. */
+.gift-ribbon {
+    position: absolute;
+    z-index: 2;
+    background: var(--ribbon);
+    pointer-events: none;
+    transition:
+        transform calc(var(--k) * 350ms) ease-in calc(var(--k) * 450ms),
+        visibility 0s linear calc(var(--k) * 800ms);
+}
+.gift-ribbon-across {
+    left: 0;
+    right: 0;
+    top: 129px;
+    height: 30px;
+    border-block: 3px solid var(--white);
+    transform-origin: left;
+}
+.gift-ribbon-down {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 30px;
+    margin-left: -15px;
+    border-inline: 3px solid var(--white);
+    transform-origin: top;
+}
+.gift.untied .gift-ribbon { visibility: hidden; }
+.gift.untied .gift-ribbon-across { transform: scaleX(0); }
+.gift.untied .gift-ribbon-down { transform: scaleY(0); }
+
+/* The bow, the kept mark at 150px, its knot on the crossing. Untying: the tails pull longer while
+   the loops shrink into the knot, then the knot lets go and the bow drops away and fades. */
+.gift-bow {
+    position: absolute;
+    z-index: 3;
+    top: 85px;
+    left: 50%;
+    width: 150px;
+    height: 150px;
+    margin-left: -75px;
+    overflow: visible;
+    pointer-events: none;
+    transform-origin: 50% 40%;
+    transition:
+        transform calc(var(--k) * 280ms) cubic-bezier(0.5, 0, 0.9, 0.5) calc(var(--k) * 330ms),
+        opacity calc(var(--k) * 200ms) ease-in calc(var(--k) * 410ms),
+        visibility 0s linear calc(var(--k) * 620ms);
+}
+.gift-bow .bow-ribbon { fill: var(--ribbon); }
+.gift-bow .bow-fold { fill: var(--ink); fill-opacity: 0.3; }
+.gift-bow .bow-knot { fill: var(--ink); }
+/* The white edge: about 3px at this size. */
+.gift-bow .bow-edge {
+    fill: none;
+    stroke: var(--white);
+    stroke-width: 1.3;
+    stroke-linejoin: round;
+    transition: opacity calc(var(--k) * 80ms) linear;
+}
+.gift-bow .bow-loop { transform-origin: 16px 12.5px; transition: transform calc(var(--k) * 350ms) cubic-bezier(0.6, 0, 0.3, 1); }
+.gift-bow .bow-tail { transform-origin: 16px 18px; transition: transform calc(var(--k) * 350ms) cubic-bezier(0.6, 0, 0.3, 1); }
+.gift-bow .bow-knot { transform-origin: 16px 12.5px; transition: transform calc(var(--k) * 160ms) ease-in calc(var(--k) * 330ms); }
+.gift.untied .gift-bow { transform: translateY(64px) rotate(-14deg); opacity: 0; visibility: hidden; }
+.gift.untied .bow-edge { opacity: 0; }
+.gift.untied .bow-loop { transform: scale(0.1, 0.45); }
+.gift.untied .bow-tail { transform: translateY(1.5px) scaleY(1.5); }
+.gift.untied .bow-knot { transform: scale(0); }
+
+/* "Untie the bow" sits below the band on white; untied, it goes. */
+.gift-under { padding-top: var(--space-5); display: flex; flex-direction: column; }
+.gift.untied .gift-under { display: none; }
+
+/* Hiding the name, a render that starts untied, and reduce motion: nothing moves. */
+.gift.still, .gift.still * { transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+    .gift, .gift * { transition: none !important; }
+    .gift-first .revealed-name { clip-path: none; }
+}
+
+/* Folds: a row that opens in place, its title on the left and a few words on the right; a preview
+   line under it while closed. Pale-blue lines between them. */
+.folds { display: flex; flex-direction: column; }
+.fold { border-top: var(--line) solid var(--pale); }
+.fold:last-child { border-bottom: var(--line) solid var(--pale); }
+.fold > summary {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-3);
+    cursor: pointer;
+}
+.fold > summary::-webkit-details-marker { display: none; }
+.fold-title { font-weight: 800; }
+.fold-end { font: var(--type-small); color: var(--soft-ink); text-align: right; }
+.fold-end::after {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin: 0 3px 3px 10px;
+    border-right: var(--line) solid var(--ink);
+    border-bottom: var(--line) solid var(--ink);
+    transform: rotate(45deg);
+}
+.fold[open] .fold-end::after { transform: rotate(-135deg); margin-bottom: -1px; }
+.fold-preview {
+    grid-column: 1 / -1;
+    font: var(--type-small);
+    color: var(--soft-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fold[open] .fold-preview { display: none; }
+.fold-in { padding-bottom: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.fold-in .people { margin-top: 0; }
