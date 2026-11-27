@@ -1655,6 +1655,27 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     new ones through a polite live region. DEPLOYMENT.md §4 and §9 have the
     `/live` notes. Tests: `LiveTests`, `LiveRoutingTests`; the seam is in
     `docs/agents/testing.md`.
+  - Live home and organizing pages (#102): the layout writes a live page's
+    shape and the quiet line for arriving at it on `main`
+    (`data-live-shape`, `data-live-line`; `LiveShape` in
+    `src/Pollyanna/Live/`: "manage-<status>", "home" or "home-empty"), and
+    the pages mark what patches in place with `data-live` and a stable id
+    (home's panels `event-<id>` in the list `#home-events`; organizing's
+    head, next step, people or pairings, invitations, "Add people", the
+    rules summary and body, the details and organizers summary, details,
+    organizers and "Bigger changes"). In `site.js`, `livePage` replaces a
+    region whose server HTML changed unless it's being edited (a form with
+    focus or unsaved changes, an open "Bigger changes" confirmation), keeps
+    folds open and focus put, and adds and removes home's panels. Another
+    shape swaps the body, saying the line politely, or, while something is
+    edited, shows the line with "Show"; a refetch that comes back not found
+    shows "This event was canceled" (by the hint's area) or "You're no
+    longer in this event" with "Back to your events". `live.onRefetch`
+    listeners now get the hints' areas. A live refetch saves no TempData
+    (`LiveTempData`), so a waiting notice or the gift coming back untied is
+    still there for the next visit. Tests: `LivePagesTests`,
+    `LiveRefetchTests`; the browser side is still to be checked by hand
+    (§16 Testing).
 
 ### Done: the "Tablecloth" identity
 

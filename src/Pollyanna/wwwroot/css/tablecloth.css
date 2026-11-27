@@ -409,6 +409,14 @@ summary::-webkit-details-marker { display: none; }
 
 /* ---------- Notices after a form post ---------- */
 
+/* A live region that is there even when empty (spec §16), so content can arrive in it; it adds
+   no box of its own, so the column's gaps are as if it weren't there. */
+.live-slot { display: contents; }
+
+/* The quiet line a live state change shows while something is being edited (spec §16):
+   "Names have been drawn." with "Show". A notice, never a flash. */
+.live-line a { margin-inline-start: var(--space-2); }
+
 .notice {
     margin-block: var(--space-3);
     padding: var(--space-3) var(--space-4);

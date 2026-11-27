@@ -174,4 +174,19 @@ public sealed class LiveRefetchTests : IAsyncLifetime
         await pat.GetPageAsync($"/events/{ev}/manage");
         Assert.Equal(0, await StoredAsync(patId));
     }
+
+    [Fact]
+    public async Task A_live_refetch_leaves_a_waiting_notice_and_the_untied_gift_for_the_next_visit()
+    {
+        var ev = await EventAsync(EventStatus.Drawn);
+        var posted = await ann.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/shopping", Form(("done", "true")));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, posted.StatusCode);
+
+        // A hint lands before the redirect's page loads: the background fetch takes nothing away.
+        await ann.GetPageAsync($"/events/{ev}", live: true);
+
+        var page = await ann.GetPageAsync($"/events/{ev}");
+        Assert.NotNull(page.QuerySelector("main .notice"));
+        Assert.True(page.QuerySelector("#gift")!.ClassList.Contains("untied"));
+    }
 }

@@ -1,12 +1,16 @@
 // Pollyanna's only script. Pages work without it; it adds the countdown and small conveniences.
 "use strict";
 
+// The page's parts are set up on load, and again on what a live update brings in (livePage), so
+// each takes the root to look in. all(root, selector) includes the root itself when it matches.
+const all = (root, selector) => [...(root.matches?.(selector) ? [root] : []), ...root.querySelectorAll(selector)];
+
 // Countdown to the exchange date, from the viewer's own date (spec §4). The date is a plain
 // calendar date with no time zone, so it is read as local midnight.
-function countdowns() {
+function countdowns(root = document) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    for (const el of document.querySelectorAll("[data-countdown]")) {
+    for (const el of all(root, "[data-countdown]")) {
         const [y, m, d] = el.dataset.countdown.split("-").map(Number);
         const days = Math.round((new Date(y, m - 1, d) - today) / 86400000);
         if (days < 0) continue;
@@ -19,8 +23,8 @@ function countdowns() {
 
 // New event: the don't-repeat choice shows only once an earlier event is picked (spec §7).
 // Without the script it always shows, and is ignored when no earlier event is picked.
-function previousEventPicker() {
-    const select = document.querySelector("[data-previous-select]");
+function previousEventPicker(root = document) {
+    const select = all(root, "[data-previous-select]")[0];
     if (!select) return;
     const update = () => {
         for (const el of document.querySelectorAll("[data-needs-previous]"))
@@ -33,9 +37,9 @@ function previousEventPicker() {
 // The add-people control (spec §7). Without the script it is a ticklist and an email field.
 // With it, one box filters the list by name, and a full address in it shows a ticked
 // "Add or invite <address>" row in place of the email field.
-function addPeople() {
+function addPeople(root = document) {
     const looksLikeEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-    for (const form of document.querySelectorAll("[data-add-people]")) {
+    for (const form of all(root, "[data-add-people]")) {
         const filter = form.querySelector("[data-add-people-filter]");
         const field = form.querySelector("[data-add-people-email]");
         const row = form.querySelector("[data-add-people-address]");
@@ -72,9 +76,9 @@ function addPeople() {
 // Untying tells the server it was seen (by posting "Hide the name"'s own form in the
 // background), which clears its markers; "Hide the name" then ties it back at once. Without the
 // script, "Untie the bow" is a link to the page untied, and "Hide the name" posts that form.
-function gifts() {
+function gifts(root = document) {
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
-    for (const gift of document.querySelectorAll("[data-gift]")) {
+    for (const gift of all(root, "[data-gift]")) {
         const hide = gift.querySelector("form[data-hide]");
         const name = gift.querySelector(".revealed-name");
         const button = gift.querySelector(".gift-under [data-untie]");
@@ -135,8 +139,8 @@ function clockTime(at) {
     return `${h % 12 || 12}:${String(at.getMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 
-function conversations() {
-    for (const list of document.querySelectorAll("[data-conversation]")) {
+function conversations(root = document) {
+    for (const list of all(root, "[data-conversation]")) {
         for (const line of list.querySelectorAll("[data-day]")) line.remove();
         let last = null;
         for (const message of list.querySelectorAll(".message")) {
@@ -303,13 +307,174 @@ function whatsNewPanel() {
 // The live connection (spec §16): every signed-in page holds one EventSource on /live. A hint
 // makes the page do one live refetch of its own URL, marked by the Pollyanna-Live header
 // (LiveRefetch.Header: the server treats it as a read-only view, not a visit), and hands the
-// fetched page to whoever listens (live.onRefetch: the bell's panel here; the pages with live
-// regions add their own). Hints are ignored while a form post is in flight, since its
+// fetched page to whoever listens (live.onRefetch: the bell's panel and livePage), with what the
+// hints said: listener(page, { areas, gone }). Hints are ignored while a form post is in flight, since its
 // response is a fresh page anyway. A hidden page closes its connection (and on pagehide), opens it
 // again when shown and then refetches once; so does EventSource's own reconnect after a drop.
 // Nothing is replayed. A refused connection (signed out, account deleted, session expired) stays
 // closed until the next page load. Without the script, or without EventSource, nothing changes.
 const live = { tab: "", posting: false, onRefetch: [] };
+
+// A page that updates live (spec §16 "What each page does live"; home and organizing so far).
+// The server marks it up (Pollyanna.Live.LiveShape and the page):
+// - main[data-live-shape] names the page's shape, and data-live-line the quiet line for arriving
+//   at it ("Names have been drawn."). A refetch with another shape is a state change.
+// - [data-live][id] is a region that patches in place: replaced whole when the server's HTML for
+//   it changed, unless something in it is being edited, and then tried again on the next refetch.
+// - [data-live-list][id] holds regions (by id) that come and go, such as home's panels.
+// Being edited: a form with focus or unsaved changes, or an open "Bigger changes" confirmation.
+// Open folds stay open and focus stays where it was. A state change swaps the page body when
+// nothing is being edited, and says the line politely; otherwise the line shows, with "Show",
+// and the page stays as it is. A refetch that comes back not found means the event was canceled
+// or the person is no longer in it. Nothing flashes or moves.
+function livePage() {
+    const main = document.querySelector("main[data-live-shape]");
+    const say = main?.querySelector("[data-live-say]");
+    if (!main || !main.dataset.liveShape || !say) return;
+
+    // Each region's HTML as the server sent it, to tell what changed: the page's own script changes
+    // the regions (countdowns, folds, times), and every render has a new form token.
+    const sent = new Map();
+    const html = el => el.outerHTML.replace(/<input name="__RequestVerificationToken"[^>]*>/g, "");
+    const keep = root => {
+        for (const el of all(root, "[data-live][id]")) sent.set(el.id, html(el));
+    };
+    keep(main);
+
+    const dirty = form => [...form.elements].some(el => {
+        if (el.disabled) return false;
+        if (el instanceof HTMLTextAreaElement) return el.value !== el.defaultValue;
+        if (el instanceof HTMLSelectElement) {
+            const options = [...el.options];
+            if (el.multiple) return options.some(o => o.selected !== o.defaultSelected);
+            const first = options.findIndex(o => o.defaultSelected);
+            return el.selectedIndex !== (first === -1 ? 0 : first);
+        }
+        if (!(el instanceof HTMLInputElement) || ["hidden", "submit", "button", "reset"].includes(el.type)) return false;
+        if (el.type === "checkbox" || el.type === "radio") return el.checked !== el.defaultChecked;
+        return el.value !== el.defaultValue;
+    });
+    const editing = root => {
+        const focus = document.activeElement;
+        return all(root, "form").some(form => form.contains(focus) || dirty(form))
+            || all(root, ".change > details[open]").length > 0
+            // A filter box (add people) lives in a form, but say so for any field outside one too.
+            || (root.contains(focus) && focus.matches("input, textarea, select"));
+    };
+
+    const focusable = root => all(root, "a[href], button, input, select, textarea, summary");
+    // Open folds stay open: the new copy's folds take this one's state, by id or else in order.
+    const keepFolds = (was, now) => {
+        const folds = root => all(root, "details");
+        const byId = new Map(folds(was).filter(d => d.id).map(d => [d.id, d.open]));
+        const plain = folds(was).filter(d => !d.id);
+        let i = 0;
+        for (const d of folds(now)) {
+            if (d.id) { if (byId.has(d.id)) d.open = byId.get(d.id); }
+            else if (i < plain.length) d.open = plain[i++].open;
+        }
+    };
+    const swap = (was, fresh) => {
+        const now = document.importNode(fresh, true);
+        keepFolds(was, now);
+        const focused = focusable(was).indexOf(document.activeElement);
+        was.replaceWith(now);
+        keep(now);
+        pageParts(now);
+        if (focused !== -1) focusable(now)[focused]?.focus({ preventScroll: true });
+    };
+
+    const lists = page => {
+        for (const list of main.querySelectorAll("[data-live-list][id]")) {
+            const fresh = page.getElementById(list.id);
+            if (!fresh) continue;
+            const here = new Map([...list.children].filter(c => c.id).map(c => [c.id, c]));
+            const order = [...fresh.children].filter(c => c.id).map(c => {
+                const kept = here.get(c.id);
+                here.delete(c.id);
+                if (kept) return kept;
+                const added = document.importNode(c, true);
+                keep(added);
+                pageParts(added);
+                return added;
+            });
+            for (const gone of here.values()) gone.remove();
+            order.forEach((row, i) => {
+                if (list.children[i] !== row) list.insertBefore(row, list.children[i] ?? null);
+            });
+        }
+    };
+    const regions = page => {
+        for (const region of main.querySelectorAll("[data-live][id]")) {
+            if (!region.isConnected) continue; // inside one already replaced
+            const fresh = page.getElementById(region.id);
+            if (!fresh || html(fresh) === sent.get(region.id) || editing(region)) continue;
+            swap(region, fresh);
+        }
+    };
+
+    // The quiet line, in the polite live region: shown with a link, or only said.
+    const line = (text, link, href) => {
+        const p = document.createElement("p");
+        if (!link) {
+            p.className = "visually-hidden";
+            p.textContent = text;
+        } else {
+            p.className = "notice live-line";
+            const a = document.createElement("a");
+            a.href = href;
+            a.textContent = link;
+            p.append(text, " ", a);
+        }
+        say.replaceChildren(p);
+    };
+
+    let stale = false; // the line is up: this page is no longer what the server would send
+    const body = (page, fresh) => {
+        const was = [...main.querySelectorAll("details[id]")].map(d => [d.id, d.open]);
+        for (const notice of fresh.querySelectorAll(".notice")) notice.remove(); // left for the next visit
+        const nodes = [...fresh.childNodes].map(n => document.importNode(n, true));
+        main.replaceChildren(...nodes);
+        const slot = main.querySelector("[data-live-say]");
+        if (slot) slot.replaceWith(say);
+        else main.prepend(say);
+        say.replaceChildren();
+        main.dataset.liveShape = fresh.dataset.liveShape;
+        main.dataset.liveLine = fresh.dataset.liveLine ?? "";
+        for (const [id, open] of was) {
+            const d = document.getElementById(id);
+            if (d instanceof HTMLDetailsElement) d.open = open;
+        }
+        if (page.title) document.title = page.title;
+        sent.clear();
+        keep(main);
+        pageParts(main);
+    };
+
+    live.onRefetch.push((page, hint) => {
+        if (hint.gone) {
+            const text = hint.areas.has("EventCanceled") ? "This event was canceled" : "You're no longer in this event";
+            if (!editing(main)) main.replaceChildren(say);
+            line(text, "Back to your events", "/");
+            stale = true;
+            return;
+        }
+        const fresh = page.querySelector("main[data-live-shape]");
+        if (!fresh?.dataset.liveShape) return;
+        if (fresh.dataset.liveShape === main.dataset.liveShape) {
+            if (!stale) { lists(page); regions(page); }
+            return;
+        }
+        const text = fresh.dataset.liveLine ?? "";
+        if (!stale && !editing(main)) {
+            body(page, fresh);
+            if (text) line(text);
+            return;
+        }
+        if (text) line(text, "Show", location.href);
+        stale = true;
+    });
+}
 
 function liveConnection() {
     if (!document.querySelector("[data-bell]") || !("EventSource" in window)) return;
@@ -319,17 +484,35 @@ function liveConnection() {
     let fetching = false;
     let again = false;
 
+    // The areas (happening kinds) of the hints since the last refetch: a page can tell a
+    // cancellation from being taken out. A catch-up refetch has none.
+    let areas = new Set();
+    const hinted = event => {
+        try {
+            const area = JSON.parse(event.data).area;
+            if (typeof area === "string") areas.add(area);
+        } catch {
+            // A hint without data still refetches.
+        }
+        refetch();
+    };
+
     const refetch = async () => {
         if (live.posting || document.hidden) return;
         if (fetching) { again = true; return; }
         fetching = true;
+        const hint = { areas, gone: false };
+        areas = new Set();
         try {
             const response = await fetch(location.href, {
                 headers: { "Pollyanna-Live": "1" }, redirect: "manual", credentials: "same-origin", cache: "no-store",
             });
-            if (response.ok && !live.posting) {
+            // Not found: the event was canceled, or this person is no longer in it. That page
+            // still has the masthead, so the bell's panel is brought up to date all the same.
+            hint.gone = response.status === 404;
+            if ((response.ok || hint.gone) && !live.posting) {
                 const page = new DOMParser().parseFromString(await response.text(), "text/html");
-                for (const listener of live.onRefetch) listener(page);
+                for (const listener of live.onRefetch) listener(page, hint);
             }
         } catch {
             // The next hint or reconnect tries again.
@@ -343,7 +526,7 @@ function liveConnection() {
         if (source || refused || document.hidden) return;
         source = new EventSource("/live");
         source.addEventListener("hello", event => { live.tab = event.data; });
-        source.addEventListener("hint", refetch);
+        source.addEventListener("hint", hinted);
         // The first open is the page load itself; any later one (shown again, reconnected) catches up.
         source.addEventListener("open", () => {
             if (opened) refetch();
@@ -377,8 +560,8 @@ function liveConnection() {
 }
 
 // "12 / 1,000" under a message box as it fills.
-function counters() {
-    for (const el of document.querySelectorAll("[data-counter]")) {
+function counters(root = document) {
+    for (const el of all(root, "[data-counter]")) {
         const box = document.getElementById(el.dataset.counter);
         if (!box) continue;
         const update = () => {
@@ -391,9 +574,9 @@ function counters() {
 
 // Empty home: a "Copy" button beside the viewer's address. Without the script (or a
 // clipboard) the button stays hidden and the address can be selected by hand.
-function copyButtons() {
+function copyButtons(root = document) {
     if (!navigator.clipboard) return;
-    for (const button of document.querySelectorAll("[data-copy]")) {
+    for (const button of all(root, "[data-copy]")) {
         button.hidden = false;
         button.addEventListener("click", async () => {
             try {
@@ -408,8 +591,8 @@ function copyButtons() {
 
 // A form that saves as soon as its control changes, such as the email switch on /account
 // (spec §15). Without the script its Save button shows and does the same.
-function saveOnChange() {
-    for (const form of document.querySelectorAll("form[data-save-on-change]")) {
+function saveOnChange(root = document) {
+    for (const form of all(root, "form[data-save-on-change]")) {
         for (const button of form.querySelectorAll("[data-save-button]")) button.hidden = true;
         form.addEventListener("change", () => form.requestSubmit());
     }
@@ -418,8 +601,8 @@ function saveOnChange() {
 // A link to a fold on the same page, such as the blocker's "Add people" on the organizing page
 // (spec §7): it opens the fold as well as moving to it. Without the script the page renders that
 // fold open, so the link alone is enough.
-function foldLinks() {
-    for (const link of document.querySelectorAll("a[data-opens]")) {
+function foldLinks(root = document) {
+    for (const link of all(root, "a[data-opens]")) {
         link.addEventListener("click", () => {
             const fold = document.getElementById(link.hash.slice(1));
             if (fold instanceof HTMLDetailsElement) fold.open = true;
@@ -427,17 +610,23 @@ function foldLinks() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    countdowns();
-    copyButtons();
-    previousEventPicker();
-    addPeople();
-    gifts();
-    conversations();
+// Everything inside the page body that a live update can bring in.
+function pageParts(root = document) {
+    countdowns(root);
+    copyButtons(root);
+    previousEventPicker(root);
+    addPeople(root);
+    gifts(root);
+    conversations(root);
+    counters(root);
+    saveOnChange(root);
+    foldLinks(root);
     whatsNewTimes();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    livePage(); // first, to keep each region as the server sent it, before the parts change it
+    pageParts();
     whatsNewPanel();
     liveConnection();
-    counters();
-    saveOnChange();
-    foldLinks();
 });

@@ -4,6 +4,9 @@
 @using Pollyanna.Pages.Shared
 @{
     ViewData["Title"] = Model.Events.Count > 0 ? "Your events" : "No events yet";
+    // Live (spec §16): each panel patches in place, comes and goes; empty home and home with
+    // events are two shapes, and moving between them swaps the page.
+    ViewData["LiveShape"] = Model.Events.Count > 0 ? "home" : "home-empty";
 }
 
 @if (Model.Events.Count > 0)
@@ -11,11 +14,11 @@
     @* Home with events (spec §7): one panel per event on the one cloth, each with its name and
        the one thing waiting on the viewer. No about text. *@
     <h1 class="visually-hidden">Your events</h1>
-    <div class="cloth home-cloth">
+    <div class="cloth home-cloth" id="home-events" data-live-list>
         @foreach (var e in Model.Events)
         {
             var line = IndexModel.Line(e);
-            <section class="panel" aria-label="@e.Name">
+            <section class="panel" id="event-@e.Id" data-live aria-label="@e.Name">
                 <h2 class="panel-title"><a class="home-event" href="@e.Href">@e.Name</a></h2>
                 <p class="home-when"><partial name="_When" model="e.ExchangeDate" /></p>
                 <p class="small soft">@Format.StatusLine(e.Status)@(string.IsNullOrWhiteSpace(e.BudgetText) ? "" : " · " + e.BudgetText)</p>

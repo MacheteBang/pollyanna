@@ -107,6 +107,8 @@ services.AddRazorPages(o =>
     o.Conventions.AllowAnonymousToFolder("/Auth");
     o.Conventions.AllowAnonymousToPage("/Error");
 });
+// A live refetch leaves those notices for the next real visit.
+Pollyanna.Live.LiveTempData.AddTo(services);
 services.AddRouting(o => o.LowercaseUrls = true);
 
 // A missing or invalid setting can surface while the pipeline is built (data protection reads
