@@ -21,7 +21,9 @@
     its closed line inside it, so with a draft in the box (which keeps the box itself as it is) a
     reply still arrives and closing still shows, and the script turns Send off; the lines before
     and after the gift sit in always-there slots. A patch brings the whole gift in again, tied
-    (site.js, on the giver's own content frame), so an old name is never left on screen.
+    (site.js, on the giver's own content frame), so an old name is never left on screen. With
+    the script, the question box sends without leaving the page (data-in-place, spec §16), and an
+    error shows under the box (data-composer-note).
 
     The parts between the viewer and their recipient or giver (data-live-pair: their notes, the
     question box, the lines before and after the gift, and the name and markers on the gift) are
@@ -152,10 +154,11 @@ else
                                 </div>
                                 @if (!ask.Closed)
                                 {
-                                    <form method="post" action="/events/@id/ask" asp-antiforgery="true" class="composer" data-composer>
+                                    <form method="post" action="/events/@id/ask" asp-antiforgery="true" class="composer" data-composer data-in-place>
                                         <label for="ask-body" class="visually-hidden">Your question for @name</label>
                                         <textarea id="ask-body" name="body" rows="1" maxlength="@EventManager.MessageMax" required></textarea>
                                         <button type="submit" class="button button-fill">Send</button>
+                                        <p class="composer-note" role="alert" data-composer-note></p>
                                     </form>
                                 }
                             </section>

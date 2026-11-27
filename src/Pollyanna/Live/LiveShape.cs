@@ -41,7 +41,8 @@ public static class LiveShape
     /// <summary>
     /// The words and areas the script needs for what a refetch can't show by itself (spec §16):
     /// the lines for a page gone (canceled, taken out) or moved on (revealed, archived), and the
-    /// hint areas that tell them apart and that bring a patched gift in again. One JSON attribute.
+    /// hint areas that tell them apart and that bring a patched gift in again; and what a message
+    /// box says when a send that stays on the page never reached the server. One JSON attribute.
     /// </summary>
     public static readonly string Words = JsonSerializer.Serialize(new
     {
@@ -53,6 +54,7 @@ public static class LiveShape
         back = "Back to your events",
         revealed = Line(EventStatus.Revealed, false),
         archived = Line(EventStatus.Archived, false),
+        notSent = "Not sent. Check your connection and try again.",
     });
 
     /// <summary>Marks home as live: "home", or "home-empty" with no events.</summary>
