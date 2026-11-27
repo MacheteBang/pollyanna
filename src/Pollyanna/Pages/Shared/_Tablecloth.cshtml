@@ -8,6 +8,8 @@
     var signedIn = User.Identity?.IsAuthenticated == true;
     var name = User.Identity?.Name?.Trim();
     var firstName = string.IsNullOrEmpty(name) ? "Your account" : name.Split(' ', 2)[0];
+    var liveShape = ViewData["LiveShape"] as string;
+    var liveLine = ViewData["LiveLine"] as string;
     var news = signedIn ? new Pollyanna.Pages.Shared.WhatsNewPanelView(await WhatsNew.RowsAsync(User.PersonId()), Clock.GetUtcNow().UtcDateTime) : null;
 }
 <!doctype html>
@@ -36,8 +38,15 @@
             </nav>
         }
     </header>
-    <main>
+    @* A page that updates live names its shape and the quiet line for arriving at it (spec §16;
+       Pollyanna.Live.LiveShape): a live refetch with another shape is a state change. The empty
+       live line is where the script puts that line ("Names have been drawn." Show) and says it. *@
+    <main data-live-shape="@liveShape" data-live-line="@liveLine">
         <div class="column"><partial name="_Notice" /></div>
+        @if (liveShape is not null)
+        {
+            <div class="column" data-live-say aria-live="polite"></div>
+        }
         @RenderBody()
     </main>
 </body>

@@ -4,6 +4,7 @@
 @using Pollyanna.Infrastructure
 @{
     ViewData["Title"] = "Organizing " + Model.Event.Name;
+    Pollyanna.Live.LiveShape.Mark(ViewData, "manage", Model.Event);
     var m = Model.Membership;
     var editable = m.PeopleEditable;
     var drawn = m.IsLive;
@@ -23,7 +24,7 @@
     var newOrganizer = new Pollyanna.Pages.Shared.PickOneView("organizer", Model.KnownNotOrganizing, "Add an organizer", "they're made an organizer");
 }
 
-<div class="column page-head">
+<div class="column page-head" id="event-head" data-live>
     @* The event's name first; the switch right under it, or a "Home" back link above it for an
        organizer who doesn't take part (spec §7 Page head). *@
     @if (!m.IsParticipant)
@@ -47,7 +48,7 @@
 @if (Model.Event.Status != EventStatus.Archived)
 {
     @* The next step (spec §7): one sentence and one filled button on the cloth, or what blocks it. *@
-    <div class="cloth" id="next-step">
+    <div class="cloth" id="next-step" data-live>
         <div class="panel">
             @switch (Model.Event.Status)
             {
@@ -139,7 +140,7 @@
     @if (Model.Pairings is { } pairings)
     {
         @* Once revealed, the full list takes the place of the people (spec §7): it names everyone. *@
-        <section id="pairings" aria-labelledby="pairings-heading">
+        <section id="pairings" data-live aria-labelledby="pairings-heading">
             <h2 id="pairings-heading" class="group-title">Who drew whom</h2>
             <partial name="_WhoDrewWhom" model="pairings" />
         </section>
@@ -148,7 +149,7 @@
     {
         @* The people (spec §7): a row says in small words what is missing, or "done shopping"; a row
            with nothing to say stays quiet. What organizers may see is §5.5: never who drew whom. *@
-        <section id="people" aria-labelledby="people-heading">
+        <section id="people" data-live aria-labelledby="people-heading">
             <h2 id="people-heading" class="group-title">Taking part (@Model.Participants.Count)</h2>
             @if (Model.Participants.Count == 0)
             {
@@ -181,6 +182,8 @@
         </section>
     }
 
+    @* A slot that is always there (display: contents), so invitations can arrive live. *@
+    <div class="live-slot" id="live-invited" data-live>
     @if (Model.Invitations.Count > 0)
     {
         <section id="invited" aria-labelledby="invited-heading">
@@ -202,13 +205,14 @@
             </ul>
         </section>
     }
+    </div>
 
     @if (editable)
     {
         @* One control for adding people (spec §7): the people the organizer has shared an event
            with, names and pictures only, and an address that adds or invites (_AddPeople). Behind
            the "Add people" fold row (§12 Controls), open when adding people is the next step. *@
-        <details class="fold" id="add-people" open="@Model.TooFewPeople">
+        <details class="fold" id="add-people" data-live open="@Model.TooFewPeople">
             <summary><span>Add people</span></summary>
             <form method="post" asp-page-handler="AddPeople" class="fold-body add-people" data-add-people>
                 <partial name="_AddPeople" model="new AddPeopleControl(Model.Known, [], null)" />
@@ -226,8 +230,8 @@
        the right that open in place. A redirect back here names a spot inside one, which opens it. *@
     <div class="folds">
         <details class="fold" id="rules" open="@Model.RulesBlockTheDraw">
-            <summary><span id="rules-heading">Who can't draw whom</span><span class="fold-hint">@Model.RulesSummary</span></summary>
-            <div class="fold-body">
+            <summary><span id="rules-heading">Who can't draw whom</span><span class="fold-hint" id="rules-summary" data-live>@Model.RulesSummary</span></summary>
+            <div class="fold-body" id="rules-body" data-live>
                 <p class="small soft">People in the same household never draw each other.</p>
                 @if (Model.Households.Count > 0 || Model.Exclusions.Count > 0)
                 {
@@ -352,9 +356,9 @@
         </details>
 
         <details class="fold" id="settings" open="@(Model.DetailsError is not null)">
-            <summary><span id="settings-heading">Details and organizers</span><span class="fold-hint">@Model.OrganizersSummary</span></summary>
+            <summary><span id="settings-heading">Details and organizers</span><span class="fold-hint" id="settings-summary" data-live>@Model.OrganizersSummary</span></summary>
             <div class="fold-body">
-                <div id="details">
+                <div id="details" data-live>
                     <ul class="rows" role="list">
                         <li class="row"><span>Name</span><strong class="row-value">@Model.Event.Name</strong></li>
                         <li class="row"><span>Exchange date</span><strong class="row-value">@Format.Date(Model.Event.ExchangeDate)</strong></li>
@@ -417,7 +421,7 @@
                     }
                 </div>
 
-                <div id="organizers">
+                <div id="organizers" data-live>
                     <h3 class="group-subtitle">Organizers</h3>
                     <ul class="rows" role="list">
                         @foreach (var o in Model.Organizers)
@@ -462,7 +466,7 @@
        change. Only cancel is red. *@
     @if (m.Allows(EventLifecycle.Cancel))
     {
-        <section id="changes" aria-labelledby="changes-heading">
+        <section id="changes" data-live aria-labelledby="changes-heading">
             <h2 id="changes-heading" class="group-title">Bigger changes</h2>
             <div class="changes">
                 @if (drawn)
