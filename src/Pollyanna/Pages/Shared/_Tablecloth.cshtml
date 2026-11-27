@@ -3,11 +3,12 @@
    goes. See notes on the pieces (.column, _PageHead, .cloth > .panel, .below, .button-fill) in
    tablecloth.css. A page adds a font to preload with a "Preload" section. *@
 @inject Pollyanna.WhatsNew.WhatsNewList WhatsNew
+@inject TimeProvider Clock
 @{
     var signedIn = User.Identity?.IsAuthenticated == true;
     var name = User.Identity?.Name?.Trim();
     var firstName = string.IsNullOrEmpty(name) ? "Your account" : name.Split(' ', 2)[0];
-    var news = signedIn ? await WhatsNew.CountAsync(User.PersonId()) : 0;
+    var news = signedIn ? new Pollyanna.Pages.Shared.WhatsNewPanelView(await WhatsNew.RowsAsync(User.PersonId()), Clock.GetUtcNow().UtcDateTime) : null;
 }
 <!doctype html>
 <html lang="en">
@@ -27,14 +28,10 @@
 <body>
     <header class="masthead">
         <a class="brand" href="/"><partial name="_TableclothGirl" model="40" /><span>pollyanna</span></a>
-        @if (signedIn)
+        @if (news is not null)
         {
             <nav class="masthead-end" aria-label="Account">
-                @* The bell (spec §7, §12): filled with something new, outlined without; never a number. *@
-                <a class="bell@(news > 0 ? " bell-new" : "")" href="/whats-new"
-                   aria-label="@(news switch { 0 => "What's new, nothing new", 1 => "What's new, 1 notification", _ => $"What's new, {news} notifications" })">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="bell-body" d="M12 3a6 6 0 0 0-6 6v3.6L4 16.5h16l-2-3.9V9a6 6 0 0 0-6-6z"/><path class="bell-clapper" d="M9.8 18.5a2.2 2.2 0 0 0 4.4 0z"/></svg>
-                </a>
+                <partial name="_WhatsNewPanel" model="news" />
                 <a class="masthead-account" href="/account">@firstName</a>
             </nav>
         }

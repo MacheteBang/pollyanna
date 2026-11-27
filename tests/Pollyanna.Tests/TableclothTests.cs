@@ -111,7 +111,9 @@ public sealed class TableclothTests : IAsyncLifetime
         var links = masthead.QuerySelectorAll("a").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"))).ToList();
         Assert.Equal([("pollyanna", "/"), ("", "/whats-new"), ("Ana", "/account")], links);
         Assert.DoesNotContain("Sign out", masthead.TextContent);
-        Assert.Empty(masthead.QuerySelectorAll("form, button"));
+        // The only button is the bell's, hidden until the script swaps it in for the link (#99).
+        Assert.Equal(["What's new, nothing new"], masthead.QuerySelectorAll("button").Select(b => b.GetAttribute("aria-label")));
+        Assert.Empty(masthead.QuerySelectorAll("form"));
     }
 
     [Theory]

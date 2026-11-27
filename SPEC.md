@@ -1609,6 +1609,19 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     bell counts these rows too. Tests: `WhatsNewAssignmentTests`, with all
     five kinds in `PairingSecrecyTests` and the question, reply and
     reopened rows in `NotificationSecrecyTests`.
+  - The bell's panel (#99): every signed-in masthead renders the bell's
+    link, its button (hidden) and the "What's new" panel (hidden) with the
+    same rows as `/whats-new` (`_WhatsNewPanel`, `WhatsNewPanelView`), each
+    row's "×" a form posting `/whats-new/dismiss` like the page's. With the
+    script, `site.js` (`whatsNewPanel`) swaps the link for the button and
+    runs the panel as a disclosure (Escape or a tap outside closes it and
+    returns focus to the bell), dismisses in place with that same post,
+    moves focus to the next "×", the previous one or the heading, and
+    updates the bell's fill and label; `whatsNewTimes` shows the panel's
+    and the page's times in the viewer's zone. No fragment endpoint and no
+    motion. Tests: `WhatsNewTests` (the panel on every signed-in page, its
+    rows, the empty state, dismissing through it); the hand checks of §16
+    are still to do.
 
 ### Done: the "Tablecloth" identity
 

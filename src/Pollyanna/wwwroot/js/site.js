@@ -117,17 +117,25 @@ function gifts() {
 // times in UTC; this redoes them in the viewer's own time zone. A day line is "Today", the
 // weekday within the week, otherwise the date; a time is "7:42 PM", or "about 7 PM" for a
 // message stored to the hour before times were exact (data-said="hour").
-function conversations() {
+// A day as a day line, from the viewer's own today (Format.DayLine on the server).
+function dayLine(day) {
     const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dayLine = day => {
-        const ago = Math.round((today - day) / 86400000);
-        return ago === 0 ? "Today"
-            : ago > 0 && ago < 7 ? weekdays[day.getDay()]
-            : `${months[day.getMonth()]} ${day.getDate()}${day.getFullYear() === today.getFullYear() ? "" : ", " + day.getFullYear()}`;
-    };
+    const ago = Math.round((today - day) / 86400000);
+    return ago === 0 ? "Today"
+        : ago > 0 && ago < 7 ? weekdays[day.getDay()]
+        : `${months[day.getMonth()]} ${day.getDate()}${day.getFullYear() === today.getFullYear() ? "" : ", " + day.getFullYear()}`;
+}
+
+// "7:42 PM" in the viewer's own time zone.
+function clockTime(at) {
+    const h = at.getHours();
+    return `${h % 12 || 12}:${String(at.getMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+function conversations() {
     for (const list of document.querySelectorAll("[data-conversation]")) {
         for (const line of list.querySelectorAll("[data-day]")) line.remove();
         let last = null;
@@ -136,10 +144,9 @@ function conversations() {
             const at = new Date(time?.getAttribute("datetime"));
             if (isNaN(at)) continue;
             const h = at.getHours();
-            const half = h < 12 ? "AM" : "PM";
             time.textContent = time.dataset.said === "hour"
-                ? `about ${h === 0 ? "midnight" : h === 12 ? "noon" : `${h % 12} ${half}`}`
-                : `${h % 12 || 12}:${String(at.getMinutes()).padStart(2, "0")} ${half}`;
+                ? `about ${h === 0 ? "midnight" : h === 12 ? "noon" : `${h % 12} ${h < 12 ? "AM" : "PM"}`}`
+                : clockTime(at);
             const day = new Date(at);
             day.setHours(0, 0, 0, 0);
             if (last !== null && day.getTime() === last) continue;
@@ -151,6 +158,93 @@ function conversations() {
             message.before(line);
         }
     }
+}
+
+// "What's new" times ("Today, 7:42 PM UTC" from the server) in the viewer's own time zone.
+function whatsNewTimes() {
+    for (const time of document.querySelectorAll("time[data-when]")) {
+        const at = new Date(time.getAttribute("datetime"));
+        if (isNaN(at)) continue;
+        const day = new Date(at);
+        day.setHours(0, 0, 0, 0);
+        time.textContent = `${dayLine(day)}, ${clockTime(at)}`;
+    }
+}
+
+// The bell's "What's new" panel (spec §7, §12, §16). The server renders the rows into every
+// signed-in masthead, hidden; this swaps the bell's link for its button and opens the panel as a
+// disclosure, not a dialog: focus stays on the bell, Tab goes into the panel (it follows the
+// bell), and Escape or a tap outside closes it and puts focus back on the bell. A row's "×"
+// posts the row's own form, the page's dismiss, in the background and removes the row; focus
+// moves to the next row's "×", the previous one at the end, or the heading once it's empty.
+function whatsNewPanel() {
+    const button = document.querySelector("[data-bell]");
+    const link = document.querySelector("[data-bell-link]");
+    const panel = document.getElementById("whats-new-panel");
+    if (!button || !link || !panel) return;
+    const heading = panel.querySelector("#whats-new-panel-heading");
+    const list = panel.querySelector(".bell-rows");
+    const empty = panel.querySelector(".bell-empty");
+    link.hidden = true;
+    button.hidden = false;
+    heading.tabIndex = -1; // focus lands here once the last row is dismissed
+
+    const isOpen = () => !panel.hidden;
+    const close = refocus => {
+        panel.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+        if (refocus) button.focus();
+    };
+    button.addEventListener("click", () => {
+        if (isOpen()) return close(false);
+        panel.hidden = false;
+        button.setAttribute("aria-expanded", "true");
+    });
+    document.addEventListener("keydown", event => {
+        if (event.key !== "Escape" || !isOpen()) return;
+        close(true);
+    });
+    // A tap outside closes it; focus goes back to the bell unless the tap put it somewhere else
+    // (a field, say).
+    document.addEventListener("click", event => {
+        if (!isOpen() || panel.contains(event.target) || button.contains(event.target)) return;
+        const focus = document.activeElement;
+        close(!focus || focus === document.body || panel.contains(focus));
+    });
+
+    // The bell's state and label follow the rows left; only the label counts them.
+    const update = () => {
+        const count = list.children.length;
+        const label = count === 0 ? "What's new, nothing new"
+            : count === 1 ? "What's new, 1 notification"
+            : `What's new, ${count} notifications`;
+        for (const bell of [button, link]) {
+            bell.classList.toggle("bell-new", count > 0);
+            bell.setAttribute("aria-label", label);
+        }
+        empty.hidden = count > 0;
+    };
+
+    list.addEventListener("submit", async event => {
+        const form = event.target.closest("form[data-bell-dismiss]");
+        if (!form) return;
+        event.preventDefault();
+        const row = form.closest("li");
+        if ("going" in row.dataset) return;
+        row.dataset.going = "";
+        try {
+            const response = await fetch(form.action, { method: "POST", body: new FormData(form), redirect: "manual", credentials: "same-origin" });
+            if (response.type !== "opaqueredirect" && !response.ok) throw new Error(String(response.status));
+        } catch {
+            // Didn't go through: post it the way the page does, which lands on /whats-new.
+            HTMLFormElement.prototype.submit.call(form);
+            return;
+        }
+        const next = row.nextElementSibling ?? row.previousElementSibling;
+        row.remove();
+        update();
+        (next?.querySelector(".bell-x") ?? heading).focus();
+    });
 }
 
 // "12 / 1,000" under a message box as it fills.
@@ -211,6 +305,8 @@ document.addEventListener("DOMContentLoaded", () => {
     addPeople();
     gifts();
     conversations();
+    whatsNewTimes();
+    whatsNewPanel();
     counters();
     saveOnChange();
     foldLinks();
