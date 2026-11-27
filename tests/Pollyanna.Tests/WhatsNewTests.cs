@@ -219,12 +219,95 @@ public sealed class WhatsNewTests : IAsyncLifetime
         Assert.Equal("What's new, 2 notifications", two.GetAttribute("aria-label"));
     }
 
+    // ---------- The bell's panel (#99): rendered into every signed-in masthead, hidden ----------
+
+    /// <summary>The panel's rows as the masthead carries them.</summary>
+    static IReadOnlyList<Row> PanelRows(AngleSharp.Html.Dom.IHtmlDocument page) =>
+        [.. page.QuerySelectorAll(".masthead #whats-new-panel .bell-rows > li").Select(li => new Row(
+            li.QuerySelector("a")!.TextContent.Trim(),
+            li.QuerySelector("a")!.GetAttribute("href")!,
+            li.QuerySelector(".bell-meta")!.TextContent.Trim()))];
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/account")]
+    [InlineData("/past")]
+    [InlineData("/whats-new")]
+    public async Task Every_signed_in_page_carries_the_bell_button_and_its_panel_hidden_until_the_script_opens_it(string path)
+    {
+        var page = await ann.GetPageAsync(path);
+
+        var button = page.QuerySelector(".masthead button.bell")!;
+        Assert.Equal("button", button.GetAttribute("type"));
+        Assert.True(button.HasAttribute("hidden"));
+        Assert.Equal("false", button.GetAttribute("aria-expanded"));
+        Assert.Equal("whats-new-panel", button.GetAttribute("aria-controls"));
+        Assert.Equal("What's new, nothing new", button.GetAttribute("aria-label"));
+        Assert.False(button.ClassList.Contains("bell-new"));
+
+        var panel = page.QuerySelector(".masthead #whats-new-panel")!;
+        Assert.True(panel.HasAttribute("hidden"));
+        Assert.Equal("What's new", panel.QuerySelector("#whats-new-panel-heading")!.TextContent.Trim());
+        Assert.Equal("whats-new-panel-heading", panel.GetAttribute("aria-labelledby"));
+        Assert.Empty(PanelRows(page));
+        var empty = panel.QuerySelector(".bell-empty")!;
+        Assert.False(empty.HasAttribute("hidden"));
+        Assert.Contains("Nothing new right now.", empty.TextContent);
+        Assert.Contains("When something happens in one of your events, it shows up here.", empty.TextContent);
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/account")]
+    [InlineData("/whats-new")]
+    public async Task The_panel_holds_the_same_rows_as_the_page_each_with_a_dismiss_x(string path)
+    {
+        app.Clock.SetUtcNow(new DateTimeOffset(2026, 12, 1, 19, 42, 0, TimeSpan.Zero));
+        var first = await app.EventAsync("Cousins' Swap", EventStatus.Draft, [me], [me, annId]);
+        await Post(first, "open");
+        app.Clock.Advance(TimeSpan.FromHours(1));
+        await Post(first, "addorganizer", ("email", "ann@example.com"));
+
+        var page = await ann.GetPageAsync(path);
+
+        Assert.Equal(await RowsAsync(ann), PanelRows(page));
+        Assert.Equal("What's new, 2 notifications", page.QuerySelector(".masthead button.bell")!.GetAttribute("aria-label"));
+        Assert.True(page.QuerySelector(".masthead button.bell")!.ClassList.Contains("bell-new"));
+        Assert.True(page.QuerySelector("#whats-new-panel .bell-empty")!.HasAttribute("hidden"));
+
+        var rows = page.QuerySelectorAll("#whats-new-panel .bell-rows > li");
+        var line = rows[0].QuerySelector("a")!.TextContent.Trim();
+        var form = rows[0].QuerySelector("form")!;
+        Assert.Equal("/whats-new/dismiss", form.GetAttribute("action"));
+        Assert.Equal("post", form.GetAttribute("method"));
+        Assert.Equal(first.ToString(), form.QuerySelector("input[name=event]")!.GetAttribute("value"));
+        Assert.Equal("MadeOrganizer", form.QuerySelector("input[name=kind]")!.GetAttribute("value"));
+        var x = Assert.Single(form.QuerySelectorAll("button"));
+        Assert.Equal($"Dismiss: {line}", x.GetAttribute("aria-label"));
+        Assert.Equal("", x.TextContent.Trim());
+        Assert.NotNull(x.QuerySelector("svg[aria-hidden=true]"));
+    }
+
+    [Fact]
+    public async Task Dismissing_from_the_panel_is_the_pages_own_post()
+    {
+        var ev = await app.EventAsync("Stockings", EventStatus.Draft, [me], [me, annId]);
+        await Post(ev, "open");
+
+        var response = await ann.SubmitOnAsync("/account", "/whats-new/dismiss");
+
+        Assert.Equal("/whats-new", response.Headers.Location?.OriginalString);
+        Assert.Empty(PanelRows(await ann.GetPageAsync("/account")));
+        Assert.Empty(await RowsAsync(ann));
+    }
+
     [Fact]
     public async Task Signed_out_pages_have_no_bell()
     {
         using var stranger = app.NewBrowser();
         var page = await stranger.GetPageAsync("/auth/signed-out");
         Assert.Null(page.QuerySelector(".bell"));
+        Assert.Null(page.QuerySelector("#whats-new-panel"));
     }
 
     // ---------- The page ----------

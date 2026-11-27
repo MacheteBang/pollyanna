@@ -27,7 +27,7 @@
                     <span class="row-stack">
                         <a class="whats-new-line" href="@row.Href">@row.Line</a>
                         <span class="small soft whats-new-meta">@row.EventName@if (row.At is { } at)
-                        {<text> · </text><time datetime="@Format.IsoMinute(at)">@Format.When(at, Model.Now)</time>}</span>
+                        {<text> · </text><time datetime="@Format.IsoMinute(at)" data-when>@Format.When(at, Model.Now)</time>}</span>
                     </span>
                     <form method="post" action="/whats-new/dismiss" asp-antiforgery="true">
                         <input type="hidden" name="event" value="@row.EventId">
