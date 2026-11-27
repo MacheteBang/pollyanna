@@ -273,7 +273,7 @@ public sealed class WhatsNewTests : IAsyncLifetime
     [InlineData("/whats-new")]
     public async Task The_panel_holds_the_same_rows_as_the_page_each_with_a_dismiss_x(string path)
     {
-        app.Clock.SetUtcNow(new DateTimeOffset(2026, 12, 1, 19, 42, 0, TimeSpan.Zero));
+        app.Clock.SetUtcNow(new DateTimeOffset(Tomorrow.At(19, 42)));
         var first = await app.EventAsync("Cousins' Swap", EventStatus.Draft, [me], [me, annId]);
         await Post(first, "open");
         app.Clock.Advance(TimeSpan.FromHours(1));
@@ -338,7 +338,7 @@ public sealed class WhatsNewTests : IAsyncLifetime
     [Fact]
     public async Task Rows_are_newest_first_with_the_event_and_when_under_each_line()
     {
-        app.Clock.SetUtcNow(new DateTimeOffset(2026, 12, 1, 19, 42, 0, TimeSpan.Zero));
+        app.Clock.SetUtcNow(new DateTimeOffset(Tomorrow.At(19, 42)));
         var first = await app.EventAsync("Cousins' Swap", EventStatus.Draft, [me], [me, annId]);
         await Post(first, "open");
         app.Clock.Advance(TimeSpan.FromHours(1));

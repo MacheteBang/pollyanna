@@ -63,7 +63,7 @@ public sealed class WhatsNewAssignmentTests : IAsyncLifetime
     [Fact]
     public async Task A_question_tells_the_recipient_linking_to_their_questions_page()
     {
-        app.Clock.SetUtcNow(new DateTimeOffset(2026, 12, 1, 19, 42, 0, TimeSpan.Zero));
+        app.Clock.SetUtcNow(new DateTimeOffset(Tomorrow.At(19, 42)));
         await AskAsync();
 
         var row = Assert.Single(await RowsAsync(ann));
@@ -94,7 +94,7 @@ public sealed class WhatsNewAssignmentTests : IAsyncLifetime
     {
         await AskAsync();
         await ann.GetPageAsync(Questions);
-        app.Clock.SetUtcNow(new DateTimeOffset(2026, 12, 1, 8, 5, 0, TimeSpan.Zero));
+        app.Clock.SetUtcNow(new DateTimeOffset(Tomorrow.At(8, 5)));
         await ReplyAsync();
 
         var row = Assert.Single(await RowsAsync(pat));
@@ -204,7 +204,7 @@ public sealed class WhatsNewAssignmentTests : IAsyncLifetime
     [Fact]
     public async Task The_kinds_with_no_time_come_first_then_everything_else_newest_first()
     {
-        app.Clock.SetUtcNow(new DateTimeOffset(2026, 12, 1, 9, 0, 0, TimeSpan.Zero));
+        app.Clock.SetUtcNow(new DateTimeOffset(Tomorrow.At(9, 0)));
         await AskAsync();
         await OpenCardAsync();
         await ann.GetPageAsync(Questions);
@@ -228,8 +228,8 @@ public sealed class WhatsNewAssignmentTests : IAsyncLifetime
     [Fact]
     public async Task A_question_goes_by_its_newest_unread_message()
     {
-        app.Clock.SetUtcNow(new DateTimeOffset(2026, 12, 1, 9, 0, 0, TimeSpan.Zero));
-        await app.MessageAsync(ev, me, MessageSender.Giver, "Older", at: new DateTime(2026, 12, 1, 7, 0, 0, DateTimeKind.Utc));
+        app.Clock.SetUtcNow(new DateTimeOffset(Tomorrow.At(9, 0)));
+        await app.MessageAsync(ev, me, MessageSender.Giver, "Older", at: Tomorrow.At(7));
         var other = await app.EventAsync("Book Club", EventStatus.Draft, [me], [me, annId]);
         await pat.PostWithTokenAsync($"/events/{other}/manage", $"/events/{other}/manage/open");
         Assert.Equal(["It's open: write your notes", "Your giver asked you something"], await LinesAsync(ann));
