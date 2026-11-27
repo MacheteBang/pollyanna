@@ -5,12 +5,12 @@
    "Home" back link, the title, and for an organizer who takes part the two-way switch right
    under the title instead of the link; the countdown, the prominent part, filled in by site.js
    (without the script, the date alone shows); then one small soft line with the date, the
-   budget and the status in plain words. *@
+   budget and the status in plain words. A live region (the details change while open). *@
 @{
     var ev = Model.Event;
     var status = Format.StatusLine(ev.Status);
 }
-<div class="column page-head">
+<div class="column page-head" id="event-head" data-live>
     @if (!Model.Membership.IsOrganizer)
     {
         <a class="page-head-back" href="/">Home</a>

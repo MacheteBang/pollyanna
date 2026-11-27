@@ -58,6 +58,13 @@ public sealed class LiveRoutingTests : IAsyncLifetime
         new("question", HappeningKind.Question, EventStatus.Open, true, "Gus", "Rae", null),
         new("reply", HappeningKind.Reply, EventStatus.Open, true, "Rae", null, null),
         new("dismiss", null, EventStatus.Open, false, "Gus", null, null),
+        // The event page's own parts (spec §16 "What each page does live").
+        new("notes", HappeningKind.NotesEdited, EventStatus.Open, false, "Bea", null, null),
+        new("notes drawn", HappeningKind.NotesEdited, EventStatus.Open, true, "Rae", null, null),
+        new("details", HappeningKind.DetailsChanged, EventStatus.Open, false, "Olga", null, null),
+        new("left", HappeningKind.Left, EventStatus.Open, false, "Bea", "Bea", null),
+        new("taken out", HappeningKind.TakenOut, EventStatus.Open, false, "Olga", "Bea", null),
+        new("shopping", HappeningKind.DoneShopping, EventStatus.Open, true, "Gus", null, null),
     ];
 
     [Fact]
@@ -160,6 +167,21 @@ public sealed class LiveRoutingTests : IAsyncLifetime
                 break;
             case "reply":
                 await Browser("Rae").SubmitOnAsync($"/events/{ev}/questions", $"/events/{ev}/questions/reply", Form(("body", "Blue.")));
+                break;
+            case "notes":
+            case "notes drawn":
+                await Browser(c.Actor!).SubmitOnAsync($"/events/{ev}", $"/events/{ev}/notes", Form(("notes", "Blue socks")));
+                break;
+            case "details":
+                await Manage("Olga", ev, "details", ("Name", "Stockings 2027"), ("BudgetText", "$30"),
+                    ("ExchangeDate", "2027-01-06"), ("PreviousEventId", ""), ("NoRepeatDepth", "1"));
+                break;
+            case "left":
+                await Browser("Bea").PostWithTokenAsync($"/events/{ev}", $"/events/{ev}/leave");
+                break;
+            case "taken out": await Manage("Olga", ev, "removeperson", ("personId", Id("Bea").ToString())); break;
+            case "shopping":
+                await Browser("Gus").SubmitOnAsync($"/events/{ev}", $"/events/{ev}/shopping", Form(("done", "true")));
                 break;
             case "dismiss":
                 // As the panel does: its own tab named in the header.

@@ -1676,6 +1676,19 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     still there for the next visit. Tests: `LivePagesTests`,
     `LiveRefetchTests`; the browser side is still to be checked by hand
     (§16 Testing).
+  - The live event page (#103): its shape is "event-<status>" with the
+    same quiet lines, and its parts patch in place (`data-live`): the head
+    (details), your notes and "Taking part" before the draw; after it the
+    recipient's notes with "Notes updated since you last looked"
+    (`#their-notes`) and "Done shopping" inside the gift, your notes and
+    the people fold. The gift itself is never a region, so a patch keeps
+    it tied or untied as the browser has it, and a body swap brings any
+    gift in tied. Over, only state changes. Canceled and taken out use
+    #102's lines. Tests: `LivePagesTests` (shapes, regions, the gift kept
+    out of them, a notes edit reaching the giver under the name) and
+    `LiveRoutingTests` (notes, details, leaving, taken out, done
+    shopping); the browser side is still to be checked by hand on a
+    phone, tied and untied (§16 Testing).
 
 ### Done: the "Tablecloth" identity
 

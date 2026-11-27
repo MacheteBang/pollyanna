@@ -14,6 +14,10 @@
     the gift) runs the untying in CSS (site.js gifts()) and posts /seen; "Hide the name" ties it
     back at once. Without the script, "Untie the bow" goes to /events/{id}/untie, which renders the
     page untied with no motion, and "Hide the name" posts /seen, which records the viewing.
+
+    Live (spec §16): the recipient's notes, "Done shopping", the viewer's notes and the people
+    patch in place (data-live). The gift isn't a region, so a live refetch, which always comes
+    back tied, never ties or unties it.
 *@
 @{
     var id = Model.Event.Id;
@@ -69,7 +73,7 @@ else
                 <p class="revealed-name@(name.Length > 8 ? " revealed-name-long" : "")" tabindex="-1">@name</p>
                 <div class="gift-more">
                     <div class="gift-more-in">
-                        <section class="gift-group" aria-labelledby="their-notes-heading">
+                        <section class="gift-group" id="their-notes" data-live aria-labelledby="their-notes-heading">
                             <h2 id="their-notes-heading" class="section-title">@Format.Possessive(name) notes</h2>
                             @if (slip.NotesUpdated)
                             {
@@ -120,7 +124,7 @@ else
                                 }
                             </section>
                         }
-                        <form method="post" asp-page-handler="shopping" id="shopping" class="gift-shopping" data-save-on-change>
+                        <form method="post" asp-page-handler="shopping" id="shopping" class="gift-shopping" data-save-on-change data-live>
                             <label class="check"><input type="checkbox" name="done" value="true" checked="@Model.DoneShopping"> Done shopping</label>
                             <button type="submit" class="button button-start" data-save-button>Save</button>
                         </form>
@@ -159,7 +163,7 @@ else
         <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
     }
     <div class="folds">
-        <details class="fold" id="your-notes">
+        <details class="fold" id="your-notes" data-live>
             <summary><span>Your notes</span><span class="fold-hint">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "None yet")</span></summary>
             <div class="fold-body">
                 @if (Model.Membership.Editable)
@@ -176,7 +180,7 @@ else
                 }
             </div>
         </details>
-        <details class="fold" id="taking-part">
+        <details class="fold" id="taking-part" data-live>
             <summary><span>Taking part</span><span class="fold-hint">@Model.Participants.Count people</span></summary>
             <div class="fold-body">
                 <partial name="_People" model="Model" />
