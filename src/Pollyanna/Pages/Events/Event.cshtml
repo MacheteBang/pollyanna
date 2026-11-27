@@ -2,16 +2,22 @@
 @model Pollyanna.Pages.Events.EventModel
 @{
     ViewData["Title"] = Model.Event.Name;
-    // Before the draw the page is in "Tablecloth": _EventHead, then the state's own partial. The
-    // states after it (#76 the reveal, #77 the event once it's over) are still "Paper slips" and
-    // move the same way: switch the layout for them and render _EventHead above their partial.
+    // Before the draw and once the event is over, the page is in "Tablecloth": _EventHead, then
+    // the state's own partial. The drawn state (#76, the reveal) is still "Paper slips" and moves
+    // the same way: switch the layout for it and render _EventHead above its partial.
     var beforeDraw = !Model.Membership.NamesDrawn;
-    Layout = beforeDraw ? "_Tablecloth" : "_Layout";
+    var over = Model.Membership.IsOver;
+    Layout = beforeDraw || over ? "_Tablecloth" : "_Layout";
 }
 @if (beforeDraw)
 {
     <partial name="_EventHead" model="Model" />
     <partial name="_EventBeforeDraw" model="Model" />
+}
+else if (over)
+{
+    <partial name="_EventHead" model="Model" />
+    <partial name="_EventOver" model="Model" />
 }
 else
 {
