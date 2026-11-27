@@ -42,7 +42,7 @@ public sealed partial class NotificationSecrecyTests
     [GeneratedRegex("name=\"__RequestVerificationToken\" type=\"hidden\" value=\"[^\"]*\"")]
     private static partial Regex Token();
 
-    [GeneratedRegex("<time datetime=\"[^\"]*\">[^<]*</time>")]
+    [GeneratedRegex("<time datetime=\"[^\"]*\"[^>]*>[^<]*</time>")]
     private static partial Regex Time();
 
     /// <summary>

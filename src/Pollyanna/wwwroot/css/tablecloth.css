@@ -160,6 +160,7 @@ summary::-webkit-details-marker { display: none; }
     justify-content: space-between;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
+    position: relative; /* the bell's panel hangs from its bottom edge */
 }
 
 /* The wordmark: the girl at 40px, then "pollyanna" in lowercase Figtree 800, tightened. */
@@ -180,8 +181,9 @@ summary::-webkit-details-marker { display: none; }
     min-width: 0;
 }
 
-/* The bell (spec §12): a 44px link to "What's new". With something new it is filled ribbon blue
-   with an ink clapper; with nothing, a soft-ink outline. No number, word, badge or dot. */
+/* The bell (spec §12): a 44px link to "What's new", or with the script a button that opens the
+   panel below. With something new it is filled ribbon blue with an ink clapper; with nothing, a
+   soft-ink outline. No number, word, badge or dot. */
 .bell {
     display: inline-flex;
     align-items: center;
@@ -189,12 +191,58 @@ summary::-webkit-details-marker { display: none; }
     width: var(--tap);
     height: var(--tap);
     flex: none;
+    padding: 0;
+    border: 0;
     border-radius: var(--corner);
+    background: none;
+    cursor: pointer;
 }
 .bell svg { width: 26px; height: 26px; }
 .bell path { fill: none; stroke: var(--soft-ink); stroke-width: 1.6; stroke-linejoin: round; }
 .bell-new .bell-body { fill: var(--ribbon); stroke: none; }
 .bell-new .bell-clapper { fill: var(--ink); stroke: none; }
+
+/* The "What's new" panel (spec §12, the #89 mockup, variant A): the one thing that sits over the
+   page. White, just under the masthead, 8px in from each edge on a phone and in the 560px column
+   on wider screens, a 2px ink border and the one corner, no shadow. Nothing in it moves: no
+   transition or animation, and the browser's scroll anchoring keeps the row in view in place. */
+.bell-panel {
+    position: absolute;
+    top: 100%;
+    inset-inline: max(var(--space-2), calc((100% - var(--column)) / 2));
+    z-index: 5;
+    max-height: min(560px, calc(100dvh - 80px));
+    overflow: auto;
+    padding: var(--space-4) var(--space-4) var(--space-2);
+    background: var(--white);
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    box-shadow: none;
+}
+.bell-panel-heading {
+    padding-bottom: var(--space-1);
+    font: var(--type-action);
+    letter-spacing: var(--tight);
+}
+.bell-rows .row { align-items: flex-start; }
+.bell-line { overflow-wrap: anywhere; }
+.bell-row form { flex: none; }
+/* The row's "×": a 44px target, drawn 14px. */
+.bell-x {
+    display: grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    margin: -6px -10px 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--corner);
+    background: none;
+    cursor: pointer;
+}
+.bell-x svg { width: 14px; height: 14px; fill: none; stroke: var(--ink); stroke-width: 2.4; }
+.bell-empty { display: flex; flex-direction: column; gap: var(--space-1); padding-block: var(--space-2); }
+.bell-empty-title { font-weight: 800; }
 
 .masthead-account {
     display: flex;
