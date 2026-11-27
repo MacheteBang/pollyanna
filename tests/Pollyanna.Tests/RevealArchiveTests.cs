@@ -50,10 +50,10 @@ public sealed class RevealArchiveTests : IAsyncLifetime
     }
 
     Task<HttpResponseMessage> RevealAsync(Guid ev, bool confirmed = true) =>
-        browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/reveal", confirmed ? Form(("confirmed", "true")) : null);
+        browser.PostWithTokenAsync("/account", $"{Manage(ev)}/reveal", confirmed ? Form(("confirmed", "true")) : null);
 
     Task<HttpResponseMessage> ArchiveAsync(Guid ev, bool keep = false) =>
-        browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/archive", keep ? Form(("keepMessages", "true")) : null);
+        browser.PostWithTokenAsync("/account", $"{Manage(ev)}/archive", keep ? Form(("keepMessages", "true")) : null);
 
     async Task<string?> NoticeAsync(string path)
     {
@@ -314,12 +314,12 @@ public sealed class RevealArchiveTests : IAsyncLifetime
         await ArchiveAsync(ev);
 
         var manage = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains("archived", manage.QuerySelector("#status")!.TextContent);
-        Assert.Empty(manage.QuerySelectorAll("#status form"));
+        Assert.Contains("archived", manage.QuerySelector("#archived")!.TextContent);
+        Assert.Null(manage.QuerySelector(".cloth"));
         Assert.Null(manage.QuerySelector($"form[action='{Manage(ev)}/details']"));
 
         await RevealAsync(ev);
-        await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/redraw");
+        await browser.PostWithTokenAsync("/account", $"{Manage(ev)}/redraw");
         await ArchiveAsync(ev, keep: true);
         Assert.Equal(EventStatus.Archived, await app.StatusAsync(ev));
         Assert.False(await app.WithDbAsync(db => db.Events.Where(e => e.Id == ev).Select(e => e.PairingsRevealed).SingleAsync()));

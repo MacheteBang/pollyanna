@@ -7,7 +7,7 @@
 }
 <details class="editor" id="cancel">
     <summary>Cancel this event…</summary>
-    <div class="warning stack">
+    <div class="stack">
         <p><strong>Cancel @Model.Event.Name?</strong> This can't be undone. The event disappears for everyone, organizers included.</p>
         <ul>
             <li>@Format.People(people) in it@(invitations > 0 ? (invitations == 1 ? ", and 1 invitation still waiting" : $", and {invitations} invitations still waiting") : "").</li>

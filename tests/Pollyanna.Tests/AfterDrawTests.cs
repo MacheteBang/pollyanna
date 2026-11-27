@@ -413,7 +413,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
         Assert.NotNull(page.QuerySelector(".reveal"));
 
         var manage = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains("Pat wants to leave — redraw needed.", manage.QuerySelector("#status")!.TextContent);
+        Assert.Contains("Pat wants to leave, and that needs a redraw.", manage.QuerySelector("#next-step")!.TextContent);
 
         await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/redraw");
         Assert.DoesNotContain(me, await app.ParticipantsAsync(ev));
@@ -443,7 +443,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
 
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/stay");
         Assert.False(await app.WithDbAsync(db => db.Participants.AnyAsync(p => p.WantsToLeave)));
-        Assert.DoesNotContain("wants to leave", (await browser.GetPageAsync(Manage(ev))).QuerySelector("#status")!.TextContent);
+        Assert.DoesNotContain("wants to leave", (await browser.GetPageAsync(Manage(ev))).QuerySelector("#next-step")!.TextContent);
 
         await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/redraw");
         Assert.Contains(me, await app.ParticipantsAsync(ev));
