@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Pollyanna.Pages.Events;
 
 /// <summary>
-/// The event page (spec §7): details, the reveal card once names are drawn (with the giver's
-/// question thread inside it), a link to the viewer's own giver's questions, the people
-/// in the hat with their notes, the viewer's own notes editor and "Leave this event". Once
+/// The event page (spec §7): details, the gift once names are drawn (with the giver's question
+/// thread under the bow), a link to the viewer's own giver's questions, the people taking
+/// part with their notes, the viewer's own notes editor and "Leave this event". Once
 /// revealed, the full pairing list and both threads, read-only and named; once archived, the
 /// list if it was revealed (or else the viewer's own slip) and any kept threads. An organizer who
 /// isn't a participant goes to manage. Before reveal, only the viewer's own slip and threads are
