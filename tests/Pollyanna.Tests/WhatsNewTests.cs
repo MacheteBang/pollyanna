@@ -254,6 +254,12 @@ public sealed class WhatsNewTests : IAsyncLifetime
         Assert.False(empty.HasAttribute("hidden"));
         Assert.Contains("Nothing new right now.", empty.TextContent);
         Assert.Contains("When something happens in one of your events, it shows up here.", empty.TextContent);
+
+        // Where the script says a new notification politely (spec §16), there and empty from the start.
+        var say = page.QuerySelector(".masthead [data-bell-say]")!;
+        Assert.Equal("polite", say.GetAttribute("aria-live"));
+        Assert.Equal("", say.TextContent);
+        Assert.True(say.ClassList.Contains("visually-hidden"));
     }
 
     [Theory]

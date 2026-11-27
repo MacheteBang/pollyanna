@@ -41,6 +41,12 @@ public sealed class LiveSignals(PollyannaDb db, LiveConnections connections)
     /// <summary>The request header a page's own background post names its live connection in ("not this tab").</summary>
     public const string TabHeader = "Pollyanna-Tab";
 
+    /// <summary>
+    /// The request header (value <c>refetch</c>) marking a page's live refetch of its own URL
+    /// (spec §16). Not read yet: making such a request a read-only view, not a visit, is #101.
+    /// </summary>
+    public const string RefetchHeader = "Pollyanna-Live";
+
     /// <summary>Sends <paramref name="happening"/>'s hint by its kind's <see cref="HappeningKindRow.Live"/>.</summary>
     public async Task SendAsync(Happening happening)
     {

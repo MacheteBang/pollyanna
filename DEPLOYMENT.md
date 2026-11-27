@@ -321,6 +321,14 @@ timeouts or body sizes. Don't let the proxy cache responses. Pollyanna sends its
 headers (strict CSP, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`); a proxy may add
 HSTS.
 
+Pages update by themselves through one long-lived request per open tab to `/live` (server-sent
+events). The app writes to it every 15 seconds and marks it unbuffered
+(`X-Accel-Buffering: no`) and uncompressed (`Content-Encoding: identity`), so default Caddy,
+nginx, Traefik, Cloudflare and Cloudflare Tunnel setups pass it as they are. If you changed
+those defaults, keep the proxy's read and idle timeouts above 15 seconds and don't buffer or
+compress `text/event-stream`. Serve HTTP/2 where you can: over HTTP/1.1 a browser allows six
+connections per host, so a seventh open tab can stall.
+
 Minimal examples, with Pollyanna on the same host:
 
 ```
@@ -331,7 +339,8 @@ pollyanna.example {
 ```
 
 ```nginx
-# nginx (inside the server block for pollyanna.example with your TLS settings)
+# nginx (inside the server block for pollyanna.example with your TLS settings;
+# add "http2 on;" there too)
 location / {
     proxy_pass http://127.0.0.1:8080;
     proxy_set_header Host $host;
@@ -512,6 +521,11 @@ family uses it, do this once with the production provider, with at least three r
   `the relay answered 5xx` the relay's refusal (often a from address it won't send as). The
   relay's own logs say more; Pollyanna records nothing about sent mail. People with an email
   the provider marked unverified, or none, get no email.
+- **Pages don't update by themselves.** Everything still works; a reload shows the changes.
+  In the browser's developer tools, the request to `/live` should stay open. If it ends after
+  about 60 seconds, or stays open but nothing arrives, the proxy is timing it out or buffering
+  it (section 4). With nginx, check that `proxy_ignore_headers` doesn't list
+  `X-Accel-Buffering`; behind Cloudflare, set Response Body Buffering to None for `/live`.
 - **No profile pictures.** The container downloads them from the URL in the `picture` claim.
   Without access to that host, people show initials instead; sign-in is not affected.
 
