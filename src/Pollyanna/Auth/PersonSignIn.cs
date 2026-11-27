@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Pollyanna.Data;
 using Pollyanna.Events;
 using Pollyanna.Notifications;
-using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 using Pollyanna.People;
 using Microsoft.EntityFrameworkCore;
 
@@ -82,7 +82,7 @@ public sealed record SignInOutcome(Person? Person, SignInRefusal? Refusal);
 /// refresh name, email and picture from the claims just received (a claim that isn't sent clears
 /// nothing), and turn any invitations to that email into participation (spec §4).
 /// </summary>
-public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Outbox outbox,
+public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimeProvider clock, EmailVerifiedHint hint, Announcer announcer,
     ProviderRegistry providers, ILogger<PersonSignIn> logger)
 {
     public async Task<SignInOutcome> SignInAsync(Provider provider, ProviderIdentity identity, CancellationToken cancellationToken = default)
@@ -270,7 +270,7 @@ public sealed class PersonSignIn(PollyannaDb db, PictureFetcher pictures, TimePr
         foreach (var ev in events)
         {
             db.Participants.Add(new Participant { EventId = ev.Id, PersonId = person.Id, JoinedAt = now });
-            await outbox.QueueAsync(new AddedToEvent.Cause(ev.Id, person.Id, Actor: null));
+            await announcer.AnnounceAsync(new Happening(HappeningKind.InvitationAccepted, ev.Id, Actor: null, About: person.Id));
         }
         db.Invitations.RemoveRange(invitations);
         await db.SaveChangesAsync(cancellationToken);

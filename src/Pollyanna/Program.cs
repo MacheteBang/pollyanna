@@ -2,6 +2,7 @@ using Pollyanna.Auth;
 using Pollyanna.Configuration;
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.Happenings;
 using Pollyanna.Infrastructure;
 using Pollyanna.Notifications;
 using Pollyanna.People;
@@ -38,6 +39,9 @@ services.AddSingleton<OutboxSender>();
 services.AddHostedService(sp => sp.GetRequiredService<OutboxSender>());
 services.AddScoped<Outbox>();
 services.AddScoped<EmailSwitch>();
+// Every happening goes through one entry point (spec §16); email is the first listener.
+services.AddScoped<Announcer>();
+services.AddScoped<IHappeningListener, EmailOnHappening>();
 
 services.AddDbContext<PollyannaDb>((sp, options) => options
     .UseSqlite($"Data Source={sp.GetRequiredService<PollyannaSettings>().DatabasePath}")

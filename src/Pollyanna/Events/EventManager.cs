@@ -1,8 +1,7 @@
 using System.Net.Mail;
 using Pollyanna.Configuration;
 using Pollyanna.Data;
-using Pollyanna.Notifications;
-using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 using Invitation = Pollyanna.Data.Invitation;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,7 +29,7 @@ public sealed record NewEvent(
 /// The draw and the changes after it are in <c>EventManager.Draw.cs</c>, the question box in
 /// <c>EventManager.Questions.cs</c>.
 /// </summary>
-public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, SealedHat hat, PostingLimit limit, Outbox outbox)
+public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, SealedHat hat, PostingLimit limit, Announcer announcer)
 {
     public const int NameMax = 200;
     public const int BudgetMax = 100;
@@ -187,10 +186,8 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
             return Outcome.Fail(refusal);
         var ev = await db.Events.SingleAsync(e => e.Id == m.Event.Id);
         ev.Status = EventLifecycle.Open.To;
-        await outbox.QueueAsync(new EventOpen.Cause(ev.Id, me));
-        // Invitations made while it was a draft are emailed now.
-        foreach (var invitation in await db.Invitations.Where(i => i.EventId == ev.Id).OrderBy(i => i.CreatedAt).ToListAsync())
-            await outbox.QueueAsync(new Notifications.Kinds.Invitation.Cause(ev.Id, invitation.Email, invitation.InvitedBy, me));
+        // Invitations made while it was a draft are emailed now, with it.
+        await announcer.AnnounceAsync(new Happening(HappeningKind.EventOpened, ev.Id, me));
         await db.SaveChangesAsync();
         return Outcome.Done("The event is open. Participants can see it and write their notes.");
     }
@@ -218,7 +215,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (await db.Participants.AnyAsync(p => p.EventId == ev.Id && p.PersonId == person.Id))
             return Outcome.Fail($"{person.DisplayName} is already taking part.");
         db.Participants.Add(new Participant { EventId = ev.Id, PersonId = person.Id, JoinedAt = Now });
-        await outbox.QueueAsync(new AddedToEvent.Cause(ev.Id, person.Id, me));
+        await announcer.AnnounceAsync(new Happening(HappeningKind.AddedToEvent, ev.Id, me, person.Id));
         await db.SaveChangesAsync();
         return Outcome.Done($"Added {person.DisplayName}.");
     }
@@ -266,7 +263,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
                 continue;
             }
             db.Participants.Add(new Participant { EventId = m.Event.Id, PersonId = person.Id, JoinedAt = Now });
-            await outbox.QueueAsync(new AddedToEvent.Cause(m.Event.Id, person.Id, me));
+            await announcer.AnnounceAsync(new Happening(HappeningKind.AddedToEvent, m.Event.Id, me, person.Id));
             if (viaAddress)
                 messages.Add($"{person.DisplayName} has already signed in, so they're taking part now.");
             else
@@ -284,10 +281,9 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
             }
             else
             {
-                AddInvitation(m.Event.Id, email, normalized, me);
+                var invitation = AddInvitation(m.Event.Id, email, normalized, me);
                 // A draft's invitations are emailed when it opens (spec §4, §15).
-                if (m.ShownToParticipants)
-                    await outbox.QueueAsync(new Notifications.Kinds.Invitation.Cause(m.Event.Id, email, me, me));
+                await announcer.AnnounceAsync(new Happening(HappeningKind.Invited, m.Event.Id, me, invitation.Id));
                 messages.Add($"Invited {email}. They join the moment they sign in with that email.");
             }
         }
@@ -296,8 +292,8 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
     }
 
     /// <summary>Stores a pending invitation of <paramref name="email"/> to an event, made by <paramref name="me"/>.</summary>
-    void AddInvitation(Guid eventId, string email, string normalized, Guid me) =>
-        db.Invitations.Add(new Invitation { EventId = eventId, Email = email, EmailNormalized = normalized, InvitedBy = me, CreatedAt = Now });
+    Invitation AddInvitation(Guid eventId, string email, string normalized, Guid me) =>
+        db.Invitations.Add(new Invitation { EventId = eventId, Email = email, EmailNormalized = normalized, InvitedBy = me, CreatedAt = Now }).Entity;
 
     /// <summary>
     /// What a typed address in the add-people control means (spec §4 Invitation): the one person
@@ -427,7 +423,7 @@ public sealed partial class EventManager(PollyannaDb db, TimeProvider clock, Sea
         if (await db.Organizers.AnyAsync(o => o.EventId == m.Event.Id && o.PersonId == personId))
             return Outcome.Fail($"{person.DisplayName} already organizes this event.");
         db.Organizers.Add(new Organizer { EventId = m.Event.Id, PersonId = personId });
-        await outbox.QueueAsync(new MadeOrganizer.Cause(m.Event.Id, personId, me));
+        await announcer.AnnounceAsync(new Happening(HappeningKind.MadeOrganizer, m.Event.Id, me, personId));
         await db.SaveChangesAsync();
         return Outcome.Done($"{person.DisplayName} is now an organizer.");
     }

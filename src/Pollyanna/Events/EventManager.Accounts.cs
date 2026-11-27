@@ -1,5 +1,5 @@
 using Pollyanna.Data;
-using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 using Microsoft.EntityFrameworkCore;
 
 namespace Pollyanna.Events;
@@ -104,7 +104,7 @@ public sealed partial class EventManager
             await db.Participants.Where(p => p.PersonId == me && stuck.Contains(p.EventId))
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, true));
             foreach (var eventId in stuck)
-                await outbox.QueueAsync(new RedrawNeeded.Cause(eventId, me));
+                await announcer.AnnounceAsync(new Happening(HappeningKind.RedrawNeeded, eventId, me));
             await db.SaveChangesAsync();
             return true;
         }, done => done);

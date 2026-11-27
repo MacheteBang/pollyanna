@@ -1,5 +1,5 @@
 using Pollyanna.Data;
-using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 
 namespace Pollyanna.Events;
 
@@ -91,7 +91,7 @@ public sealed partial class EventManager
 
         // "A question for you", saved with the message. Nothing is ever queued for the giver (docs/adr/0001).
         if (sender == MessageSender.Giver)
-            await outbox.QueueAsync(new Question.Cause(eventId, thread.RecipientId, me));
+            await announcer.AnnounceAsync(new Happening(HappeningKind.Question, eventId, me, thread.RecipientId));
         return await hat.AddMessageAsync(thread, sender, body, Message.HourOf(Now))
             ? Outcome.Done(sent)
             : Outcome.Fail("Names were drawn again, so that conversation is gone.");

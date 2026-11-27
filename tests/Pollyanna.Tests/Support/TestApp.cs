@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using Pollyanna.Configuration;
 using Pollyanna.Data;
+using Pollyanna.Happenings;
 using Pollyanna.MockIssuer;
 using Pollyanna.Notifications;
 using Pollyanna.People;
@@ -50,6 +51,8 @@ public sealed class TestApp : IAsyncDisposable
     public LogCapture Logs { get; } = new();
     /// <summary>What the outbox would have sent; only used when started with a mail relay.</summary>
     public FakeMailSender Mail { get; } = new();
+    /// <summary>Every happening announced, in order (spec §16).</summary>
+    public HappeningLog Happenings { get; } = new();
 
     public const string MailHost = "mail.test";
     public const string MailFrom = "Pollyanna <pollyanna@pollyanna.test>";
@@ -108,6 +111,7 @@ public sealed class TestApp : IAsyncDisposable
                 services.AddSingleton<TimeProvider>(Clock);
                 services.AddHttpClient<PictureFetcher>().ConfigurePrimaryHttpMessageHandler(() => Pictures);
                 services.AddSingleton<IMailSender>(Mail);
+                services.AddSingleton<IHappeningListener>(Happenings);
                 // Mail goes out only when a test calls SendMailAsync, never on the sender's own.
                 services.Configure<OutboxSenderOptions>(o => o.SendInBackground = false);
             });
@@ -223,6 +227,21 @@ public sealed class StubHttpHandler : HttpMessageHandler
             ? make()
             : new HttpResponseMessage(HttpStatusCode.NotFound);
     }
+}
+
+/// <summary>Keeps every happening announced, as the app heard it (spec §16).</summary>
+public sealed class HappeningLog : IHappeningListener
+{
+    public ConcurrentQueue<Happening> Heard { get; } = new();
+
+    public Task HearAsync(Happening happening)
+    {
+        Heard.Enqueue(happening);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Forgets everything heard so far, e.g. after setting up.</summary>
+    public void Clear() => Heard.Clear();
 }
 
 /// <summary>Keeps every log message, for checks that nothing sensitive is logged.</summary>

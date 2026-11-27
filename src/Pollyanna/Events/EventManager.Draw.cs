@@ -1,5 +1,6 @@
 using Pollyanna.Data;
 using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 using Microsoft.EntityFrameworkCore;
 
 namespace Pollyanna.Events;
@@ -159,7 +160,7 @@ public sealed partial class EventManager
                 return Outcome.Fail("Can't draw: " + result.Problem);
 
             await hat.SealAsync(id, result.Pairs!);
-            await outbox.QueueAsync(new NamesDrawn.Cause(id, me));
+            await announcer.AnnounceAsync(new Happening(HappeningKind.NamesDrawn, id, me));
             await db.SaveChangesAsync();
             return Outcome.Done("Names are drawn. Everyone can see who they're giving to on their event page."
                 + (incomplete ? " " + NoRepeatIncompleteWarning : ""));
@@ -269,7 +270,7 @@ public sealed partial class EventManager
         {
             await db.Participants.Where(p => p.EventId == id && p.PersonId == me)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, true));
-            await outbox.QueueAsync(new RedrawNeeded.Cause(id, me));
+            await announcer.AnnounceAsync(new Happening(HappeningKind.RedrawNeeded, id, me));
             await db.SaveChangesAsync();
             return true;
         }, done => done);
@@ -319,7 +320,7 @@ public sealed partial class EventManager
         return await InTransactionAsync(async () =>
         {
             db.Participants.Add(new Participant { EventId = id, PersonId = person.Id, JoinedAt = Now, HouseholdId = householdId });
-            await outbox.QueueAsync(new AddedToEvent.Cause(id, person.Id, me));
+            await announcer.AnnounceAsync(new Happening(HappeningKind.AddedToEvent, id, me, person.Id));
             await db.SaveChangesAsync();
 
             if (change == DrawChange.Redraw)

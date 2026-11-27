@@ -1,5 +1,5 @@
 using Pollyanna.Data;
-using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 using Microsoft.EntityFrameworkCore;
 
 namespace Pollyanna.Events;
@@ -40,7 +40,7 @@ public sealed partial class EventManager
             if (claimed == 0)
                 return Outcome.Fail("The status changed in the meantime. Have a look and try again.");
             await ClearLeaveRequestsAsync(id);
-            await outbox.QueueAsync(new EventRevealed.Cause(id, me));
+            await announcer.AnnounceAsync(new Happening(HappeningKind.EventRevealed, id, me));
             await db.SaveChangesAsync();
             return Outcome.Done("Revealed. Everyone in the event can see who drew whom on the event page.");
         });
