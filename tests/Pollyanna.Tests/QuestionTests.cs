@@ -76,18 +76,17 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.Equal($"{Page}#ask", response.Headers.Location!.OriginalString);
         var page = await pat.GetPageAsync(Page);
         Assert.Contains("Sent", page.QuerySelector(".notice")!.TextContent);
-        // The card comes back unfolded at the thread, showing the question as Pat's own note.
-        Assert.True(page.QuerySelector("#slip")!.HasAttribute("open"));
-        var mine = page.QuerySelector("#ask .passed-mine")!;
-        Assert.Contains("You asked", mine.TextContent);
+        // The gift comes back untied at the thread, showing the question as Pat's own message.
+        Assert.True(page.QuerySelector("#gift")!.ClassList.Contains("untied"));
+        var mine = page.QuerySelector("#ask .message-mine")!;
+        Assert.StartsWith("You:", mine.QuerySelector(".bubble")!.TextContent.Trim());
         Assert.Contains("What's your shoe size?", mine.TextContent);
 
         // Ann: a dot on the home page and a note pinned on the event page, naming nobody.
         Assert.Equal(["Your giver asked you something"], await HomeLinesAsync(ann));
-        var link = (await ann.GetPageAsync(Page)).QuerySelector(".passed-link")!;
+        var link = (await ann.GetPageAsync(Page)).QuerySelector(".asked-link")!;
         Assert.Equal(Questions, link.GetAttribute("href"));
-        Assert.Contains("Your giver asked you something", link.TextContent);
-        Assert.Contains("1 NEW", link.TextContent);
+        Assert.Equal("Your giver asked you something", link.TextContent.Trim());
 
         var questions = await ann.GetPageAsync(Questions);
         var note = questions.QuerySelector(".message-theirs")!;
@@ -99,7 +98,7 @@ public sealed class QuestionTests : IAsyncLifetime
         // Opening the page read it, though it stays "new" on the page until it's answered.
         Assert.NotNull((await ann.GetPageAsync(Questions)).QuerySelector(".message-new"));
         Assert.Empty(await HomeLinesAsync(ann));
-        Assert.Contains("Questions from your giver", (await ann.GetPageAsync(Page)).QuerySelector(".passed-link")!.TextContent);
+        Assert.Contains("Questions from your giver", (await ann.GetPageAsync(Page)).QuerySelector(".questions-link")!.TextContent);
     }
 
     [Fact]
@@ -113,21 +112,19 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.StartsWith("You:", mine.QuerySelector(".bubble")!.TextContent.Trim());
         Assert.Null((await ann.GetPageAsync(Questions)).QuerySelector(".message-new"));
 
-        // Pat: a dot, a hint on the folded card, and the reply inside it.
+        // Pat: a line on the home page, and the reply under the bow, marked new.
         Assert.Equal(["Your recipient replied"], await HomeLinesAsync(pat));
         var page = await pat.GetPageAsync(Page);
-        Assert.Contains("A NEW REPLY INSIDE", page.QuerySelector(".reveal-cover")!.TextContent);
-        var reply = page.QuerySelector("#ask .passed-theirs")!;
-        Assert.Contains("Ann replied", reply.TextContent);
+        var reply = page.QuerySelector("#ask .message-theirs")!;
+        Assert.StartsWith("Ann:", reply.QuerySelector(".bubble")!.TextContent.Trim());
         Assert.Contains("Dark, the darker the better!", reply.TextContent);
-        Assert.NotNull(reply.QuerySelector(".passed-new"));
+        Assert.NotNull(reply.QuerySelector(".message-new"));
 
-        // Unfolding the card reads the thread up to what it showed.
+        // Untying the gift reads the thread up to what it showed.
         await pat.SubmitAsync(page, $"{Page}/seen");
         Assert.Empty(await HomeLinesAsync(pat));
         page = await pat.GetPageAsync(Page);
-        Assert.DoesNotContain("A NEW REPLY INSIDE", page.QuerySelector(".reveal-cover")!.TextContent);
-        Assert.Null(page.QuerySelector("#ask .passed-new"));
+        Assert.Null(page.QuerySelector("#ask .message-new"));
     }
 
     [Fact]
@@ -140,10 +137,10 @@ public sealed class QuestionTests : IAsyncLifetime
 
         await pat.SubmitAsync(page, $"{Page}/seen");
         Assert.Equal(["Your recipient replied"], await HomeLinesAsync(pat));
-        var notes = (await pat.GetPageAsync(Page)).QuerySelectorAll("#ask .passed-note").ToList();
+        var notes = (await pat.GetPageAsync(Page)).QuerySelectorAll("#ask .message").ToList();
         Assert.Equal(3, notes.Count);
-        Assert.Null(notes[1].QuerySelector(".passed-new"));
-        Assert.NotNull(notes[2].QuerySelector(".passed-new"));
+        Assert.Null(notes[1].QuerySelector(".message-new"));
+        Assert.NotNull(notes[2].QuerySelector(".message-new"));
     }
 
     [Fact]
@@ -152,7 +149,7 @@ public sealed class QuestionTests : IAsyncLifetime
         var questions = await ann.GetPageAsync(Questions);
         Assert.Contains("No questions yet", questions.Body!.TextContent);
         Assert.Empty(questions.QuerySelectorAll("textarea"));
-        Assert.Null((await ann.GetPageAsync(Page)).QuerySelector(".passed-link"));
+        Assert.Null((await ann.GetPageAsync(Page)).QuerySelector(".asked-link, .questions-link"));
 
         await ann.PostWithTokenAsync(Page, $"{Questions}/reply", Form(("body", "Hello!")));
         Assert.Contains("Your giver writes first", await NoticeAsync(ann, Questions));
@@ -160,8 +157,9 @@ public sealed class QuestionTests : IAsyncLifetime
 
         // Pat sees an empty thread with a box for the first question.
         var page = await pat.GetPageAsync(Page);
-        Assert.Empty(page.QuerySelectorAll("#ask .passed-note"));
-        Assert.Equal("Your question", page.QuerySelector("label[for='ask-body']")!.TextContent);
+        Assert.Empty(page.QuerySelectorAll("#ask .message"));
+        Assert.Equal("Ask Ann something", page.QuerySelector("#ask h2")!.TextContent);
+        Assert.NotNull(page.QuerySelector("#ask label[for='ask-body']"));
     }
 
     [Fact]
@@ -172,7 +170,7 @@ public sealed class QuestionTests : IAsyncLifetime
         Assert.Contains("Conversation closed", await NoticeAsync(ann, Questions));
 
         var page = await pat.GetPageAsync(Page);
-        Assert.Contains("Your recipient has closed this conversation.", page.QuerySelector("#ask")!.TextContent);
+        Assert.Contains("Ann closed this conversation.", page.QuerySelector("#ask")!.TextContent);
         Assert.Null(page.QuerySelector($"form[action='{Page}/ask']"));
         await pat.PostWithTokenAsync(Page, $"{Page}/ask", Form(("body", "Please?")));
         Assert.Contains("Your recipient has closed this conversation.", await ThreadNoticeAsync(pat, Page));

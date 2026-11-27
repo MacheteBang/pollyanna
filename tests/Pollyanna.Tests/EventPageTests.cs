@@ -155,17 +155,18 @@ public sealed class EventPageTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Once_names_are_drawn_the_event_page_keeps_the_old_look_until_its_own_ticket()
+    public async Task Once_the_event_is_over_the_event_page_keeps_the_old_look_until_its_own_ticket()
     {
         var org = await app.PersonAsync("Org");
         var ann = await app.PersonAsync("Ann");
         var bob = await app.PersonAsync("Bob");
         var ev = await app.EventAsync("Stockings", EventStatus.Open, [org], [me, ann, bob]);
         await app.SealAsync(ev, Seed.Loop(me, ann, bob));
+        await app.WithDbAsync(async db => { (await db.Events.SingleAsync(e => e.Id == ev)).Status = EventStatus.Revealed; await db.SaveChangesAsync(); });
 
         var page = await browser.GetPageAsync($"/events/{ev}");
 
         Assert.Contains(page.QuerySelectorAll("link[rel=stylesheet]"), l => l.GetAttribute("href")!.StartsWith("/css/site.css"));
-        Assert.NotNull(page.QuerySelector("details.reveal"));
+        Assert.Null(page.QuerySelector("[data-gift]"));
     }
 }
