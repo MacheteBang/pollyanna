@@ -652,13 +652,14 @@ strong, b { font-weight: 800; }
    without the script it stays hidden and the date line says the date alone. */
 .page-countdown { font: var(--type-action); }
 
-/* "My page" / "Organizing" (_EventSwitch): two halves of one outlined control, the current one in ink. */
+/* "My page" / "Organizing" (_EventSwitch), under the title: two halves of one outlined control,
+   the current one in ink. */
 .switch {
     display: inline-flex;
     border: var(--line) solid var(--ink);
     border-radius: var(--corner);
     overflow: hidden;
-    margin-bottom: 6px;
+    margin-block: var(--space-1);
 }
 
 .switch a {

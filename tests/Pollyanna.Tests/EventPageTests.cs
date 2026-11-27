@@ -95,6 +95,8 @@ public sealed class EventPageTests : IAsyncLifetime
         Assert.Null(head.QuerySelector(".page-head-back"));
         var links = head.QuerySelectorAll("nav.switch a").Select(a => (Text(a), a.GetAttribute("href"), a.GetAttribute("aria-current"))).ToList();
         Assert.Equal([("My page", $"/events/{ev}", "page"), ("Organizing", $"/events/{ev}/manage", null)], links);
+        // The event's name comes first; the switch sits right under it.
+        Assert.Equal(["h1", "nav"], head.Children.Take(2).Select(c => c.LocalName));
         Assert.Equal("Dec 24, 2026 · $25 · draft, only organizers can see it", Text(head.QuerySelector(".page-head-line")));
     }
 

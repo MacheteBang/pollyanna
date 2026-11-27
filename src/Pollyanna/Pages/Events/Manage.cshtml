@@ -23,15 +23,17 @@
 }
 
 <div class="column page-head">
-    @if (m.IsParticipant)
-    {
-        <partial name="_EventSwitch" model="new Pollyanna.Pages.Shared.EventSwitchView(Model.Event.Id, Organizing: true)" />
-    }
-    else
+    @* The event's name first; the switch right under it, or a "Home" back link above it for an
+       organizer who doesn't take part (spec §7 Page head). *@
+    @if (!m.IsParticipant)
     {
         <a class="page-head-back" href="/">Home</a>
     }
     <h1 class="page-title">@Model.Event.Name</h1>
+    @if (m.IsParticipant)
+    {
+        <partial name="_EventSwitch" model="new Pollyanna.Pages.Shared.EventSwitchView(Model.Event.Id, Organizing: true)" />
+    }
     <p class="page-head-line"><partial name="_When" model="Model.Event.ExchangeDate" />@(string.IsNullOrWhiteSpace(Model.Event.BudgetText) ? "" : " · " + Model.Event.BudgetText)</p>
     <ol class="steps" aria-label="Where this event stands">
         @for (var i = 0; i < Steps.Length; i++)

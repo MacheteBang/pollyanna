@@ -117,12 +117,15 @@ public sealed class OrganizingPageTests : IAsyncLifetime
         Assert.Equal($"/events/{mine}", sw.QuerySelector("a")!.GetAttribute("href"));
         Assert.Equal("page", sw.Children[1].GetAttribute("aria-current"));
         Assert.Null(page.QuerySelector(".page-head-back"));
+        // The event's name comes first; the switch sits right under it.
+        Assert.Equal(["h1", "nav"], page.QuerySelector(".page-head")!.Children.Take(2).Select(c => c.LocalName));
 
         page = await browser.GetPageAsync(Manage(theirs));
         Assert.Null(page.QuerySelector("nav.switch"));
         var back = page.QuerySelector(".page-head .page-head-back")!;
         Assert.Equal("Home", Squash(back.TextContent));
         Assert.Equal("/", back.GetAttribute("href"));
+        Assert.Equal(["a", "h1"], page.QuerySelector(".page-head")!.Children.Take(2).Select(c => c.LocalName));
     }
 
     // ---------- The next step ----------
