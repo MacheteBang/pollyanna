@@ -155,7 +155,7 @@ public sealed class DrawTests
         {
             var result = Draw.Run(Rules(People(n)));
             Assert.False(result.Ok);
-            Assert.Contains("at least 3", result.Problem);
+            Assert.Contains("at least 3", result.Problem, StringComparison.OrdinalIgnoreCase);
         }
     }
 

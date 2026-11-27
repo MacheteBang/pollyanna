@@ -52,7 +52,7 @@ public sealed class InvitationTests : IAsyncLifetime
 
         var page = await organizer.GetPageAsync($"/events/{ev}/manage");
         Assert.Contains("Invited Sue.M@Example.com", page.QuerySelector(".notice")!.TextContent);
-        Assert.Contains("Sue.M@Example.com", page.QuerySelector("#people")!.TextContent);
+        Assert.Contains("Sue.M@Example.com", page.QuerySelector("#invited")!.TextContent);
         Assert.Contains("1 invite pending", (await organizer.GetPageAsync("/")).Body!.TextContent);
     }
 
@@ -219,6 +219,6 @@ public sealed class InvitationTests : IAsyncLifetime
         var (sue, _) = await app.SignInAsync(new("sue", "Sue", "sue@example.com", true, null));
         using var _s = sue;
         var home = await sue.GetPageAsync("/");
-        Assert.Contains("Stockings", home.QuerySelector(".slip-title")!.TextContent);
+        Assert.Contains("Stockings", home.QuerySelector(".cloth .panel-title")!.TextContent);
     }
 }

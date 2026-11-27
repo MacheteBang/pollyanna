@@ -160,12 +160,8 @@ else
     }
     <div class="folds">
         <details class="fold" id="your-notes">
-            <summary>
-                <span class="fold-title">Your notes</span>
-                <span class="fold-end">@(Model.Membership.Editable ? "Edit" : "Show")</span>
-                <span class="fold-preview">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "No notes yet.")</span>
-            </summary>
-            <div class="fold-in">
+            <summary><span>Your notes</span><span class="fold-hint">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "None yet")</span></summary>
+            <div class="fold-body">
                 @if (Model.Membership.Editable)
                 {
                     <form method="post" asp-page-handler="notes" class="field">
@@ -180,12 +176,9 @@ else
                 }
             </div>
         </details>
-        <details class="fold" id="people">
-            <summary>
-                <span class="fold-title">Taking part</span>
-                <span class="fold-end">@Model.Participants.Count people</span>
-            </summary>
-            <div class="fold-in">
+        <details class="fold" id="taking-part">
+            <summary><span>Taking part</span><span class="fold-hint">@Model.Participants.Count people</span></summary>
+            <div class="fold-body">
                 <partial name="_People" model="Model" />
             </div>
         </details>

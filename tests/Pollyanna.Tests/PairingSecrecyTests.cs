@@ -133,13 +133,16 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         if (viewer != Viewer.Organizer)
         {
             var eventPage = before.Single(p => p.StartsWith($"/events/{ev} "));
-            Assert.Contains(archived ? "<p class=\"reveal-name\">Ann</p>" : "<p class=\"revealed-name\" tabindex=\"-1\">Ann</p>", eventPage);
+            if (archived)
+                Assert.Contains("<p class=\"over-line\">You gave to <strong>Ann</strong></p>", eventPage);
+            else
+                Assert.Contains("<p class=\"revealed-name\" tabindex=\"-1\">Ann</p>", eventPage);
             Assert.Contains("Gloves, please.", eventPage);
             Assert.Contains(archived ? "Your giver asked you" : "Your giver asked you something", eventPage);
             var questions = before.Single(p => p.StartsWith($"/events/{ev}/questions "));
             Assert.Contains("Wide?", questions);
             if (archived)
-                Assert.Contains("You got", eventPage);
+                Assert.Contains("The pairings were never revealed", eventPage);
         }
         else
         {
@@ -152,7 +155,15 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         Assert.Contains($"for=\"add-{a}\"", before.Single(p => p.StartsWith($"/events/{upcoming}/manage ")));
         Assert.DoesNotContain(" asks ", string.Concat(before));
         Assert.DoesNotContain("class=\"pairings\"", string.Concat(before));
+        Assert.DoesNotContain("who-drew-whom", string.Concat(before));
+        Assert.DoesNotContain(" gave to you", string.Concat(before));
         if (archived)
             Assert.Contains("Gifts", before.Single(p => p.StartsWith("/past ")));
+
+        // Home's waiting lines are covered: the unread question while drawn, the organizer's line for the draft.
+        var home = before.Single(p => p.StartsWith("/ "));
+        Assert.Contains("Ready to open", home);
+        if (viewer != Viewer.Organizer && !archived)
+            Assert.Contains("Your giver asked you something", home);
     }
 }

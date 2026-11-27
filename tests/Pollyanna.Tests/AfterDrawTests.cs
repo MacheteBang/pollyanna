@@ -340,11 +340,11 @@ public sealed class AfterDrawTests : IAsyncLifetime
         var page = await browser.GetPageAsync($"/events/{ev}");
         Assert.Contains("You're giving to someone new.", page.QuerySelector("main")!.TextContent);
         Assert.Equal("Ann", page.QuerySelector(".revealed-name")!.TextContent);
-        Assert.Equal("Your recipient has changed", (await browser.GetPageAsync("/")).QuerySelector(".slip-update")!.TextContent.Trim());
+        Assert.Equal("You're giving to someone new", (await browser.GetPageAsync("/")).QuerySelector(".waiting")!.TextContent.Trim());
 
         await browser.SubmitAsync(page, $"/events/{ev}/seen");
         Assert.DoesNotContain("You're giving to someone new.", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("main")!.TextContent);
-        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".slip-update"));
+        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".waiting"));
     }
 
     // ---------- Leaving on one's own ----------
@@ -413,7 +413,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
         Assert.NotNull(page.QuerySelector("[data-gift]"));
 
         var manage = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains("Pat wants to leave — redraw needed.", manage.QuerySelector("#status")!.TextContent);
+        Assert.Contains("Pat wants to leave, and that needs a redraw.", manage.QuerySelector("#next-step")!.TextContent);
 
         await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/redraw");
         Assert.DoesNotContain(me, await app.ParticipantsAsync(ev));
@@ -443,7 +443,7 @@ public sealed class AfterDrawTests : IAsyncLifetime
 
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/stay");
         Assert.False(await app.WithDbAsync(db => db.Participants.AnyAsync(p => p.WantsToLeave)));
-        Assert.DoesNotContain("wants to leave", (await browser.GetPageAsync(Manage(ev))).QuerySelector("#status")!.TextContent);
+        Assert.DoesNotContain("wants to leave", (await browser.GetPageAsync(Manage(ev))).QuerySelector("#next-step")!.TextContent);
 
         await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/redraw");
         Assert.Contains(me, await app.ParticipantsAsync(ev));

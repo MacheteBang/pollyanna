@@ -97,7 +97,6 @@ public sealed class DrawFlowTests : IAsyncLifetime
 
         var page = await browser.GetPageAsync(Manage(ev));
         Assert.Null(page.QuerySelector($"form[action='{Manage(ev)}/draw']"));
-        Assert.NotNull(page.QuerySelector("#status button[disabled]"));
         Assert.Contains("1 invitation is still waiting", page.QuerySelector("#draw-blocked")!.TextContent);
 
         await browser.PostWithTokenAsync(Manage(ev), $"{Manage(ev)}/draw");
@@ -197,10 +196,10 @@ public sealed class DrawFlowTests : IAsyncLifetime
         Assert.Null(await NoticeAsync($"/events/{ev}"));
 
         var manage = await browser.GetPageAsync(Manage(ev));
-        var mine = manage.QuerySelectorAll("#people .person").Single(p => p.TextContent.Contains("Pat (you)"));
-        Assert.Contains("has viewed their assignment", mine.TextContent);
-        var anns = manage.QuerySelectorAll("#people .person").Single(p => p.TextContent.Contains("Ann"));
-        Assert.Contains("hasn't viewed their assignment", anns.TextContent);
+        var mine = manage.QuerySelectorAll("#people .row").Single(p => p.TextContent.Contains("Pat (you)"));
+        Assert.DoesNotContain("hasn't looked yet", mine.TextContent);
+        var anns = manage.QuerySelectorAll("#people .row").Single(p => p.TextContent.Contains("Ann"));
+        Assert.Contains("hasn't looked yet", anns.TextContent);
     }
 
     [Fact]
@@ -220,7 +219,7 @@ public sealed class DrawFlowTests : IAsyncLifetime
         // Before I've ever looked, there's nothing to mark as updated.
         await CarolEditsAsync();
         Assert.DoesNotContain("Notes updated", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("#gift")!.TextContent);
-        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".slip-update"));
+        Assert.Equal("See who you're giving to", (await browser.GetPageAsync("/")).QuerySelector(".waiting")!.TextContent.Trim());
 
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/seen");
         await CarolEditsAsync();
@@ -228,15 +227,14 @@ public sealed class DrawFlowTests : IAsyncLifetime
         var page = await browser.GetPageAsync($"/events/{ev}");
         Assert.Contains("Notes updated since you last looked", page.QuerySelector("#gift")!.TextContent);
         var home = await browser.GetPageAsync("/");
-        var update = home.QuerySelector(".slip-update")!;
-        Assert.NotNull(update.QuerySelector(".dot"));
+        var update = home.QuerySelector(".waiting")!;
         Assert.Equal("Your recipient updated their notes", update.TextContent.Trim());
         // The home page never names the recipient: it isn't behind "Tap to reveal".
         Assert.DoesNotContain("Carol", home.Body!.TextContent);
 
         await browser.SubmitAsync(page, $"/events/{ev}/seen");
         Assert.DoesNotContain("Notes updated", (await browser.GetPageAsync($"/events/{ev}")).QuerySelector("#gift")!.TextContent);
-        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".slip-update"));
+        Assert.Null((await browser.GetPageAsync("/")).QuerySelector(".waiting"));
     }
 
     [Fact]
@@ -252,7 +250,7 @@ public sealed class DrawFlowTests : IAsyncLifetime
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/shopping", Form(("done", "true")));
         Assert.True(await app.WithDbAsync(db => db.Participants.Where(p => p.EventId == ev && p.PersonId == me).Select(p => p.DoneShopping).SingleAsync()));
         var manage = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains(", done shopping", manage.QuerySelectorAll("#people .person").Single(p => p.TextContent.Contains("Pat (you)")).TextContent);
+        Assert.Contains("done shopping", manage.QuerySelectorAll("#people .row").Single(p => p.TextContent.Contains("Pat (you)")).TextContent);
 
         await browser.SubmitOnAsync($"/events/{ev}", $"/events/{ev}/shopping");
         Assert.False(await app.WithDbAsync(db => db.Participants.Where(p => p.EventId == ev && p.PersonId == me).Select(p => p.DoneShopping).SingleAsync()));

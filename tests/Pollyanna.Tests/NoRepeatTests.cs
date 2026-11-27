@@ -160,7 +160,7 @@ public sealed class NoRepeatTests : IAsyncLifetime
         var ev = await CurrentAsync(last, depth: 1);
 
         var page = await browser.GetPageAsync(Manage(ev));
-        Assert.Contains("can't be fully applied", page.QuerySelector("#status .warning")!.TextContent);
+        Assert.Contains("can't be fully applied", page.QuerySelector("#no-repeat-warning")!.TextContent);
         var response = await browser.SubmitOnAsync(Manage(ev), $"{Manage(ev)}/draw");
         Assert.Equal(EventStatus.Drawn, await app.StatusAsync(ev));
         Assert.Contains("can't be fully applied", (await browser.GetPageAsync(Manage(ev))).QuerySelector(".notice")!.TextContent);

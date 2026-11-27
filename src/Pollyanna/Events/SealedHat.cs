@@ -12,8 +12,8 @@ public sealed record GiverSlip(Guid RecipientId, bool Viewed, int NotesVersionSe
     internal Guid Row { get; init; }
 }
 
-/// <summary>What a giver's home-page dots are worked out from (spec §5.2, §6).</summary>
-public sealed record GiverSlipUpdates(bool Viewed, bool RecipientChanged, int NotesVersionSeen, int RecipientNotesVersion, bool Replies);
+/// <summary>What a giver's waiting line on home is worked out from (spec §5.2, §7).</summary>
+public sealed record GiverSlipUpdates(bool Viewed, bool RecipientChanged, int NotesVersionSeen, int RecipientNotesVersion);
 
 /// <summary>One side's way into a thread: the recipient it's about, whether it's closed, whether anyone has written.</summary>
 public sealed record ThreadState(Guid RecipientId, bool Closed, bool Started)
@@ -196,7 +196,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
         return true;
     }
 
-    /// <summary>What <paramref name="giver"/>'s home-page dots need, in one query; null without a slip.</summary>
+    /// <summary>What <paramref name="giver"/>'s waiting line on home needs, in one query; null without a slip.</summary>
     public Task<GiverSlipUpdates?> GiverSlipUpdatesAsync(Guid eventId, Guid giver)
     {
         var tag = key.GiverTag(eventId, giver);
@@ -205,8 +205,7 @@ public sealed class SealedHat(PollyannaDb db, DrawKey key)
                 a.Viewed,
                 a.RecipientChanged,
                 a.NotesVersionSeen,
-                db.Participants.Where(p => p.EventId == eventId && p.PersonId == a.RecipientId).OrderBy(p => p.PersonId).Select(p => p.NotesVersion).FirstOrDefault(),
-                db.Messages.Any(x => x.AssignmentId == a.Id && x.Sender == MessageSender.Recipient && x.Seq > a.GiverReadUpto)))
+                db.Participants.Where(p => p.EventId == eventId && p.PersonId == a.RecipientId).OrderBy(p => p.PersonId).Select(p => p.NotesVersion).FirstOrDefault()))
             .SingleOrDefaultAsync();
     }
 

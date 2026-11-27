@@ -128,7 +128,7 @@ public sealed class RevealTests : IAsyncLifetime
         var marks = new (string Selector, string Name)[]
         {
             (".page-head", "head"), (".asked-link", "asked"), (".gift-again", "again"), ("#gift", "gift"),
-            (".questions-link", "questions"), ("#your-notes", "notes"), ("#people", "people"),
+            (".questions-link", "questions"), ("#your-notes", "notes"), ("#taking-part", "people"),
             ($"a[href$='/leave']", "leave"),
         };
         var all = page.QuerySelector("main")!.QuerySelectorAll("*").ToList();
@@ -169,13 +169,12 @@ public sealed class RevealTests : IAsyncLifetime
 
         var notes = page.QuerySelector("details#your-notes")!;
         Assert.False(notes.HasAttribute("open"));
-        Assert.Equal("Your notes", Text(notes.QuerySelector("summary .fold-title")));
-        Assert.Equal("Warm socks, size 9. No candles please.", Text(notes.QuerySelector("summary .fold-preview")));
-        Assert.Equal("Edit", Text(notes.QuerySelector("summary .fold-end")));
+        Assert.Equal("Your notes", Text(notes.QuerySelector("summary span")));
+        Assert.Equal("Warm socks, size 9. No candles please.", Text(notes.QuerySelector("summary .fold-hint")));
         Assert.NotNull(notes.QuerySelector($"form[action='{Page}/notes'] textarea#notes"));
-        var people = page.QuerySelector("details#people")!;
+        var people = page.QuerySelector("details#taking-part")!;
         Assert.False(people.HasAttribute("open"));
-        Assert.Equal("Taking part 3 people", Text(people.QuerySelector("summary")));
+        Assert.Equal(("Taking part", "3 people"), (Text(people.QuerySelector("summary span")), Text(people.QuerySelector("summary .fold-hint"))));
         Assert.Equal(["Ann", "Bob"], people.QuerySelectorAll(".person-name").Select(Text));
     }
 

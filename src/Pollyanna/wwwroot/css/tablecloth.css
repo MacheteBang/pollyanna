@@ -401,9 +401,12 @@ strong, b { font-weight: 800; }
     position: absolute;
     width: 1px;
     height: 1px;
+    margin: -1px;
+    padding: 0;
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+    border: 0;
 }
 
 /* Oldest at the top. The giver on the left, the viewer on the right. */
@@ -740,7 +743,182 @@ strong, b { font-weight: 800; }
 .confirm { padding-top: 0; gap: var(--space-3); }
 .confirm .actions { margin-top: var(--space-3); align-items: stretch; }
 
-/* ---------- The reveal (#76): the gift, untying the bow, folds (spec §7, §12 The reveal) ---------- */
+/* ---------- Home, empty home and past events (spec §7) ---------- */
+
+/* Home with events: one panel per event on the same cloth. */
+.home-cloth {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+.home-cloth .panel { width: 100%; gap: var(--space-2); }
+.home-cloth .waiting { margin-top: var(--space-2); }
+.home-event { text-decoration: none; font-weight: 800; }
+.home-event:hover { text-decoration: underline; text-decoration-color: var(--ribbon); text-decoration-thickness: var(--line); }
+
+/* The date, then the countdown: action size, second after the event's name. */
+.home-when { font: var(--type-action); }
+
+.home-more { align-items: flex-start; }
+.home-more > a:not(.button) { display: inline-flex; align-items: center; min-height: var(--tap); }
+
+/* Empty home: the viewer's address with its Copy button. */
+.copy-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+}
+.copy-line .email-address { min-width: 0; }
+
+/* Past events: a plain list, one link per row, pale-blue lines between rows. */
+.past-list { list-style: none; padding: 0; }
+.past-list li + li { border-top: var(--line) solid var(--pale); }
+.past-row {
+    display: flex;
+    flex-direction: column;
+    padding-block: var(--space-3);
+    min-height: var(--tap);
+    text-decoration: none;
+}
+.past-row:hover .past-name { text-decoration: underline; text-decoration-color: var(--ribbon); text-decoration-thickness: var(--line); }
+.past-name { font: var(--type-action); overflow-wrap: anywhere; }
+.past-row .small { font-weight: 400; }
+
+/* ---------- Event page once the event is over (#77): no cloth, nothing left to do ---------- */
+
+/* The viewer's own pairing first: two lines at the size of an action. */
+.over-pairing {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.over-line { font: var(--type-action); overflow-wrap: anywhere; }
+
+/* "Who drew whom": a row per pairing, the giver's picture beside "Ana gave to Kofi". */
+.who-drew-whom { margin-top: var(--space-2); }
+
+.pairing-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-2);
+    border-top: var(--line) solid var(--pale);
+    overflow-wrap: anywhere;
+}
+
+.pairing-row:first-child { border-top: 0; }
+.pairing-row strong { font-weight: 800; }
+.who-drew-whom + .small { margin-top: var(--space-2); }
+
+/* Folds: a row that opens in place, its title on the left, then a small soft hint and a
+   chevron on the right. Pale-blue lines above each fold and under the last one. */
+.fold { border-top: var(--line) solid var(--pale); }
+.fold:last-child { border-bottom: var(--line) solid var(--pale); }
+
+.fold > summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding-block: var(--space-3);
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.fold > summary::-webkit-details-marker { display: none; }
+
+.fold-hint {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: var(--type-small);
+    color: var(--soft-ink);
+    text-align: right;
+}
+
+/* The chevron: down while folded, up once open. */
+.fold > summary::after {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin: 0 3px 3px 0;
+    border-right: var(--line) solid var(--ink);
+    border-bottom: var(--line) solid var(--ink);
+    transform: rotate(45deg);
+}
+
+.fold[open] > summary::after { transform: rotate(-135deg); margin-bottom: -3px; }
+
+.fold-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+}
+
+/* ---------- Organizing page (#73): people rows, add people, and the parts #78 reworks ---------- */
+
+/* A person's row: picture, name, the small words on what is missing, then "Remove". */
+.row-name { flex: 1; min-width: 0; font-weight: 800; overflow-wrap: anywhere; }
+.row-plain { font-weight: 400; }
+.row-words { text-align: right; }
+.row-end { flex: none; }
+.row > .avatar { align-self: center; }
+
+/* "Add people": an outlined button that opens the add-people control in place. */
+.add-people-fold > summary { list-style: none; align-self: flex-start; }
+.add-people-fold > summary::-webkit-details-marker { display: none; }
+.add-people-fold { display: flex; flex-direction: column; gap: var(--space-4); }
+.add-people-fold > form { margin-top: var(--space-4); }
+
+/* Until #78 reworks them: rules, details, organizers and the rare actions, as plain groups. */
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.hint { font: var(--type-small); color: var(--soft-ink); }
+.group-subtitle { font: var(--type-small); font-weight: 800; margin-top: var(--space-3); }
+.field-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.field-row > .field { flex: 1 1 12rem; }
+
+fieldset.choices { border: 0; margin: 0; padding: 0; min-width: 0; }
+.choices legend { padding: 0; font-weight: 800; margin-bottom: var(--space-2); }
+.choices .person { align-items: center; }
+.choices .person input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--ribbon); }
+.choices .rows, .choices ul { list-style: none; padding: 0; margin: 0; }
+
+details.editor { border-top: var(--line) solid var(--pale); }
+details.editor > summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    font-weight: 600;
+    cursor: pointer;
+}
+details.editor[open] > summary { margin-bottom: var(--space-3); }
+details.editor > form, details.editor > p, details.editor > div { margin-bottom: var(--space-3); }
+
+#people, #invited, #pairings, #changes, #rules, #organizers, #details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.household { padding-block: var(--space-2); border-top: var(--line) solid var(--pale); }
+.household-name { font-weight: 800; }
+
+.pairings { list-style: none; padding: 0; }
+.pairing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding-block: var(--space-2); border-top: var(--line) solid var(--pale); }
+.pairing:first-child { border-top: 0; }
+.pairing-person { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; }
+
+.people { list-style: none; padding: 0; }
+
+/* ---------- The reveal (#76): the gift and untying the bow (spec §7, §12 The reveal) ---------- */
 
 /* Above the gift: an unread question from the viewer's giver, and the notice after a redraw or
    a patch. */
@@ -916,44 +1094,3 @@ strong, b { font-weight: 800; }
     .gift, .gift * { transition: none !important; }
     .gift-first .revealed-name { clip-path: none; }
 }
-
-/* Folds: a row that opens in place, its title on the left and a few words on the right; a preview
-   line under it while closed. Pale-blue lines between them. */
-.folds { display: flex; flex-direction: column; }
-.fold { border-top: var(--line) solid var(--pale); }
-.fold:last-child { border-bottom: var(--line) solid var(--pale); }
-.fold > summary {
-    list-style: none;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: baseline;
-    column-gap: var(--space-3);
-    min-height: 48px;
-    padding-block: var(--space-3);
-    cursor: pointer;
-}
-.fold > summary::-webkit-details-marker { display: none; }
-.fold-title { font-weight: 800; }
-.fold-end { font: var(--type-small); color: var(--soft-ink); text-align: right; }
-.fold-end::after {
-    content: "";
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    margin: 0 3px 3px 10px;
-    border-right: var(--line) solid var(--ink);
-    border-bottom: var(--line) solid var(--ink);
-    transform: rotate(45deg);
-}
-.fold[open] .fold-end::after { transform: rotate(-135deg); margin-bottom: -1px; }
-.fold-preview {
-    grid-column: 1 / -1;
-    font: var(--type-small);
-    color: var(--soft-ink);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.fold[open] .fold-preview { display: none; }
-.fold-in { padding-bottom: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
-.fold-in .people { margin-top: 0; }

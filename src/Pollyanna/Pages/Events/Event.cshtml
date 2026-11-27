@@ -3,25 +3,19 @@
 @using Pollyanna.Data
 @{
     ViewData["Title"] = Model.Event.Name;
-    // Before the draw and once drawn the page is in "Tablecloth": _EventHead, then the state's own
-    // partial. Once the event is over (#77) it is still "Paper slips" and moves the same way:
-    // switch the layout for it and render _EventHead above its partial.
-    var over = Model.Event.Status is EventStatus.Revealed or EventStatus.Archived;
-    Layout = over ? "_Layout" : "_Tablecloth";
+    // Every state is in "Tablecloth": _EventHead, then the state's own partial.
+    Layout = "_Tablecloth";
 }
-@if (!over)
+<partial name="_EventHead" model="Model" />
+@if (Model.Membership.IsOver)
 {
-    <partial name="_EventHead" model="Model" />
-    if (Model.Event.Status == EventStatus.Drawn)
-    {
-        <partial name="_EventDrawn" model="Model" />
-    }
-    else
-    {
-        <partial name="_EventBeforeDraw" model="Model" />
-    }
+    <partial name="_EventOver" model="Model" />
+}
+else if (Model.Event.Status == EventStatus.Drawn)
+{
+    <partial name="_EventDrawn" model="Model" />
 }
 else
 {
-    <partial name="_EventPaperSlips" model="Model" />
+    <partial name="_EventBeforeDraw" model="Model" />
 }

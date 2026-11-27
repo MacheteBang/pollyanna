@@ -59,16 +59,14 @@ public sealed class ManageTests : IAsyncLifetime
 
         var page = await browser.GetPageAsync(Manage(ev));
         Assert.Equal("Cousins' Swap", page.QuerySelector("h1")!.TextContent);
-        Assert.Equal("OPEN", page.QuerySelector("#status .stamp")!.TextContent);
-        var people = page.QuerySelectorAll("#people > ul:first-of-type > li").Select(li => li.TextContent).ToList();
+        Assert.Equal("Open", page.QuerySelector(".steps [aria-current=step]")!.TextContent);
+        var people = page.QuerySelectorAll("#people .rows > li").Select(li => li.TextContent).ToList();
         Assert.Equal(3, people.Count);
         Assert.Contains("Ann", people[0]);
-        Assert.Contains("Mom & Dad", people[0]);
-        Assert.Contains("has written notes", people[0]);
+        Assert.DoesNotContain("no notes yet", people[0]);
         Assert.Contains("no notes yet", people[1]);
         Assert.Contains("Pat (you)", people[2]);
-        Assert.Contains("no household", people[2]);
-        Assert.Contains("sue@example.com", page.QuerySelector("#people")!.TextContent);
+        Assert.Contains("sue@example.com", page.QuerySelector("#invited")!.TextContent);
         Assert.Contains("Ann, Bob", page.QuerySelector(".household")!.TextContent);
         Assert.Contains("You're the only organizer", page.QuerySelector("#organizers")!.TextContent);
         // The pick lists offer only people who aren't in yet.
@@ -342,7 +340,7 @@ public sealed class ManageTests : IAsyncLifetime
 
         Assert.Equal(EventStatus.Open, await app.WithDbAsync(db => db.Events.Where(e => e.Id == ev).Select(e => e.Status).SingleAsync()));
         Assert.Equal(HttpStatusCode.OK, (await carolBrowser.GetAsync($"/events/{ev}")).StatusCode);
-        Assert.Contains("OPEN", (await carolBrowser.GetPageAsync("/")).QuerySelector(".stamp")!.TextContent);
+        Assert.Contains("names not drawn yet", (await carolBrowser.GetPageAsync("/")).QuerySelector(".cloth .panel")!.TextContent);
         Assert.Null((await browser.GetPageAsync(Manage(ev))).QuerySelector($"form[action='{Manage(ev)}/open']"));
     }
 }

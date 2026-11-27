@@ -111,17 +111,19 @@ public sealed partial class EventManager
         var invitations = await db.Invitations.CountAsync(i => i.EventId == eventId);
         if (invitations > 0)
             return invitations == 1
-                ? "Can't draw yet: 1 invitation is still waiting for someone to sign in. Cancel it or wait."
-                : $"Can't draw yet: {invitations} invitations are still waiting for someone to sign in. Cancel them or wait.";
+                ? "Can't draw yet: 1 invitation is still waiting for someone to sign in. Take it back or wait."
+                : $"Can't draw yet: {invitations} invitations are still waiting for someone to sign in. Take them back or wait.";
         if (rules.People.Count < Draw.MinPeople)
-            return $"Can't draw yet: the hat needs at least {Draw.MinPeople} people.";
+            return $"Can't draw yet: at least {Draw.MinPeople} people need to take part.";
         return null;
     }
 
-    public async Task<DrawCheck> CheckDrawAsync(Membership m)
+    public Task<DrawCheck> CheckDrawAsync(Membership m) => CheckDrawAsync(m.Event.Id);
+
+    async Task<DrawCheck> CheckDrawAsync(Guid eventId)
     {
-        var (rules, incomplete) = await RulesWithNoRepeatAsync(m.Event.Id);
-        if (await BlockerAsync(m.Event.Id, rules) is { } blocker)
+        var (rules, incomplete) = await RulesWithNoRepeatAsync(eventId);
+        if (await BlockerAsync(eventId, rules) is { } blocker)
             return new DrawCheck(blocker, null, false);
         if (Draw.Problem(rules) is { } problem)
             return new DrawCheck(null, "Can't draw: " + problem, false, incomplete);
@@ -285,6 +287,23 @@ public sealed partial class EventManager
         return Outcome.Done("You're staying in. The organizers won't see your request any more.");
     }
 
+    /// <summary>
+    /// An organizer keeps someone in who asked to leave (spec §7, "Keep X in instead"): the request
+    /// is dropped and nothing else changes, as revealing or archiving would do.
+    /// </summary>
+    public async Task<Outcome> KeepInAsync(Membership m, Guid personId)
+    {
+        if (!m.IsLive)
+            return Outcome.Fail("There's nobody to keep in now.");
+        var participant = await db.Participants.SingleOrDefaultAsync(p => p.EventId == m.Event.Id && p.PersonId == personId);
+        if (participant is null || !participant.WantsToLeave)
+            return Outcome.Fail("They haven't asked to leave.");
+        participant.WantsToLeave = false;
+        await db.SaveChangesAsync();
+        var name = await db.People.Where(p => p.Id == personId).Select(p => p.DisplayName).SingleAsync();
+        return Outcome.Done($"Kept {name ?? "them"} in. Their request to leave is dropped.");
+    }
+
     // ---------- Late joiners ----------
 
     async Task<Outcome> AddLateJoinerAsync(Membership m, Guid me, Person person, DrawChange? change, Guid? householdId)
@@ -379,37 +398,6 @@ public sealed partial class EventManager
         participant.DoneShopping = done;
         await db.SaveChangesAsync();
         return Outcome.Done(done ? "Marked as done shopping." : "Marked as still shopping.");
-    }
-
-    /// <summary>
-    /// What the home page marks with a dot, per drawn event (spec §5.2, §6): the giver's recipient
-    /// changed or updated their notes, the recipient replied, or the viewer's own giver
-    /// wrote. Each line names nobody: the home page isn't behind "Tap to reveal".
-    /// </summary>
-    public async Task<Dictionary<Guid, List<string>>> SlipUpdatesAsync(Guid me, IEnumerable<Guid> drawnEvents)
-    {
-        var updates = new Dictionary<Guid, List<string>>();
-        foreach (var eventId in drawnEvents)
-        {
-            var lines = new List<string>();
-            var row = await hat.GiverSlipUpdatesAsync(eventId, me);
-            if (row is not null)
-            {
-                if (row.RecipientChanged)
-                    lines.Add("Your recipient has changed");
-                else if (row.Viewed && row.RecipientNotesVersion != row.NotesVersionSeen)
-                    lines.Add("Your recipient updated their notes");
-                if (row.Replies)
-                    lines.Add("Your recipient replied");
-            }
-
-            if (await hat.HasUnreadQuestionAsync(eventId, me))
-                lines.Add("Your giver asked you something");
-
-            if (lines.Count > 0)
-                updates[eventId] = lines;
-        }
-        return updates;
     }
 
     // ---------- What organizers see ----------

@@ -1,0 +1,29 @@
+@model IReadOnlyList<Pollyanna.Events.Pairing>
+@* "Who drew whom" in "Tablecloth" (spec §4, §7): one row per pairing, "Ana gave to Kofi", the
+   giver's picture beside it; the viewer is "You" / "you". A pairing that can't be read any more
+   (spec §5.3) is listed as "Someone", with the one sentence under the list. The organizing page
+   can reuse it once it moves. *@
+@{
+    var me = User.PersonId();
+}
+<ul class="rows who-drew-whom" role="list">
+    @foreach (var pair in Model)
+    {
+        <li class="pairing-row">
+            @if (pair.Giver is { } giver)
+            {
+                <partial name="_Avatar" model="giver" />
+                <span><strong>@(giver.Id == me ? "You" : giver.Name)</strong> gave to @(pair.Recipient.Id == me ? "you" : pair.Recipient.Name)</span>
+            }
+            else
+            {
+                <span class="avatar avatar-initials" aria-hidden="true">?</span>
+                <span><strong>Someone</strong> gave to @(pair.Recipient.Id == me ? "you" : pair.Recipient.Name)</span>
+            }
+        </li>
+    }
+</ul>
+@if (Model.Any(p => p.Giver is null))
+{
+    <p class="small soft">Some pairings can't be read any more, so their giver isn't shown.</p>
+}
