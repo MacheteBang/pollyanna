@@ -1632,6 +1632,29 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     `/untie`, questions, organizing in each status: a live fetch leaves
     every marker and stored row as it was, a plain visit then clears them),
     through `TestBrowser.GetPageAsync(path, live: true)`.
+  - The live connection and a bell that updates itself (#100): `GET /live`
+    (`src/Pollyanna/Live/`) is written by hand as server-sent events, since
+    `TypedResults.ServerSentEvents` can't write a comment: headers at once
+    (`Content-Encoding: identity`, `X-Accel-Buffering: no`), an opening
+    `hello` frame with the connection's own id, a `: keep-alive` comment
+    every 15 seconds on the app's clock, 401 without a session, and an end on
+    sign-out (that session's streams), account deletion (all of the person's)
+    and session expiry (checked at each keep-alive). `LiveConnections` knows
+    connections by person and session only. `HappeningKinds` gains a live
+    column (`LiveTo`: event, organizers, the person it's about, or a pair for
+    the five giver-recipient kinds, which send nothing until their content
+    frames, #104); `LiveOnHappening` holds each happening until its change
+    commits, then sends a hint (`{"event", "area"}`, the area being the kind)
+    to everyone it reaches plus the actor's other tabs. A dismissal hints the
+    person's other tabs, leaving out the one named in `Pollyanna-Tab`. In
+    `site.js`, `liveConnection` holds the `EventSource`, closes it when the
+    page is hidden or on `pagehide`, reopens it when shown and refetches the
+    page's own URL once (the #101 header `Pollyanna-Live`), as after a
+    reconnect; it ignores hints while a form
+    post is in flight. The panel merges the refetched rows in place and says
+    new ones through a polite live region. DEPLOYMENT.md §4 and §9 have the
+    `/live` notes. Tests: `LiveTests`, `LiveRoutingTests`; the seam is in
+    `docs/agents/testing.md`.
 
 ### Done: the "Tablecloth" identity
 

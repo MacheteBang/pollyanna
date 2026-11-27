@@ -233,7 +233,9 @@ function whatsNewPanel() {
         if ("going" in row.dataset) return;
         row.dataset.going = "";
         try {
-            const response = await fetch(form.action, { method: "POST", body: new FormData(form), redirect: "manual", credentials: "same-origin" });
+            // Naming this tab leaves it out of the hint the dismissal sends to the person's other tabs.
+            const headers = live.tab ? { "Pollyanna-Tab": live.tab } : {};
+            const response = await fetch(form.action, { method: "POST", body: new FormData(form), headers, redirect: "manual", credentials: "same-origin" });
             if (response.type !== "opaqueredirect" && !response.ok) throw new Error(String(response.status));
         } catch {
             // Didn't go through: post it the way the page does, which lands on /whats-new.
@@ -245,6 +247,133 @@ function whatsNewPanel() {
         update();
         (next?.querySelector(".bell-x") ?? heading).focus();
     });
+
+    // A live refetch (liveConnection) brings the masthead as it is now. Rows already here stay
+    // (so focus stays put) with their words brought up to date; new ones take their place in the
+    // order without motion and are said politely; gone ones go.
+    const say = document.querySelector("[data-bell-say]");
+    const key = li => {
+        const form = li.querySelector("form[data-bell-dismiss]");
+        return form ? `${form.elements.event.value}|${form.elements.kind.value}` : "";
+    };
+    live.onRefetch.push(page => {
+        const fresh = page.querySelector("#whats-new-panel .bell-rows");
+        if (!fresh) return;
+        const here = new Map([...list.children].map(li => [key(li), li]));
+        const arrived = [];
+        const rows = [...fresh.children].map(li => {
+            const kept = here.get(key(li));
+            if (!kept) {
+                const row = document.importNode(li, true);
+                arrived.push(row);
+                return row;
+            }
+            here.delete(key(li));
+            for (const part of [".bell-line", ".bell-meta"]) {
+                const now = li.querySelector(part);
+                const was = kept.querySelector(part);
+                if (now && was && now.outerHTML !== was.outerHTML) was.replaceWith(document.importNode(now, true));
+            }
+            const x = kept.querySelector(".bell-x");
+            const label = li.querySelector(".bell-x")?.getAttribute("aria-label");
+            if (x && label) x.setAttribute("aria-label", label);
+            return kept;
+        });
+        let lostFocus = false;
+        for (const gone of here.values()) {
+            if ("going" in gone.dataset) continue; // its own dismissal is finishing it
+            lostFocus ||= gone.contains(document.activeElement);
+            gone.remove();
+        }
+        rows.forEach((row, i) => {
+            if (list.children[i] !== row) list.insertBefore(row, list.children[i] ?? null);
+        });
+        update();
+        whatsNewTimes();
+        if (lostFocus && isOpen()) heading.focus();
+        if (say && arrived.length > 0)
+            say.textContent = arrived.map(row => {
+                const line = row.querySelector(".bell-line")?.textContent.trim() ?? "";
+                const event = row.querySelector(".bell-meta")?.firstChild?.textContent.trim() ?? "";
+                return event ? `${line}, ${event}` : line;
+            }).join(". ");
+    });
+}
+
+// The live connection (spec §16): every signed-in page holds one EventSource on /live. A hint
+// makes the page do one live refetch of its own URL, marked by the Pollyanna-Live header
+// (LiveRefetch.Header: the server treats it as a read-only view, not a visit), and hands the
+// fetched page to whoever listens (live.onRefetch: the bell's panel here; the pages with live
+// regions add their own). Hints are ignored while a form post is in flight, since its
+// response is a fresh page anyway. A hidden page closes its connection (and on pagehide), opens it
+// again when shown and then refetches once; so does EventSource's own reconnect after a drop.
+// Nothing is replayed. A refused connection (signed out, account deleted, session expired) stays
+// closed until the next page load. Without the script, or without EventSource, nothing changes.
+const live = { tab: "", posting: false, onRefetch: [] };
+
+function liveConnection() {
+    if (!document.querySelector("[data-bell]") || !("EventSource" in window)) return;
+    let source = null;
+    let opened = false;
+    let refused = false;
+    let fetching = false;
+    let again = false;
+
+    const refetch = async () => {
+        if (live.posting || document.hidden) return;
+        if (fetching) { again = true; return; }
+        fetching = true;
+        try {
+            const response = await fetch(location.href, {
+                headers: { "Pollyanna-Live": "1" }, redirect: "manual", credentials: "same-origin", cache: "no-store",
+            });
+            if (response.ok && !live.posting) {
+                const page = new DOMParser().parseFromString(await response.text(), "text/html");
+                for (const listener of live.onRefetch) listener(page);
+            }
+        } catch {
+            // The next hint or reconnect tries again.
+        } finally {
+            fetching = false;
+            if (again) { again = false; refetch(); }
+        }
+    };
+
+    const open = () => {
+        if (source || refused || document.hidden) return;
+        source = new EventSource("/live");
+        source.addEventListener("hello", event => { live.tab = event.data; });
+        source.addEventListener("hint", refetch);
+        // The first open is the page load itself; any later one (shown again, reconnected) catches up.
+        source.addEventListener("open", () => {
+            if (opened) refetch();
+            opened = true;
+        });
+        source.addEventListener("error", () => {
+            // CLOSED means the server refused it (a status, not a stream); otherwise it's reconnecting.
+            if (source?.readyState !== EventSource.CLOSED) return;
+            source = null;
+            live.tab = "";
+            refused = true;
+        });
+    };
+    const close = () => {
+        source?.close();
+        source = null;
+        live.tab = "";
+    };
+
+    document.addEventListener("visibilitychange", () => (document.hidden ? close() : open()));
+    window.addEventListener("pagehide", close);
+    window.addEventListener("pageshow", () => {
+        live.posting = false; // back from the cache after a post navigated away
+        open();
+    });
+    // A form that really posts (not one a script took over) is in flight until its page loads.
+    document.addEventListener("submit", event => {
+        if (!event.defaultPrevented) live.posting = true;
+    });
+    open();
 }
 
 // "12 / 1,000" under a message box as it fills.
@@ -307,6 +436,7 @@ document.addEventListener("DOMContentLoaded", () => {
     conversations();
     whatsNewTimes();
     whatsNewPanel();
+    liveConnection();
     counters();
     saveOnChange();
     foldLinks();

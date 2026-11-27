@@ -53,6 +53,8 @@ public sealed class TestApp : IAsyncDisposable
     public FakeMailSender Mail { get; } = new();
     /// <summary>Every happening announced, in order (spec §16).</summary>
     public HappeningLog Happenings { get; } = new();
+    /// <summary>The live streams opened in this test, and the settle point (spec §16 Testing).</summary>
+    public TestLive Live { get; }
 
     public const string MailHost = "mail.test";
     public const string MailFrom = "Pollyanna <pollyanna@pollyanna.test>";
@@ -63,6 +65,7 @@ public sealed class TestApp : IAsyncDisposable
         this.issuer = issuer;
         extraIssuers = extras.ToDictionary(e => IssuerOf(e.Provider.Key), e => e.Issuer);
         DataDir = dataDir;
+        Live = new TestLive(() => Services);
         var issuerHandler = issuer.GetTestServer().CreateHandler();
 
         factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
@@ -175,7 +178,8 @@ public sealed class TestApp : IAsyncDisposable
             new HttpClient(e.Value.GetTestServer().CreateHandler()) { BaseAddress = new Uri(e.Key) })))
         {
             [Issuer] = new HttpClient(issuer.GetTestServer().CreateHandler()) { BaseAddress = new Uri(Issuer) },
-        });
+        },
+        Live);
 
     /// <summary>A bare client with no cookie handling, e.g. to talk plain HTTP like the proxy does.</summary>
     public HttpClient CreateRawClient(string baseAddress) => factory.CreateClient(new WebApplicationFactoryClientOptions
