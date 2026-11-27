@@ -109,6 +109,16 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
                     await app.MessageAsync(ev, giver, MessageSender.Giver, $"{giver} asks {recipient}");
                     await app.UpdateAssignmentAsync(ev, giver, a => { a.ThreadClosed = true; a.RecipientReadUpto = 1; });
                 }
+                // Every giver, the viewer included, has all of "What's new"'s worked-out kinds
+                // waiting (spec §16): patched, notes updated, closed; only the viewer's may show.
+                await app.UpdateAssignmentAsync(ev, giver, a =>
+                {
+                    a.Viewed = true;
+                    a.RecipientChanged = true;
+                    a.NotesVersionSeen = -1;
+                    a.ThreadClosed = true;
+                    a.ThreadChangeUnseen = true;
+                });
             }
             if (archived)
                 await app.WithDbAsync(async db => { (await db.Events.SingleAsync(e => e.Id == ev)).Status = EventStatus.Archived; await db.SaveChangesAsync(); });
@@ -165,5 +175,17 @@ public sealed partial class PairingSecrecyTests : IAsyncLifetime
         Assert.Contains("Ready to open", home);
         if (viewer != Viewer.Organizer && !archived)
             Assert.Contains("Your giver asked you something", home);
+
+        // "What's new" and the bell are covered: the viewer's own five worked-out kinds while drawn.
+        var whatsNew = before.Single(p => p.StartsWith("/whats-new "));
+        string[] lines = ["Your giver asked you something", "Your recipient replied", "Your recipient closed the conversation",
+            "You&#x27;re giving to someone new", "Your recipient updated their notes"];
+        if (viewer != Viewer.Organizer && !archived)
+        {
+            Assert.All(lines, line => Assert.Contains(line, whatsNew));
+            Assert.Contains("What&#x27;s new, 5 notifications", home);
+        }
+        else
+            Assert.All(lines, line => Assert.DoesNotContain(line, whatsNew));
     }
 }
