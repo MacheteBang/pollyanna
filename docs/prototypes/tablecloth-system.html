@@ -1,0 +1,435 @@
+<title>Pollyanna Tablecloth System</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE, throwaway. Answers map ticket #57: the exact tokens of direction D, "Tablecloth".
+  One system sheet. Six things are still open, so each is a control in the floating bar and the
+  whole sheet redraws with the pick: check size, check strength, text face, the hand for the
+  revealed name, how statuses are shown, and the case of the wordmark. The page opens on the recommended set.
+  Published as a page, so there is no doctype or body tag here. Fonts come from Google Fonts for
+  the mockup only; the app would serve its own copies.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;800&family=Figtree:wght@400;600;800&family=Hanken+Grotesk:wght@400;600;800&family=Playpen+Sans:wght@400;500&family=Shantell+Sans:wght@500&display=swap">
+<style>
+/* Layout: the sheet is set in the system it describes. White page, ink type, the cloth once (under the sample panel). */
+:root {
+  /* color: the whole palette */
+  --white: #FFFFFF;      /* ground, panels, text on ink */
+  --ink: #1E1A16;        /* text, buttons, input borders, the knot */
+  --muted: #5B5650;      /* secondary text */
+  --blue: #3F6E8C;       /* the ribbon: bows, the cloth's thread, focus ring */
+  --pale: #DCE7EE;       /* row dividers, the email band, the girl's shirt */
+  --red: #9E2019;        /* errors and the one destructive button */
+  --blue-rgb: 63 110 140;
+  /* the cloth */
+  --check: 14px;         /* one check */
+  --strength: .5;        /* thread opacity; crossings come out darker */
+  /* type */
+  --font: Figtree, system-ui, sans-serif;
+  --hand: "Playpen Sans", "Comic Sans MS", cursive;
+  --t-small: .875rem; --t-body: 1rem; --t-action: 1.125rem; --t-h2: 1.4375rem; --t-h1: 1.8125rem; --t-name: 3.25rem;
+  /* space and shape */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 56px;
+  --corner: 10px;
+  /* sheet chrome, not part of the system */
+  --chrome: #EEF1F3;
+  color-scheme: light;
+}
+* { box-sizing: border-box }
+body { background: var(--white); color: var(--ink); font: var(--t-body)/1.5 var(--font); padding-bottom: 240px }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: var(--s5) var(--s7); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: var(--s7) }
+h1, h2, h3, p, dl, dd, ul { margin: 0 }
+h1 { font-size: var(--t-h1); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; text-wrap: balance }
+h2 { font-size: var(--t-h2); font-weight: 800; letter-spacing: -.02em; line-height: 1.15 }
+h3 { font-size: var(--t-body); font-weight: 800 }
+a { color: var(--ink); font-weight: 600; text-decoration-color: var(--blue); text-decoration-thickness: 2px; text-underline-offset: 3px }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px }
+.muted { color: var(--muted) }
+.small { font-size: var(--t-small) }
+section { display: flex; flex-direction: column; gap: var(--s4) }
+section > p { max-width: 65ch }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s5) }
+.cols > * { min-width: 0 }
+.rule { border-top: 2px solid var(--pale); padding-top: var(--s3) }
+.stack { display: flex; flex-direction: column; gap: var(--s3) }
+.row { display: flex; flex-wrap: wrap; gap: var(--s4); align-items: flex-end }
+.open { font-weight: 800; font-size: var(--t-small); border: 2px solid var(--ink); border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 2px; white-space: nowrap }
+
+/* the cloth */
+.gingham { background-color: var(--white); background-image: linear-gradient(90deg, rgb(var(--blue-rgb) / var(--strength)) 50%, transparent 50%), linear-gradient(rgb(var(--blue-rgb) / var(--strength)) 50%, transparent 50%); background-size: calc(var(--check) * 2) calc(var(--check) * 2) }
+
+/* sample screens */
+.phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: var(--s5); align-items: start }
+.phone { background: var(--white); border: 2px solid var(--chrome); border-radius: 22px; overflow: hidden; max-width: 400px; width: 100% }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--s2); min-width: 0 }
+figcaption { font-size: var(--t-small); color: var(--muted) }
+.mast { display: flex; justify-content: space-between; align-items: center; padding: var(--s3) var(--s4) }
+.brand { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em; text-decoration: none }
+.mast-r { display: flex; align-items: center; gap: var(--s4) }
+.bell { display: inline-flex } .bell svg { width: 24px; height: 24px }
+.acct { font-size: var(--t-small) }
+.cloth { padding: var(--s6) var(--s4) var(--s7) }
+.panel { background: var(--white); border-radius: var(--corner); padding: var(--s5) 20px; display: flex; flex-direction: column; gap: 6px }
+.count { font-size: var(--t-action); font-weight: 800 }
+.do { display: block; text-align: center; background: var(--ink); color: var(--white); font: 800 var(--t-action)/1.3 var(--font); padding: 14px; border: 0; border-radius: var(--corner); text-decoration: none; margin-top: var(--s3); cursor: pointer }
+.do.alt { background: var(--white); color: var(--ink); border: 2px solid var(--ink); padding: 12px }
+.do.danger { background: var(--white); color: var(--red); border: 2px solid var(--red); padding: 12px }
+.quiet { display: flex; gap: var(--s5); padding: var(--s4) 20px var(--s5); font-size: var(--t-small) }
+.head { padding: 2px var(--s4) var(--s4); display: flex; flex-direction: column; gap: 6px }
+.rest { padding: 0 var(--s4) var(--s4) }
+.rest > * { padding: 13px 0; border-top: 2px solid var(--pale); display: flex; justify-content: space-between; gap: var(--s3) }
+.seg { display: inline-flex; align-self: flex-start; border: 2px solid var(--ink); border-radius: var(--corner); overflow: hidden; font-weight: 600; font-size: var(--t-small) }
+.seg span { padding: 6px 14px } .seg .on { background: var(--ink); color: var(--white) }
+.giving { padding: var(--s4) 20px var(--s5); display: flex; flex-direction: column; gap: 2px }
+.name { font-family: var(--hand); font-weight: 500; font-size: var(--t-name); line-height: 1.1 }
+
+/* statuses: three treatments, one shown at a time */
+.st-tag, .st-steps { display: none }
+[data-status="tags"] .st-tag { display: inline-block; font-weight: 800; font-size: var(--t-small); border: 2px solid var(--ink); border-radius: 4px; padding: 0 6px; align-self: flex-start }
+[data-status="tags"] .st-word, [data-status="tags"] .st-sep { display: none }
+[data-status="steps"] .st-steps { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--t-small); color: var(--muted); list-style: none; padding: 0 }
+.st-steps .now { color: var(--ink); font-weight: 800; box-shadow: 0 2px 0 var(--blue) }
+
+/* swatches and tables */
+.sw { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s4) }
+.sw div { display: flex; flex-direction: column; gap: 2px; font-size: var(--t-small) }
+.sw i { display: block; height: 64px; border-radius: var(--corner); border: 2px solid var(--pale) }
+.sw b { font-size: var(--t-body) }
+.scroll { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: var(--t-small); font-variant-numeric: tabular-nums }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-top: 2px solid var(--pale); vertical-align: middle; white-space: nowrap }
+th { font-weight: 800; border-top: 0 }
+td .chip { display: inline-block; padding: 2px 10px; border-radius: 4px; font-weight: 600; font-size: var(--t-body) }
+.fail { color: var(--red); font-weight: 800 }
+.tiles { display: flex; flex-wrap: wrap; gap: var(--s4) }
+.tile { display: flex; flex-direction: column; gap: var(--s1); font-size: var(--t-small) }
+.tile i { display: block; width: 150px; height: 96px; border-radius: var(--corner) }
+.threads { display: flex; gap: var(--s4); flex-wrap: wrap; font-size: var(--t-small) }
+.threads span { display: flex; align-items: center; gap: 6px }
+.threads i { width: 22px; height: 22px; border: 2px solid var(--pale) }
+.spec > * + * { margin-top: var(--s2) }
+.scale { display: flex; align-items: flex-end; gap: var(--s3); flex-wrap: wrap; font-size: var(--t-small) }
+.scale span { display: flex; flex-direction: column; align-items: center; gap: var(--s1) }
+.scale i { display: block; background: var(--blue); height: 14px }
+.corner-demo { width: 96px; height: 56px; border: 2px solid var(--ink); border-radius: var(--corner) }
+.ground { display: flex; flex-wrap: wrap; gap: var(--s5); align-items: flex-end; padding: var(--s4); border-radius: var(--corner); border: 2px solid var(--pale) }
+.ground.pale { background: var(--pale); --g-gap: var(--pale); --g-shirt: var(--white) }
+.ground span { display: flex; flex-direction: column; align-items: center; gap: var(--s1); font-size: var(--t-small) }
+.girl-w { --g-gap: var(--white); --g-shirt: var(--pale) }
+.bow { color: var(--blue) } .bow .fold { fill: var(--ink); fill-opacity: .3 } .bow .knot { fill: var(--ink) }
+input[type=text], textarea { width: 100%; font: inherit; border: 2px solid var(--ink); border-radius: var(--corner); padding: 10px 12px; background: var(--white); color: inherit }
+label { font-weight: 800 }
+.err { color: var(--red); font-weight: 600; font-size: var(--t-small) }
+.check { display: flex; gap: var(--s2); align-items: center; font-weight: 400 }
+.check input { width: 18px; height: 18px; accent-color: var(--blue) }
+.mailband { background: var(--pale); padding: 14px 20px; display: flex; align-items: center; gap: var(--s2); font-weight: 800; font-size: 1.2rem; border-radius: var(--corner) }
+ol.ask { padding-left: 1.2em; display: flex; flex-direction: column; gap: var(--s2); max-width: 65ch }
+
+/* the floating bar: sheet chrome, deliberately not in the system's look */
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: #14202A; color: #fff; font: 13px/1.3 system-ui, sans-serif; padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; justify-content: center }
+.bar label { display: flex; flex-direction: column; gap: 2px; font-weight: 600; color: #C9D6DF }
+.bar select, .bar button { font: inherit; color: #fff; background: #263744; border: 1px solid #5F7686; border-radius: 6px; padding: 6px 8px }
+.bar :focus-visible { outline-color: #fff }
+@media (prefers-reduced-motion: no-preference) { .do { transition: transform .08s } .do:active { transform: translateY(1px) } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="girl" viewBox="448 494 1150 1150"><path style="fill:var(--g-ink,#1E1A16)" d="M 737 821 C 740 774 752 727 773 685 C 806 617 864 562 937 538 C 980 524 1061 504 1017 581 C 1022 578 1027 573 1032 570 C 1027 595 1025 604 1013 626 C 1019 621 1022 618 1028 613 C 1022 638 1020 647 1004 667 L 1004 669 C 1013 665 1020 658 1026 652 C 1024 669 1020 691 1010 705 L 1014 706 L 1021 697 L 1024 699 C 1020 717 1018 727 1009 744 L 1012 745 C 1016 741 1020 737 1023 732 C 1023 752 1023 776 1011 792 L 1013 794 L 1022 784 C 1022 783 1024 780 1025 780 C 1025 782 1024 799 1024 801 C 1026 836 1023 884 1006 914 C 1014 905 1018 901 1023 891 C 1022 916 1017 933 1004 953 C 1010 949 1012 946 1017 941 L 1022 943 C 1019 964 1016 975 1005 992 C 1012 987 1016 982 1021 975 L 1025 977 C 1025 1013 1028 1055 996 1079 C 978 1093 948 1098 925 1094 C 833 1078 793 993 777 909 C 776 901 774 892 773 884 C 770 858 771 824 737 821 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1022 784 C 1022 783 1024 780 1025 780 C 1025 782 1024 799 1024 801 C 1023 795 1025 789 1022 784 z"/><path style="fill:var(--g-gap,#fff)" d="M 1002 754 C 1004 752 1007 746 1009 744 L 1012 745 C 1009 749 1006 751 1002 754 z"/><path style="fill:var(--g-gap,#fff)" d="M 1011 792 L 1013 794 C 1008 799 1007 798 1011 792 z"/><path style="fill:var(--g-gap,#fff)" d="M 1010 705 L 1014 706 C 1010 709 1008 710 1010 705 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1065 583 C 1061 573 1047 545 1052 537 C 1067 509 1144 539 1160 547 C 1227 579 1276 643 1301 712 C 1313 748 1320 785 1321 822 C 1293 833 1293 852 1289 879 C 1276 963 1242 1060 1158 1095 C 1112 1114 1068 1104 1051 1055 C 1047 1046 1045 1037 1044 1028 C 1045 1026 1045 1025 1046 1023 C 1052 1034 1055 1039 1064 1048 C 1044 1014 1042 987 1042 948 C 1046 956 1048 960 1054 967 L 1056 966 C 1048 949 1047 935 1047 916 C 1046 914 1045 898 1047 897 C 1048 898 1049 901 1050 902 C 1056 911 1060 915 1069 922 C 1050 896 1045 872 1044 839 C 1043 837 1042 824 1044 823 C 1045 822 1045 825 1045 825 C 1048 830 1051 834 1054 838 C 1049 824 1045 811 1044 796 C 1043 793 1043 787 1043 783 L 1044 780 C 1045 782 1045 784 1046 786 C 1049 794 1052 799 1057 807 C 1053 795 1048 779 1047 766 C 1046 763 1045 741 1047 740 L 1048 740 C 1048 741 1048 741 1048 742 C 1053 757 1056 763 1067 775 C 1057 752 1055 741 1052 717 L 1055 716 C 1061 723 1064 725 1071 729 C 1054 700 1052 688 1050 654 L 1050 650 C 1050 643 1050 643 1054 648 C 1058 653 1062 657 1066 661 C 1055 637 1054 631 1052 604 C 1058 611 1060 613 1068 619 C 1058 602 1053 590 1050 570 C 1056 576 1058 578 1065 583 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1047 766 C 1046 763 1045 741 1047 740 L 1048 740 C 1048 741 1048 741 1048 742 C 1046 750 1048 758 1047 766 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1047 916 C 1046 914 1045 898 1047 897 C 1048 898 1049 901 1050 902 C 1046 906 1047 910 1047 916 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1050 654 L 1050 650 C 1050 643 1050 643 1054 648 L 1053 650 C 1052 651 1051 652 1050 654 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 839 C 1043 837 1042 824 1044 823 C 1045 822 1045 825 1045 825 C 1044 830 1044 834 1044 839 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 780 C 1045 782 1045 784 1046 786 C 1042 791 1045 790 1044 796 C 1043 793 1043 787 1043 783 L 1044 780 z"/><path style="fill:var(--g-gap,#fff)" d="M 1054 967 L 1056 966 C 1061 975 1058 971 1054 967 z"/><path style="fill:var(--g-shirt,#E3EBF0)" d="M 900 1104 C 903 1106 906 1111 907 1114 C 949 1192 1063 1200 1126 1145 C 1136 1137 1147 1120 1154 1110 C 1160 1121 1166 1131 1173 1141 C 1203 1181 1254 1211 1304 1218 C 1306 1271 1235 1302 1194 1318 C 1153 1333 1109 1342 1065 1345 C 1044 1346 1022 1345 1001 1345 C 932 1342 746 1313 748 1221 C 756 1217 781 1210 793 1205 C 848 1180 869 1152 900 1104 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 693 971 C 674 921 647 860 716 835 C 732 829 751 829 757 850 C 761 870 768 908 766 928 C 765 937 762 946 758 954 C 747 976 720 1000 703 1018 L 705 1020 C 717 1009 732 996 745 986 C 761 1009 766 1032 762 1061 C 757 1094 720 1128 695 1152 L 696 1154 C 708 1145 725 1131 736 1121 C 775 1187 734 1229 688 1273 L 690 1275 C 701 1267 713 1257 723 1248 C 732 1272 733 1296 722 1320 C 709 1352 681 1361 658 1381 L 647 1380 C 633 1363 626 1343 628 1321 C 629 1307 634 1293 642 1281 C 651 1290 659 1298 668 1306 L 669 1304 C 638 1266 613 1235 641 1186 C 652 1196 664 1205 675 1215 L 677 1213 C 627 1164 592 1118 642 1052 C 655 1066 668 1079 682 1092 L 684 1091 C 672 1079 649 1048 641 1034 C 619 996 627 950 667 928 C 675 942 684 958 692 972 L 693 971 z"/><path style="fill:var(--g-gap,#fff)" d="M 677 1213 C 683 1219 685 1222 689 1229 C 685 1224 679 1220 675 1215 L 677 1213 z"/><path style="fill:var(--g-gap,#fff)" d="M 688 1273 L 690 1275 C 686 1279 681 1282 676 1286 C 680 1281 684 1277 688 1273 z"/><path style="fill:var(--g-gap,#fff)" d="M 669 1304 C 673 1309 676 1313 680 1317 C 674 1313 672 1311 668 1306 L 669 1304 z"/><path style="fill:var(--g-gap,#fff)" d="M 695 1152 L 696 1154 C 692 1158 690 1160 685 1162 C 688 1158 691 1155 695 1152 z"/><path style="fill:var(--g-gap,#fff)" d="M 684 1091 C 687 1094 690 1098 693 1102 L 689 1098 C 686 1096 684 1094 682 1092 L 684 1091 z"/><path style="fill:var(--g-gap,#fff)" d="M 703 1018 L 705 1020 C 704 1021 700 1026 699 1025 C 698 1024 702 1019 703 1018 z"/><path style="fill:var(--g-gap,#fff)" d="M 693 971 L 694 972 C 696 977 694 976 692 972 L 693 971 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1347 1018 C 1329 998 1293 968 1288 940 C 1287 934 1294 911 1296 902 C 1301 880 1299 823 1337 835 C 1353 841 1367 854 1374 869 C 1390 899 1369 939 1358 969 L 1360 970 C 1369 954 1375 943 1385 928 C 1427 956 1432 1001 1404 1042 C 1393 1059 1378 1075 1365 1092 L 1367 1093 C 1380 1081 1395 1064 1409 1053 C 1420 1066 1426 1076 1431 1094 C 1443 1144 1409 1177 1376 1211 L 1379 1212 L 1409 1186 C 1440 1230 1410 1268 1382 1304 L 1385 1305 L 1408 1281 C 1410 1284 1413 1288 1415 1292 C 1424 1311 1427 1333 1420 1353 C 1417 1362 1406 1386 1393 1381 C 1388 1378 1383 1373 1379 1370 C 1357 1356 1338 1341 1328 1316 C 1320 1294 1320 1270 1329 1249 L 1364 1278 L 1366 1276 C 1316 1227 1276 1194 1315 1120 C 1328 1131 1340 1142 1353 1152 L 1354 1150 C 1302 1102 1262 1057 1306 987 C 1313 992 1332 1009 1341 1016 C 1343 1017 1345 1017 1347 1018 z"/><path style="fill:var(--g-gap,#fff)" d="M 1376 1211 L 1379 1212 C 1373 1218 1368 1222 1362 1226 C 1365 1222 1372 1214 1376 1211 z"/><path style="fill:var(--g-gap,#fff)" d="M 1382 1304 L 1385 1305 C 1381 1310 1378 1313 1373 1317 C 1375 1313 1379 1307 1382 1304 z"/><path style="fill:var(--g-gap,#fff)" d="M 1341 1016 C 1343 1017 1345 1017 1347 1018 C 1350 1022 1353 1025 1355 1029 C 1351 1025 1345 1021 1341 1016 z"/><path style="fill:var(--g-gap,#fff)" d="M 1354 1150 C 1358 1153 1361 1157 1365 1161 C 1360 1158 1357 1156 1353 1152 L 1354 1150 z"/><path style="fill:var(--g-gap,#fff)" d="M 1366 1276 C 1370 1280 1370 1282 1374 1286 C 1371 1284 1367 1281 1364 1278 L 1366 1276 z"/><path style="fill:var(--g-gap,#fff)" d="M 1365 1092 L 1367 1093 L 1367 1094 C 1366 1095 1363 1098 1362 1098 C 1360 1097 1365 1092 1365 1092 z"/><path style="fill:var(--g-gap,#fff)" d="M 1360 970 C 1360 971 1358 976 1357 976 L 1356 976 C 1356 975 1358 970 1358 969 L 1360 970 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1397 1420 C 1424 1444 1452 1472 1454 1512 C 1455 1524 1453 1535 1449 1546 C 1440 1574 1420 1598 1456 1619 C 1457 1620 1458 1620 1458 1621 C 1457 1623 1449 1621 1448 1621 C 1433 1618 1424 1612 1419 1597 L 1418 1596 L 1417 1596 C 1412 1610 1414 1620 1418 1634 C 1405 1623 1397 1612 1395 1594 L 1392 1592 C 1391 1610 1391 1617 1398 1634 C 1340 1586 1335 1514 1373 1452 C 1379 1443 1385 1434 1392 1425 C 1394 1423 1395 1421 1397 1420 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1456 1619 C 1457 1620 1458 1620 1458 1621 C 1457 1623 1449 1621 1448 1621 C 1448 1621 1448 1620 1448 1619 C 1449 1619 1450 1619 1450 1619 C 1451 1620 1452 1620 1453 1620 L 1456 1619 z"/><path style="fill:var(--g-gap,#fff)" d="M 1392 1592 C 1395 1582 1395 1589 1395 1594 L 1392 1592 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 596 1618 C 629 1599 611 1570 601 1544 C 588 1505 605 1467 633 1440 C 639 1433 645 1426 653 1421 C 654 1421 654 1422 655 1423 C 712 1489 724 1574 652 1635 C 659 1617 662 1605 658 1586 C 657 1587 657 1587 656 1587 C 655 1609 647 1620 632 1635 C 639 1618 637 1610 632 1594 C 627 1612 621 1615 602 1621 C 600 1621 589 1623 596 1618 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 596 1618 C 598 1620 600 1620 602 1621 C 600 1621 589 1623 596 1618 z"/><path style="fill:var(--g-gap,#fff)" d="M 656 1587 C 656 1586 656 1584 657 1583 C 658 1583 658 1584 658 1585 L 658 1586 C 657 1587 657 1587 656 1587 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1312 1357 C 1337 1356 1369 1371 1385 1389 C 1385 1395 1386 1400 1386 1406 C 1377 1411 1372 1414 1363 1418 C 1344 1424 1310 1433 1300 1411 C 1291 1392 1290 1367 1312 1357 z"/><path style="fill:var(--g-gap,#fff)" d="M 1332 1379 C 1353 1378 1363 1388 1381 1397 C 1382 1397 1383 1397 1384 1398 C 1383 1400 1378 1401 1376 1401 C 1365 1403 1348 1406 1337 1403 C 1326 1399 1318 1386 1332 1379 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 665 1390 C 665 1389 665 1388 667 1387 C 693 1365 761 1329 756 1395 C 752 1444 692 1423 665 1407 C 665 1406 665 1401 665 1400 C 665 1397 665 1394 665 1390 z"/><path style="fill:var(--g-gap,#fff)" d="M 668 1398 C 681 1391 691 1383 705 1379 C 723 1374 736 1392 717 1401 C 705 1408 680 1404 668 1399 L 668 1398 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 665 1390 L 665 1392 C 666 1396 666 1396 668 1398 L 668 1399 L 665 1400 C 665 1397 665 1394 665 1390 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 563 1347 C 594 1346 615 1368 638 1387 C 636 1396 636 1396 637 1405 C 629 1407 622 1409 614 1411 C 602 1414 579 1415 567 1411 C 539 1401 533 1360 563 1347 z"/><path style="fill:var(--g-gap,#fff)" d="M 581 1370 C 606 1369 615 1384 634 1396 C 629 1397 627 1397 622 1398 C 608 1400 581 1399 574 1385 C 569 1377 575 1373 581 1370 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1477 1347 C 1507 1345 1514 1381 1499 1400 C 1487 1417 1462 1415 1444 1413 C 1439 1412 1406 1407 1415 1396 C 1416 1394 1414 1391 1413 1389 L 1412 1387 C 1433 1370 1449 1353 1477 1347 z"/><path style="fill:var(--g-gap,#fff)" d="M 1459 1370 C 1489 1368 1484 1400 1438 1399 C 1431 1398 1425 1397 1419 1396 L 1417 1396 C 1431 1386 1442 1374 1459 1370 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 637 1409 C 641 1411 633 1418 630 1420 C 609 1443 592 1470 573 1495 C 573 1485 572 1478 572 1467 C 570 1464 546 1465 540 1464 C 575 1442 596 1419 637 1409 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1411 1410 C 1443 1412 1482 1446 1509 1464 C 1499 1465 1489 1465 1479 1465 C 1478 1477 1478 1483 1476 1495 C 1453 1462 1438 1441 1411 1410 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1387 1411 C 1387 1411 1388 1412 1388 1412 C 1371 1436 1343 1480 1329 1503 C 1328 1494 1327 1484 1325 1475 C 1323 1473 1302 1475 1297 1475 C 1329 1449 1348 1428 1387 1411 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 662 1412 C 683 1416 737 1458 753 1474 C 748 1474 728 1473 726 1475 C 726 1483 724 1491 723 1498 L 723 1503 C 711 1480 689 1449 674 1428 C 670 1423 662 1417 662 1412 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 1393 1387 C 1402 1387 1409 1385 1410 1397 C 1410 1403 1410 1406 1406 1410 C 1390 1413 1389 1408 1390 1394 C 1390 1390 1390 1390 1393 1387 z"/><path style="fill:var(--g-bow,#3F6E8C)" d="M 645 1387 C 662 1387 662 1390 660 1408 C 660 1409 657 1409 657 1410 C 653 1410 641 1411 641 1406 C 641 1399 637 1390 645 1387 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1017 941 C 1018 940 1021 934 1022 934 C 1023 935 1022 942 1022 943 L 1017 941 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1044 1028 C 1044 1026 1042 1018 1043 1018 C 1044 1018 1044 1018 1044 1019 L 1044 1018 C 1045 1020 1045 1021 1046 1023 C 1045 1025 1045 1026 1044 1028 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1052 717 C 1051 716 1050 712 1051 711 C 1052 710 1054 715 1055 716 L 1052 717 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1021 975 C 1022 974 1023 970 1024 970 C 1025 970 1025 976 1025 977 L 1021 975 z"/><path style="fill:var(--g-ink,#1E1A16)" d="M 1021 697 C 1021 697 1023 693 1024 694 C 1024 695 1024 698 1024 699 L 1021 697 z"/><path style="fill:var(--g-gap,#fff)" d="M 1043 783 C 1041 775 1044 773 1044 780 L 1043 783 z"/></symbol>
+  <symbol id="bow" viewBox="0 0 32 32"><path d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z" fill="#3F6E8C"/><rect x="12" y="6" width="8" height="13" rx="2.2" fill="#1E1A16"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M12 3.5a6 6 0 0 0-6 6v3.8L4 16.5v1h16v-1l-2-3.2V9.5a6 6 0 0 0-6-6ZM9.8 20.2a2.3 2.3 0 0 0 4.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="bowfull" viewBox="0 0 32 32"><path d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z" fill="currentColor"/><path class="fold" d="M20 16.581L24.54 14.263C26.9 13.063 29.68 14.623 29.97 17.173C29.69 19.723 26.91 21.293 24.54 20.083L19.81 17.671ZM12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z"/><rect class="knot" x="12" y="6" width="8" height="13" rx="2.2"/></symbol>
+</svg>
+
+<div class="wrap" id="sheet" data-status="steps">
+
+<header class="stack">
+  <h1>The tablecloth system</h1>
+  <p style="max-width:65ch">Every token for the new look on one page. Six things are still yours to pick; they are the controls in the bar at the bottom, and the whole sheet redraws when you change one. It opens on what I recommend.</p>
+  <p class="small muted" id="state" aria-live="polite"></p>
+</header>
+
+<section aria-labelledby="h-sample">
+  <h2 id="h-sample">In use</h2>
+  <div class="phones">
+    <figure><figcaption>Home, in one event</figcaption>
+      <div class="phone">
+        <div class="mast"><a class="brand" href="#h-sample"><svg class="girl-w" width="40" height="40"><use href="#girl"/></svg><span class="wm">pollyanna</span></a><span class="mast-r"><a class="bell" href="#h-sample" aria-label="Notifications"><svg><use href="#bell"/></svg></a><a class="acct" href="#h-sample">Sam</a></span></div>
+        <div class="cloth gingham"><div class="panel">
+          <h1>Cousins' gift swap</h1>
+          <p class="count">22 days to go</p>
+          <p class="small muted">Saturday, December 19<span class="st-sep">, </span><span class="st-word">names drawn</span></p>
+          <span class="st-tag">Names drawn</span>
+          <a class="do" href="#h-sample">See who you got</a>
+        </div></div>
+        <div class="quiet"><a href="#h-sample">Past events</a><a href="#h-sample">Start an event</a></div>
+      </div>
+    </figure>
+    <figure><figcaption>Organizing, before names are drawn</figcaption>
+      <div class="phone">
+        <div class="mast"><a class="brand" href="#h-sample"><svg class="girl-w" width="40" height="40"><use href="#girl"/></svg><span class="wm">pollyanna</span></a><span class="mast-r"><a class="bell" href="#h-sample" aria-label="Notifications"><svg><use href="#bell"/></svg></a><a class="acct" href="#h-sample">Sam</a></span></div>
+        <div class="head">
+          <a class="small" href="#h-sample">Home</a>
+          <h1>Cousins' gift swap</h1>
+          <div class="seg"><span>Your page</span><span class="on">Organizing</span></div>
+          <ol class="st-steps" aria-label="Status"><li>Draft</li><li class="now">Open</li><li>Names drawn</li><li>Revealed</li></ol>
+          <span class="st-tag">Open</span>
+        </div>
+        <div class="cloth gingham" style="padding-block:var(--s5)"><div class="panel">
+          <h2>Ready to draw names</h2>
+          <p><span class="st-word">The event is open. </span>All 9 people have joined and 7 have written notes.</p>
+          <button class="do" type="button">Draw names</button>
+        </div></div>
+        <div class="rest">
+          <p><b>Tess</b><span class="muted">no notes yet</span></p>
+          <p><b>Marco</b><span class="muted">no notes yet</span></p>
+          <p><a href="#h-sample">7 more people</a></p>
+        </div>
+      </div>
+    </figure>
+    <figure><figcaption>The revealed name</figcaption>
+      <div class="phone">
+        <div class="giving">
+          <span class="small" style="font-weight:600">You're giving to</span>
+          <span class="name">Tess</span>
+          <span class="name" style="font-size:2.2rem">Bartholomew</span>
+          <span class="name" style="font-size:2.2rem">Zoë &amp; Iñaki</span>
+        </div>
+        <div class="rest">
+          <p><b>Tess's notes</b></p>
+          <p style="display:block">Size medium. I like tea, jigsaw puzzles and anything for the garden. No scented candles, please.</p>
+        </div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<section aria-labelledby="h-color">
+  <h2 id="h-color">Color</h2>
+  <p>Six colors. White and ink do nearly all the work; blue belongs to the bows and the cloth; red appears only when something is wrong or can't be undone.</p>
+  <div class="sw">
+    <div><i style="background:var(--white)"></i><b>White</b>#FFFFFF<span class="muted">Ground and panels</span></div>
+    <div><i style="background:var(--ink)"></i><b>Ink</b>#1E1A16<span class="muted">Text, buttons, input borders</span></div>
+    <div><i style="background:var(--muted)"></i><b>Soft ink</b>#5B5650<span class="muted">Secondary text</span></div>
+    <div><i style="background:var(--blue)"></i><b>Ribbon blue</b>#3F6E8C<span class="muted">Bows, cloth thread, focus ring, link underline</span></div>
+    <div><i style="background:var(--pale)"></i><b>Pale blue</b>#DCE7EE<span class="muted">Row dividers, email band, the girl's shirt</span></div>
+    <div><i style="background:var(--red)"></i><b>Red</b>#9E2019<span class="muted">Error text, "Cancel this event"</span></div>
+  </div>
+  <h3>Contrast of every pairing in use</h3>
+  <div class="scroll"><table id="contrast"><thead><tr><th>Pairing</th><th>Sample</th><th>Ratio</th><th>AA text (4.5)</th><th>AA large and shapes (3)</th></tr></thead><tbody></tbody></table></div>
+  <p class="small muted">Ratios are computed on this page from the hex values. Rules that follow: no text or control sits directly on the cloth, only the white panel does; ribbon blue is never used for small text on pale blue.</p>
+</section>
+
+<section aria-labelledby="h-cloth">
+  <h2 id="h-cloth">The gingham <span class="open">your pick</span></h2>
+  <p>Two layers of ribbon-blue thread on white, so a crossing comes out darker than a single thread, as on woven cloth. It is drawn in CSS, with no image file.</p>
+  <div class="tiles" id="sizes"></div>
+  <div class="threads" id="threads"></div>
+  <div class="cols">
+    <div class="stack rule"><h3>Where it appears</h3>
+      <ul class="stack" style="padding-left:1.2em">
+        <li>Once per screen, as a full-width band under the one white panel that holds what is yours to do.</li>
+        <li>Around the gift at the reveal.</li>
+        <li>On the touch icon, the README banner and the social preview, behind the mark.</li>
+      </ul></div>
+    <div class="stack rule"><h3>Where it never appears</h3>
+      <ul class="stack" style="padding-left:1.2em">
+        <li>Behind text, links or form fields.</li>
+        <li>As a border, divider, button fill or page background.</li>
+        <li>In email, which gets a plain pale-blue band instead.</li>
+        <li>On a screen with nothing for you to do (past events, account, errors): those stay white.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-type">
+  <h2 id="h-type">Type <span class="open">your pick</span></h2>
+  <p>One face for everything, in three weights, and a handwriting face used for one thing: the name you are giving to. Both are open-licensed (SIL OFL 1.1) and would be served by the app.</p>
+  <div class="cols">
+    <div class="spec rule">
+      <div style="font-size:var(--t-h1);font-weight:800;letter-spacing:-.02em;line-height:1.1">Cousins' gift swap</div>
+      <div style="font-size:var(--t-h2);font-weight:800;letter-spacing:-.02em;line-height:1.15">Ready to draw names</div>
+      <div style="font-size:var(--t-action);font-weight:800">22 days to go</div>
+      <div>She'll see the question, not who asked. 0123456789 $40</div>
+      <div style="font-weight:600">Questions from your giver</div>
+      <div class="small muted">Saturday, December 19, names drawn</div>
+      <div class="name">Tess</div>
+    </div>
+    <div class="scroll rule"><table>
+      <thead><tr><th>Role</th><th>Size</th><th>Weight</th><th>Line</th></tr></thead>
+      <tbody>
+        <tr><td>Page title</td><td>29px</td><td>800</td><td>1.1</td></tr>
+        <tr><td>Panel title</td><td>23px</td><td>800</td><td>1.15</td></tr>
+        <tr><td>Action, countdown</td><td>18px</td><td>800</td><td>1.3</td></tr>
+        <tr><td>Body</td><td>16px</td><td>400</td><td>1.5</td></tr>
+        <tr><td>Link, row label</td><td>16px</td><td>600 / 800</td><td>1.5</td></tr>
+        <tr><td>Small</td><td>14px</td><td>400</td><td>1.5</td></tr>
+        <tr><td>Revealed name</td><td>52px, down to 35px for long names</td><td>500, hand</td><td>1.1</td></tr>
+      </tbody></table>
+      <p class="small muted" style="margin-top:var(--s3)">Titles are tightened by 0.02em. No italics, no all-caps labels, nothing smaller than 14px.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-space">
+  <h2 id="h-space">Space and corners</h2>
+  <div class="cols">
+    <div class="stack rule"><h3>Spacing steps</h3>
+      <div class="scale"><span><i style="width:4px"></i>4</span><span><i style="width:8px"></i>8</span><span><i style="width:12px"></i>12</span><span><i style="width:16px"></i>16</span><span><i style="width:24px"></i>24</span><span><i style="width:32px"></i>32</span><span><i style="width:56px"></i>56</span></div>
+      <p class="small muted">16 is the page gutter, 24 the padding inside a panel, 56 the cloth showing below a panel. Anything you can tap is at least 44px tall.</p></div>
+    <div class="stack rule"><h3>One corner</h3>
+      <div class="corner-demo"></div>
+      <p class="small muted">10px on panels, buttons and fields. Nothing is fully rounded and nothing has a shadow. Lines are 2px: ink around fields and outlined buttons, pale blue between rows.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-word">
+  <h2 id="h-word">Wordmark <span class="open">your pick</span></h2>
+  <p>The girl at 40px, then the name in the text face at weight 800, tightened by 0.02em. No separate logo drawing. The mockups set it in lowercase; the app today capitalizes it.</p>
+  <div class="row">
+    <div class="stack"><span class="brand"><svg class="girl-w" width="40" height="40"><use href="#girl"/></svg>pollyanna</span><span class="small muted">Lowercase (recommended)</span></div>
+    <div class="stack"><span class="brand"><svg class="girl-w" width="40" height="40"><use href="#girl"/></svg>Pollyanna</span><span class="small muted">Capitalized</span></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-marks">
+  <h2 id="h-marks">The bow and the girl</h2>
+  <p>Both stay as drawn. The girl's kraft-colored gaps take the color of whatever she stands on, and her shirt becomes pale blue on white, or white on pale blue. The bow keeps ribbon-blue loops, ink folds at 30% and an ink knot; at 16px the folds are left out, as in today's favicon.</p>
+  <div class="cols">
+    <div class="ground girl-w"><span><svg width="64" height="64"><use href="#girl"/></svg>64</span><span><svg width="40" height="40"><use href="#girl"/></svg>40</span><span><svg width="32" height="32"><use href="#girl"/></svg>32</span><span><svg width="16" height="16"><use href="#girl"/></svg>16</span><span><svg class="bow" width="64" height="64"><use href="#bowfull"/></svg>64</span><span><svg class="bow" width="32" height="32"><use href="#bowfull"/></svg>32</span><span><svg width="16" height="16"><use href="#bow"/></svg>16</span></div>
+    <div class="ground pale"><span><svg width="64" height="64"><use href="#girl"/></svg>64</span><span><svg width="40" height="40"><use href="#girl"/></svg>40</span><span><svg width="32" height="32"><use href="#girl"/></svg>32</span><span><svg width="16" height="16"><use href="#girl"/></svg>16</span><span><svg class="bow" width="64" height="64"><use href="#bowfull"/></svg>64</span><span><svg class="bow" width="32" height="32"><use href="#bowfull"/></svg>32</span><span><svg width="16" height="16"><use href="#bow"/></svg>16</span></div>
+  </div>
+  <p class="small muted">Proposed rule: the girl is never shown below 32px, so the favicon and any 16px use is the bow. Neither mark sits directly on the cloth; on gingham it goes on a white panel.</p>
+</section>
+
+<section aria-labelledby="h-status">
+  <h2 id="h-status">Statuses <span class="open">your pick</span></h2>
+  <p>Draft, open, names drawn, revealed, archived. They are states, so none of them gets a color. The two sample screens at the top show whichever treatment is picked.</p>
+  <div class="cols">
+    <div class="stack rule"><h3>Words, with steps for the organizer (recommended)</h3><p class="small">A participant reads the status as plain words in the small line under the date. The organizing page adds the row of steps, with the current one in ink over a blue line, because there the order is real and the next step is the organizer's to take.</p></div>
+    <div class="stack rule"><h3>Words only</h3><p class="small">The status is always a phrase inside a sentence, never an object of its own. The quietest option; the organizer loses the at-a-glance view of what comes next.</p></div>
+    <div class="stack rule"><h3>Tags</h3><p class="small">A small outlined label next to the title. Familiar, but it is the old stamp in new clothes, it breaks the one-corner rule, and it names a state without saying what to do.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-controls">
+  <h2 id="h-controls">Controls</h2>
+  <div class="cols">
+    <div class="stack rule">
+      <a class="do" href="#h-controls" style="margin-top:0">See who you got</a>
+      <a class="do alt" href="#h-controls" style="margin-top:0">Start an event</a>
+      <a class="do danger" href="#h-controls" style="margin-top:0">Cancel this event</a>
+      <p class="small muted">One filled button per screen, for the one thing to do. Other actions are outlined or plain links. Red outlines the one action that can't be undone.</p>
+    </div>
+    <div class="stack rule">
+      <label for="f-q">Ask Tess something</label>
+      <textarea id="f-q" rows="2">Do you already have a teapot?</textarea>
+      <label for="f-n">Event name</label>
+      <input id="f-n" type="text" value="">
+      <p class="err">Give the event a name.</p>
+      <label class="check" for="f-d"><input id="f-d" type="checkbox" checked> I'm done shopping</label>
+      <p><a href="#h-controls">Questions from your giver</a></p>
+      <p class="small muted">Links are ink with a blue underline. Keyboard focus is a 3px blue ring; press Tab here to see it.</p>
+    </div>
+    <div class="stack rule">
+      <div class="mailband"><svg class="bow" width="28" height="28"><use href="#bowfull"/></svg><span class="wm">pollyanna</span></div>
+      <p class="small muted">The email band: plain pale blue with the bow, since mail clients can't carry the gingham. Its layout is settled in its own ticket.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-ask">
+  <h2 id="h-ask">What I need from you</h2>
+  <ol class="ask">
+    <li><b>Check size:</b> 10, 14 or 20px. I recommend 14.</li>
+    <li><b>Check strength:</b> light, medium or strong. I recommend medium.</li>
+    <li><b>Text face:</b> Figtree, Atkinson Hyperlegible Next or Hanken Grotesk. I recommend Figtree.</li>
+    <li><b>Hand for the revealed name:</b> Playpen Sans or Shantell Sans. I recommend Playpen Sans.</li>
+    <li><b>Statuses:</b> words with steps for the organizer, words only, or tags. I recommend the first.</li>
+    <li><b>Wordmark:</b> lowercase or capitalized. I recommend lowercase.</li>
+    <li><b>Red:</b> keep it for errors and "Cancel this event" only, with no red anywhere else (unread questions are shown by position and words, not a red dot).</li>
+    <li><b>The girl's 32px floor</b> and the rule that neither mark sits directly on the cloth.</li>
+  </ol>
+</section>
+
+</div>
+
+<form class="bar" id="bar" aria-label="Open choices">
+  <label for="k-check">Check size<select id="k-check"><option value="10px">10px</option><option value="14px" selected>14px (rec.)</option><option value="20px">20px</option></select></label>
+  <label for="k-strength">Strength<select id="k-strength"><option value=".35">Light</option><option value=".5" selected>Medium (rec.)</option><option value=".65">Strong</option></select></label>
+  <label for="k-font">Text face<select id="k-font"><option value="Figtree" selected>Figtree (rec.)</option><option value="Atkinson Hyperlegible Next">Atkinson Hyperlegible Next</option><option value="Hanken Grotesk">Hanken Grotesk</option></select></label>
+  <label for="k-hand">Name hand<select id="k-hand"><option value="Playpen Sans" selected>Playpen Sans (rec.)</option><option value="Shantell Sans">Shantell Sans</option></select></label>
+  <label for="k-status">Statuses<select id="k-status"><option value="steps" selected>Words + steps (rec.)</option><option value="words">Words only</option><option value="tags">Tags</option></select></label>
+  <label for="k-word">Wordmark<select id="k-word"><option value="pollyanna" selected>lowercase (rec.)</option><option value="Pollyanna">Capitalized</option></select></label>
+  <button type="button" id="k-reset">Recommended</button>
+</form>
+
+<script>
+(function () {
+  var root = document.documentElement, sheet = document.getElementById('sheet');
+  var ids = ['check', 'strength', 'font', 'hand', 'status', 'word'];
+  var el = {}; ids.forEach(function (k) { el[k] = document.getElementById('k-' + k); });
+  var BLUE = [63, 110, 140];
+
+  function hex(c) { return '#' + c.map(function (v) { return Math.round(v).toString(16).padStart(2, '0'); }).join('').toUpperCase(); }
+  function rgb(h) { return [1, 3, 5].map(function (i) { return parseInt(h.slice(i, i + 2), 16); }); }
+  function lum(c) { var a = c.map(function (v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * a[0] + .7152 * a[1] + .0722 * a[2]; }
+  function ratio(a, b) { var x = lum(rgb(a)), y = lum(rgb(b)); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }
+  function over(alpha) { return BLUE.map(function (v) { return v * alpha + 255 * (1 - alpha); }); }
+
+  var pairs = [
+    ['Ink on white', '#1E1A16', '#FFFFFF', 'Body text, titles'],
+    ['Soft ink on white', '#5B5650', '#FFFFFF', 'Small text'],
+    ['White on ink', '#FFFFFF', '#1E1A16', 'The filled button'],
+    ['Red on white', '#9E2019', '#FFFFFF', 'Error text'],
+    ['Ink on pale blue', '#1E1A16', '#DCE7EE', 'Email band'],
+    ['Soft ink on pale blue', '#5B5650', '#DCE7EE', 'Email band, small'],
+    ['Ribbon blue on white', '#3F6E8C', '#FFFFFF', 'Bows, focus ring, underline'],
+    ['Ribbon blue on pale blue', '#3F6E8C', '#DCE7EE', 'The bow on the email band']
+  ];
+  var tb = document.querySelector('#contrast tbody');
+  pairs.forEach(function (p) {
+    var r = ratio(p[1], p[2]), tr = document.createElement('tr');
+    function cell(t, cls) { var td = document.createElement('td'); td.textContent = t; if (cls) td.className = cls; tr.appendChild(td); return td; }
+    cell(p[0]);
+    var s = cell(''), chip = document.createElement('span'); chip.className = 'chip'; chip.style.color = p[1]; chip.style.background = p[2]; chip.textContent = p[3]; s.appendChild(chip);
+    cell(r.toFixed(2) + ' : 1');
+    cell(r >= 4.5 ? 'Pass' : 'Fail: shapes only', r >= 4.5 ? '' : 'fail');
+    cell(r >= 3 ? 'Pass' : 'Fail', r >= 3 ? '' : 'fail');
+    tb.appendChild(tr);
+  });
+
+  function draw() {
+    var v = {}; ids.forEach(function (k) { v[k] = el[k].value; });
+    root.style.setProperty('--check', v.check);
+    root.style.setProperty('--strength', v.strength);
+    root.style.setProperty('--font', '"' + v.font + '", system-ui, sans-serif');
+    root.style.setProperty('--hand', '"' + v.hand + '", "Comic Sans MS", cursive');
+    sheet.dataset.status = v.status;
+    document.querySelectorAll('.wm').forEach(function (n) { n.textContent = v.word; });
+
+    var a = parseFloat(v.strength), single = hex(over(a)), cross = hex(over(1 - (1 - a) * (1 - a)));
+    var th = document.getElementById('threads'); th.textContent = '';
+    [['White', '#FFFFFF'], ['One thread', single], ['Crossing', cross]].forEach(function (t) {
+      var s = document.createElement('span'), i = document.createElement('i'); i.style.background = t[1]; s.appendChild(i); s.appendChild(document.createTextNode(t[0] + ' ' + t[1])); th.appendChild(s);
+    });
+    var sz = document.getElementById('sizes'); sz.textContent = '';
+    ['10px', '14px', '20px'].forEach(function (c) {
+      var d = document.createElement('div'), i = document.createElement('i'); d.className = 'tile'; i.className = 'gingham'; i.style.setProperty('--check', c);
+      d.appendChild(i); d.appendChild(document.createTextNode(c + ' checks' + (c === v.check ? ' (shown)' : ''))); sz.appendChild(d);
+    });
+    document.getElementById('state').textContent = 'Showing: ' + v.check + ' checks at ' + Math.round(a * 100) + '% thread (' + single + ' and ' + cross + '), ' + v.font + ' with ' + v.hand + ' for the name, statuses as ' + el.status.selectedOptions[0].textContent.replace(' (rec.)', '').toLowerCase() + ', wordmark "' + v.word + '".';
+    try { localStorage.setItem('tablecloth-picks', JSON.stringify(v)); } catch (e) {}
+  }
+
+  try {
+    var saved = JSON.parse(localStorage.getItem('tablecloth-picks') || 'null');
+    if (saved) ids.forEach(function (k) { if (saved[k] && [].some.call(el[k].options, function (o) { return o.value === saved[k]; })) el[k].value = saved[k]; });
+  } catch (e) {}
+  ids.forEach(function (k) { el[k].addEventListener('change', draw); });
+  document.getElementById('k-reset').addEventListener('click', function () {
+    ids.forEach(function (k) { [].forEach.call(el[k].options, function (o) { if (o.defaultSelected) el[k].value = o.value; }); });
+    draw();
+  });
+  document.getElementById('bar').addEventListener('submit', function (e) { e.preventDefault(); });
+  draw();
+})();
+</script>
