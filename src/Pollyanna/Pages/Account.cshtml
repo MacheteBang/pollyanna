@@ -5,7 +5,7 @@
 }
 @* Account (spec §7): no cloth, three plain groups on white: ways to sign in, emails, then leaving. *@
 
-<partial name="_PageHead" model='new Pollyanna.Pages.Shared.PageHeadView("Your account", Model.NameAndEmail, "Home", "/")' />
+<partial name="_PageHead" model='new Pollyanna.Pages.Shared.PageHeadView("Your account", Model.NameAndEmail, new("Home", "/"))' />
 
 <div class="column groups">
     <section class="group" id="logins" aria-labelledby="logins-heading">
