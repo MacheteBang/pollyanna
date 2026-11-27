@@ -16,7 +16,9 @@
 
     Live (spec §16): everything under the page head is one region, and the conversation another
     inside it, so with a reply being written (which keeps the outer one as it is) a new question
-    still arrives. The page's shape is the event's status.
+    still arrives. The page's shape is the event's status. Replying, closing and reopening
+    (data-in-place) post without leaving the page when the script runs (site.js livePage); an
+    error shows under the reply box (data-composer-note), and without the script the notice above.
 *@
 @{
     ViewData["Title"] = "Questions for you";
@@ -58,17 +60,18 @@
     async Task Reply()
     {
         <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "reply" })" />
-        <form method="post" asp-page-handler="reply" id="reply" class="composer" data-composer>
+        <form method="post" asp-page-handler="reply" id="reply" class="composer" data-composer data-in-place>
             <textarea id="reply-body" name="body" rows="1" maxlength="@EventManager.MessageMax" required
                       placeholder="Reply to your giver" aria-label="Reply to your giver"></textarea>
             <button type="submit" class="button button-fill">Send</button>
+            <p class="composer-note" role="alert" data-composer-note></p>
         </form>
     }
 
     async Task Close()
     {
         <div class="conversation-foot">
-            <form method="post" asp-page-handler="close">
+            <form method="post" asp-page-handler="close" data-in-place>
                 <button type="submit" class="link-button small">Close this conversation</button>
             </form>
         </div>
@@ -98,7 +101,7 @@ else
                 <section id="reply" class="conversation-closed" aria-labelledby="closed-heading">
                     <h2 id="closed-heading">You closed this conversation</h2>
                     <p class="small soft">Your giver can't send more questions, and you can't reply, until you reopen it.</p>
-                    <form method="post" asp-page-handler="reopen">
+                    <form method="post" asp-page-handler="reopen" data-in-place>
                         <button type="submit" class="button">Reopen it</button>
                     </form>
                 </section>

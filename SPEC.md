@@ -1506,7 +1506,10 @@ is in §14.
   conversation" sits under the panel on the cloth, on a small white ground
   so it reads (decided November 27, 2026, owner; the earlier "no cloth
   with nothing new" variant is gone). The conversation's scrolling box
-  (§16 Threads) is plain: no shadow and no styled scrollbar.
+  (§16 Threads) is plain: no shadow and no styled scrollbar. With the
+  script, a send that didn't go says why under the message box, small, in
+  red at 600, taking no room until then (§16 "Sending without the page
+  moving").
 - The bell (§7, §16; decided on #89, November 27, 2026, user) sits in the
   masthead left of the first name. With something new it is filled ribbon
   blue with an ink clapper and has a small red dot at its top right,
@@ -1766,6 +1769,17 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     in `PairingSecrecyTests`, `LivePagesTests`, `LiveRoutingTests` (the
     refetch value), `LiveContentTests` (the collision, the patch's one
     giver), `QuestionTests`, `QuestionConversationTests`, `WhatsNewTests`.
+  - Sending without the page moving (owner, November 27, 2026, from a
+    screen recording): the question box, the reply box and closing or
+    reopening are `form[data-in-place]`; `site.js` (`livePage`) posts
+    them with `fetch`, follows the redirect as the browser would, and
+    takes the page that comes back as a refetch, then scrolls the thread's
+    box and says the notice. An error shows in the composer's
+    `[data-composer-note]` (empty and taking no room until then);
+    `LiveShape.Words` gains `notSent`. Tests: `SendInPlaceTests` (the
+    markup and the page a send comes back to); the script was only
+    syntax-checked and run against saved pages in headless Chromium, and
+    is checked by hand (§16 Testing).
 
 ### Done: the "Tablecloth" identity
 
@@ -2992,13 +3006,32 @@ live: the countdown turning over at midnight, and past events.
   page's own scroll position never moves on a live update. With the box at
   its bottom, it scrolls smoothly to the new message (at once under reduce
   motion); scrolled up, a quiet "New message below" link appears instead,
-  and pressing it scrolls the box. Sending your own message brings the
-  page back with the box at its newest. Without the script the box still
-  scrolls and starts at its newest message. When the
-  conversation is closed, the giver's box shows "Your recipient has closed
-  this conversation" and Send is turned off, but a draft stays visible;
-  reopening turns Send back on. Live arrival never moves a read marker
-  (§6).
+  and pressing it scrolls the box. Without the script the box still
+  scrolls and starts at its newest message.
+  When the conversation is closed, the giver's box shows "Your recipient
+  has closed this conversation" and Send is turned off, but a draft stays
+  visible; reopening turns Send back on. Live arrival never moves a read
+  marker (§6).
+- **Sending without the page moving** (decided November 27, 2026, owner:
+  the page reloaded and jumped on every send). With the script, Send or
+  Enter in the question box or the reply box, and "Close this
+  conversation" or "Reopen it", post without leaving the page: the same
+  POST, followed to the same page as without the script, so the proxy log
+  holds the same two requests and it is a visit (markers move, §6). From
+  the page that comes back, only the thread (inside its box) and the
+  composer change: the new message is added, the box scrolls smoothly to
+  it (at once under reduce motion), and the message box is emptied and
+  keeps focus; closing or reopening brings the conversation's panel in
+  again around the same box. The page's own scroll position doesn't move.
+  The one-time notice ("Reply sent.") isn't shown above the box; the new
+  message is the feedback, and the notice is said politely. An error
+  ("Your recipient has closed this conversation.", or "Not sent. Check
+  your connection and try again." when the post never got an answer)
+  shows in red under the message box with the draft kept, so nothing
+  above it moves. While the post is in flight hints are ignored, as for
+  any post, and a second Enter sends nothing. Without the script the
+  form posts and the page comes back at the box with its notice, as
+  before.
 - **Screen readers and motion.** New messages, state-change lines and new
   notifications are announced politely through a live region. No
   highlight or animation; content inserted above the view doesn't push it
@@ -3079,6 +3112,11 @@ back here for the hand checks.
   - a message arriving in each conversation's box: the page doesn't move,
     the box scrolls smoothly at its bottom (at once under reduce motion),
     "New message below" scrolled up; Enter and Shift+Enter in both boxes
+  - sending without the page moving: Send and Enter in both boxes,
+    closing and reopening, a fast double Enter, a send with the network
+    off and one into a conversation closed meanwhile; the page doesn't
+    scroll, nothing appears above the box, focus stays in the box, and
+    the proxy log shows the same POST and GET as without the script
   - screen-reader announcements
   - focus after a dismiss
   - the panel with "reduce motion", and `/whats-new` without the script

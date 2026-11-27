@@ -365,7 +365,8 @@ const live = { tab: "", posting: false, onRefetch: [] };
 // Open folds stay open and focus stays where it was. A state change swaps the page body when
 // nothing is being edited, and says the line politely; otherwise the line shows, with "Show",
 // and the page stays as it is. A refetch that comes back not found means the event was canceled
-// or the person is no longer in it. Nothing flashes or moves.
+// or the person is no longer in it. Nothing flashes or moves. The thread forms marked
+// data-in-place post from here too (below), so sending doesn't move the page either.
 function livePage() {
     const main = document.querySelector("main[data-live-shape]");
     const say = main?.querySelector("[data-live-say]");
@@ -606,7 +607,7 @@ function livePage() {
         pageParts(main);
     };
 
-    live.onRefetch.push((page, hint) => {
+    const update = (page, hint) => {
         // Moved: the questions page sends a refetch on to the event page once names are revealed
         // (or the event archived). That's a state change; the line shows with "Show", which goes there.
         if (hint.moved) {
@@ -648,6 +649,93 @@ function livePage() {
         }
         if (text) line(text, "Show", location.href);
         stale = true;
+    };
+    live.onRefetch.push(update);
+
+    // Sending without the page moving (spec §16 Threads): the question box, the reply box and
+    // closing or reopening (form[data-in-place]) post with fetch instead of navigating. It's the
+    // same POST, followed to the same GET, as without the script, so the proxy log reads the same
+    // and it's a visit (the markers move). The page that comes back is taken as a refetch: the new
+    // message goes into the thread's box, which scrolls to it, and the page's own scroll never
+    // changes. A sent box is emptied and keeps focus. The one-time notice isn't put above the box:
+    // it's said politely, and an error shows under the box (data-composer-note) with the draft
+    // kept. Closing or reopening brings the conversation's region in again, keeping its box.
+    // While a post is in flight, hints are ignored (live.posting) and a second Enter does nothing.
+    const here = main.dataset.livePath || location.pathname;
+    const posted = (form, page) => {
+        const region = form.closest("[data-live][id]");
+        const notice = page.querySelector("main .notice:not(.live-line)");
+        const text = notice?.textContent.trim() ?? "";
+        const failed = notice?.matches(".notice-error") ?? false;
+        for (const n of page.querySelectorAll("main .notice")) n.remove();
+        const box = form.querySelector("textarea");
+        if (form.matches("[data-composer]")) {
+            if (!failed && box) {
+                box.value = "";
+                box.dispatchEvent(new Event("input", { bubbles: true })); // the counter, if any
+            }
+            update(page, { areas: new Set() });
+            const thread = region?.querySelector("[data-thread][id]");
+            if (!failed && thread && !stale) {
+                thread.querySelector(".new-below")?.remove();
+                toBottom(thread, true);
+            }
+            if (box?.isConnected) box.focus({ preventScroll: true });
+        } else {
+            const fresh = region && !failed ? page.getElementById(region.id) : null;
+            if (fresh && !stale) {
+                swap(region, fresh);
+                const now = document.getElementById(region.id);
+                (now?.querySelector("[data-composer] textarea") ?? now?.querySelector("form[data-in-place] button"))?.focus({ preventScroll: true });
+            }
+            update(page, { areas: new Set() });
+        }
+        return { text, failed };
+    };
+    const tell = (form, text, failed) => {
+        if (!text) return;
+        const note = form.isConnected ? form.closest("[data-live][id]")?.querySelector("[data-composer-note]") : null;
+        if (failed && note) note.textContent = text;
+        else if (failed) {
+            const p = document.createElement("p");
+            p.className = "notice notice-error";
+            p.textContent = text;
+            say.replaceChildren(p);
+        } else if (!stale) line(text);
+    };
+    main.addEventListener("submit", async event => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement) || !form.matches("form[data-in-place]") || event.defaultPrevented) return;
+        event.preventDefault();
+        if (live.posting) return; // a second Enter
+        live.posting = true;
+        for (const note of main.querySelectorAll("[data-composer-note]")) note.textContent = "";
+        let response = null;
+        let html = "";
+        try {
+            response = await fetch(form.action, { method: "POST", body: new FormData(form, event.submitter), credentials: "same-origin" });
+            html = await response.text();
+        } catch {
+            response = null;
+        } finally {
+            live.posting = false;
+        }
+        // Not found: the event was canceled, or this person is no longer in it, as a refetch finds.
+        if (response?.status === 404) {
+            update(new DOMParser().parseFromString(html, "text/html"), { gone: true, areas: new Set() });
+            return;
+        }
+        if (!response?.ok) {
+            tell(form, words.notSent ?? "", true);
+            return;
+        }
+        // Sent on elsewhere (the questions page once names are revealed): a state change.
+        if (new URL(response.url).pathname !== here) {
+            update(null, { moved: true, areas: new Set() });
+            return;
+        }
+        const { text, failed } = posted(form, new DOMParser().parseFromString(html, "text/html"));
+        tell(form, text, failed);
     });
 }
 

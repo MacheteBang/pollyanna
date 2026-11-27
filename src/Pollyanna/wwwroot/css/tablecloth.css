@@ -579,9 +579,16 @@ html:not(.js) .thread-scroll { display: flex; flex-direction: column-reverse; }
 /* The one-line reply box with "Send" beside it. */
 .composer {
     display: flex;
-    gap: var(--space-2);
+    flex-wrap: wrap;
+    column-gap: var(--space-2);
     align-items: flex-end;
 }
+
+/* Why a send that stayed on the page (site.js, spec §16 Threads) didn't go: under the box, so the
+   thread and the box stay where they are. Empty, it takes no room but stays a live region; the
+   script fills it only. Without the script the page's notice above the box says it. */
+.composer-note { flex-basis: 100%; color: var(--red); font: var(--type-small); font-weight: 600; }
+.composer-note:not(:empty) { margin-top: var(--space-2); }
 
 .composer textarea {
     flex: 1;
