@@ -1622,6 +1622,16 @@ tickets (`research/live-transport`, `research/live-connection-leaks`,
     motion. Tests: `WhatsNewTests` (the panel on every signed-in page, its
     rows, the empty state, dismissing through it); the hand checks of §16
     are still to do.
+  - A live refetch isn't a visit (#101): a GET carrying the request header
+    `Pollyanna-Live` (`LiveRefetch.Header` in `src/Pollyanna/Live/`) is a
+    read-only view, at the page's own URL. The event page (and `/untie`)
+    and organizing page then delete no stored row, and the questions page
+    moves no `recipient_read_upto`; home and the event page's GET moved no
+    sealed marker already (the card's markers move only on the "seen"
+    post). Tests: `LiveRefetchTests` (home, the event page in each status,
+    `/untie`, questions, organizing in each status: a live fetch leaves
+    every marker and stored row as it was, a plain visit then clears them),
+    through `TestBrowser.GetPageAsync(path, live: true)`.
 
 ### Done: the "Tablecloth" identity
 
