@@ -1,0 +1,14 @@
+@model Pollyanna.Pages.Shared.PageHeadView
+@* The page head (PageHeadView, spec §7): back link, title (the page's h1), one small soft line.
+   Sits in the column, straight under the masthead and above the cloth. *@
+<div class="column page-head">
+    @if (Model.BackText is not null && Model.BackHref is not null)
+    {
+        <a class="page-head-back" href="@Model.BackHref">@Model.BackText</a>
+    }
+    <h1 class="page-title">@Model.Title</h1>
+    @if (Model.Line is not null)
+    {
+        <p class="page-head-line">@Model.Line</p>
+    }
+</div>

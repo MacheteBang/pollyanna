@@ -1,9 +1,16 @@
 @page "/auth/deleted"
 @{
+    Layout = "_Tablecloth";
     ViewData["Title"] = "Account deleted";
 }
 
-<div class="empty">
-    <h1>Your account is deleted</h1>
-    <p>You're signed out of Pollyanna. Your sign-in provider account isn't affected; signing in again starts a new, empty Pollyanna account.</p>
+<div class="cloth">
+    <div class="panel">
+        <h1 class="panel-title">Your account is deleted</h1>
+        <partial name="_AboutShort" />
+        <div class="actions">
+            <a class="button button-fill" href="/auth/login">Sign in again</a>
+        </div>
+        <p class="small soft">You're signed out of Pollyanna. Your sign-in provider account isn't affected; signing in again starts a new, empty Pollyanna account.</p>
+    </div>
 </div>

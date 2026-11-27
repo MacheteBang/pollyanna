@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+<!-- Source of src/Pollyanna/wwwroot/apple-touch-icon.png (render at 180 × 180, e.g. rsvg-convert -w 180 -h 180).
+     The bow, with its folds and a white edge, tied on gingham with six checks across (spec §12).
+     Bow adapted from the "Ribbon" emoji in Microsoft Fluent Emoji (Flat), Copyright (c) Microsoft Corporation, MIT License. See THIRD-PARTY-NOTICES.md. -->
+<defs>
+  <pattern id="cloth" width="60" height="60" patternUnits="userSpaceOnUse">
+    <rect width="30" height="60" fill="#3F6E8C" fill-opacity=".5"/>
+    <rect width="60" height="30" fill="#3F6E8C" fill-opacity=".5"/>
+  </pattern>
+  <path id="ribbon" d="M15.995 9.772L7.46 5.413C4.96 4.143 2 5.953 2 8.753V16.733C2 19.533 4.96 21.353 7.46 20.073L8.149 19.721L5.31 27.084C5.08 27.671 5.69 28.237 6.26 27.979L8.52 26.965C8.88 26.806 9.3 26.965 9.46 27.323L10.45 29.579C10.7 30.155 11.53 30.135 11.76 29.549L15.99 18.571L20.22 29.549C20.45 30.135 21.28 30.155 21.53 29.579L22.52 27.323C22.68 26.965 23.1 26.806 23.46 26.965L25.72 27.979C26.29 28.237 26.9 27.671 26.67 27.084L23.828 19.715L24.53 20.073C27.03 21.353 29.99 19.533 29.99 16.733V8.753C29.99 5.953 27.03 4.143 24.53 5.413Z"/>
+  <path id="fold" d="M12.18 17.667L7.45 20.083C5.09 21.293 2.3 19.723 2.02 17.173C2.3 14.623 5.08 13.053 7.45 14.263L12 16.586Z"/>
+</defs>
+<rect width="180" height="180" fill="#FFFFFF"/>
+<rect width="180" height="180" fill="url(#cloth)"/>
+<svg x="15" y="17" width="150" height="150" viewBox="0 0 32 32" overflow="visible">
+  <use href="#ribbon" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.3" stroke-linejoin="round"/>
+  <use href="#ribbon" fill="#3F6E8C"/>
+  <use href="#fold" fill="#1E1A16" fill-opacity=".3"/>
+  <use href="#fold" fill="#1E1A16" fill-opacity=".3" transform="translate(31.99 0) scale(-1 1)"/>
+  <rect x="12" y="6" width="8" height="13" rx="2.2" fill="#1E1A16"/>
+</svg>
+</svg>

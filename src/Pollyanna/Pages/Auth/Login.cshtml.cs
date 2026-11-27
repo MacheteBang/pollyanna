@@ -29,7 +29,9 @@ public sealed class LoginModel(ProviderRegistry providers) : PageModel
         if (provider is null)
         {
             var query = target == "/" ? "" : "?returnUrl=" + Uri.EscapeDataString(target);
-            Choices = [.. providers.Select(p => new ProviderButtonView(p, "Sign in with " + p.Label, p.LoginPath + query))];
+            // Several providers: every button outlined, none the main one; a single one is filled (spec §12).
+            var outline = providers.Count > 1;
+            Choices = [.. providers.Select(p => new ProviderButtonView(p, "Continue with " + p.Label, p.LoginPath + query, outline))];
             return Page();
         }
 
