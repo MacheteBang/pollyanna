@@ -1,0 +1,188 @@
+using System.Runtime.CompilerServices;
+using Pollyanna.Data;
+using Pollyanna.Events;
+using Pollyanna.Happenings;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
+
+namespace Pollyanna.Live;
+
+/// <summary>
+/// Who a happening's live signal goes to (spec §16 "Who a live signal goes to"), the live column
+/// of <see cref="HappeningKinds.Table"/>. Whoever acted also gets the hint on their other tabs.
+/// </summary>
+[Flags]
+public enum LiveTo
+{
+    /// <summary>Nobody but whoever acted.</summary>
+    Actor = 0,
+    /// <summary>Public to the event: every participant and organizer (participants only once it's out of draft).</summary>
+    Event = 1,
+    /// <summary>The event's organizers.</summary>
+    Organizers = 2,
+    /// <summary>The person the happening is about (<see cref="Happening.About"/>), even once they're out of the event.</summary>
+    About = 4,
+}
+
+/// <summary>
+/// Who a giver-recipient happening's content goes to (spec §16): the content column of
+/// <see cref="HappeningKinds.Table"/>. Worked out in memory as the happening is announced, inside
+/// its transaction, among the people connected then (<paramref name="online"/>, whoever acted left
+/// out), as <see cref="SealedHat"/> finds a giver; held with the happening until it commits and
+/// never stored or subscribed under an assignment.
+/// </summary>
+public delegate Task<IReadOnlyList<Guid>> ContentTo(Happening happening, SealedHat hat, IReadOnlyCollection<Guid> online);
+
+/// <summary>The content column's values: who in a pair a happening's content is for.</summary>
+public static class PairContent
+{
+    /// <summary>A question's recipient (<see cref="Happening.About"/>).</summary>
+    public static readonly ContentTo Recipient = (h, _, online) =>
+        Task.FromResult<IReadOnlyList<Guid>>(h.About is { } recipient && online.Contains(recipient) ? [recipient] : []);
+
+    /// <summary>The giver of whoever acted: they replied, closed or reopened, or edited their notes.</summary>
+    public static readonly ContentTo ActorsGiver = async (h, hat, online) =>
+        h.Actor is { } actor && online.Count > 0 && await hat.GiverAmongAsync(h.EventId, actor, online) is { } giver ? [giver] : [];
+
+    /// <summary>The givers this patch changed, as <see cref="SealedHat"/> worked them out in memory while patching.</summary>
+    public static readonly ContentTo PatchedGivers = (h, hat, online) =>
+        Task.FromResult<IReadOnlyList<Guid>>([.. hat.TakePatchedGivers(h.EventId).Where(online.Contains)]);
+}
+
+/// <summary>
+/// The live side's routing rule (spec §16): who gets a hint, worked out when it's sent, from the
+/// database as committed, and the content for whoever <see cref="ContentTo"/> found. Hints name the event and an area (the happening's kind), never a
+/// person. Connections are known by person only; an event's members are looked up here.
+/// </summary>
+public sealed class LiveSignals(PollyannaDb db, LiveConnections connections, LiveContent content)
+{
+    /// <summary>The request header a page's own background post names its live connection in ("not this tab").</summary>
+    public const string TabHeader = "Pollyanna-Tab";
+
+    /// <summary>
+    /// Sends <paramref name="happening"/>'s hint by its kind's <see cref="HappeningKindRow.Live"/>,
+    /// and its content to <paramref name="contentTo"/>, the people its content column found.
+    /// </summary>
+    public async Task SendAsync(Happening happening, IReadOnlyList<Guid> contentTo)
+    {
+        var to = HappeningKinds.Of(happening.Kind).Live;
+        var people = new HashSet<Guid>();
+        if (to.HasFlag(LiveTo.Event))
+            people.UnionWith(await EventMembersAsync(happening.EventId));
+        if (to.HasFlag(LiveTo.Organizers))
+            people.UnionWith(await db.Organizers.Where(o => o.EventId == happening.EventId).Select(o => o.PersonId).ToListAsync());
+        if (to.HasFlag(LiveTo.About) && happening.About is { } about)
+            people.Add(about);
+        // Your own action: your other tabs and devices.
+        if (happening.Actor is { } actor)
+            people.Add(actor);
+        connections.Send(people, LiveFrame.Hint(happening.EventId, happening.Kind.ToString(), ownOnly: to == LiveTo.Actor));
+        foreach (var person in contentTo)
+            connections.Send([person], await content.FrameAsync(person, happening.EventId, happening.Kind.ToString()));
+    }
+
+    /// <summary>
+    /// Your own action that isn't a happening, such as a dismissal: a hint to your other tabs,
+    /// leaving out <paramref name="tab"/>, the one that did it, when the page named itself.
+    /// </summary>
+    public void OwnAction(Guid me, Guid eventId, string area, string? tab) =>
+        connections.Send([me], LiveFrame.Hint(eventId, area, ownOnly: true), tab);
+
+    /// <summary>Everyone who can see the event: its organizers, and its participants unless it's a draft.</summary>
+    async Task<List<Guid>> EventMembersAsync(Guid eventId)
+    {
+        var status = await db.Events.Where(e => e.Id == eventId).Select(e => (EventStatus?)e.Status).SingleOrDefaultAsync();
+        var organizers = db.Organizers.Where(o => o.EventId == eventId).Select(o => o.PersonId);
+        return status is null or EventStatus.Draft
+            ? await organizers.ToListAsync()
+            : await db.Participants.Where(p => p.EventId == eventId).Select(p => p.PersonId).Union(organizers).ToListAsync();
+    }
+}
+
+/// <summary>
+/// Live is the third thing behind <see cref="Announcer"/>: it holds each happening until the
+/// change that made it is committed (spec §16: a signal before the commit could set off a refetch
+/// that still sees the old state), then sends it. A rolled-back change sends nothing.
+/// </summary>
+public sealed class LiveOnHappening(PollyannaDb db, LiveAfterCommit afterCommit, SealedHat hat, LiveConnections connections) : IHappeningListener
+{
+    public async Task HearAsync(Happening happening)
+    {
+        // Whom its content is for is worked out now, while the patch that knows it is in memory.
+        IReadOnlyList<Guid> contentTo = HappeningKinds.Of(happening.Kind).Content is { } to
+            ? await to(happening, hat, [.. connections.People.Where(p => p != happening.Actor)])
+            : [];
+        afterCommit.Hold(db, happening, contentTo, db.Database.CurrentTransaction?.GetDbTransaction());
+    }
+}
+
+/// <summary>
+/// Sends held happenings once they're in the database: after a <c>SaveChanges</c> outside a
+/// transaction, or when the transaction they were announced in (or the next one, for one announced
+/// before it began) commits. Held per context; one instance for the app.
+/// <para>
+/// A save that fails outside a transaction keeps them: the changes they came with are still
+/// pending in the context, and go with the save that retries them (a message posted under a
+/// number someone else just took, spec §6). A context given up on takes them with it.
+/// </para>
+/// </summary>
+public sealed class LiveAfterCommit(IServiceScopeFactory scopes) : ISaveChangesInterceptor, IDbTransactionInterceptor
+{
+    sealed record Held(Happening Happening, IReadOnlyList<Guid> ContentTo, System.Data.Common.DbTransaction? Transaction);
+
+    readonly ConditionalWeakTable<DbContext, List<Held>> held = new();
+
+    public void Hold(DbContext db, Happening happening, IReadOnlyList<Guid> contentTo, System.Data.Common.DbTransaction? transaction)
+    {
+        var list = held.GetOrCreateValue(db);
+        lock (list) list.Add(new Held(happening, contentTo, transaction));
+    }
+
+    public async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } db && db.Database.CurrentTransaction is null)
+            // Anything held for a transaction is from one that's gone without committing.
+            await SendAsync(db, h => h.Transaction is null, drop: h => true);
+        return result;
+    }
+
+    public async Task TransactionCommittedAsync(System.Data.Common.DbTransaction transaction, TransactionEndEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } db)
+            await SendAsync(db, h => h.Transaction is null || h.Transaction == transaction, drop: h => h.Transaction == transaction || h.Transaction is null);
+    }
+
+    public Task TransactionRolledBackAsync(System.Data.Common.DbTransaction transaction, TransactionEndEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } db)
+            Take(db, h => h.Transaction is null || h.Transaction == transaction);
+        return Task.CompletedTask;
+    }
+
+    async Task SendAsync(DbContext db, Func<Held, bool> send, Func<Held, bool> drop)
+    {
+        var taken = Take(db, h => send(h) || drop(h));
+        if (taken.Count == 0)
+            return;
+        // Worked out in a scope of its own: this context is still inside the commit it reports.
+        await using var scope = scopes.CreateAsyncScope();
+        var signals = scope.ServiceProvider.GetRequiredService<LiveSignals>();
+        foreach (var h in taken.Where(send))
+            await signals.SendAsync(h.Happening, h.ContentTo);
+    }
+
+    List<Held> Take(DbContext db, Func<Held, bool> which)
+    {
+        if (!held.TryGetValue(db, out var list))
+            return [];
+        lock (list)
+        {
+            var taken = list.Where(which).ToList();
+            list.RemoveAll(h => taken.Contains(h));
+            return taken;
+        }
+    }
+}

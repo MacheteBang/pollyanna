@@ -173,7 +173,7 @@ public sealed class AccountDeletionTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<PollyannaDb>();
             var events = scope.ServiceProvider.GetRequiredService<EventManager>();
-            Assert.True((await events.RedrawAsync((await EventAccess.FindAsync(db, stuck, org))!)).Ok);
+            Assert.True((await events.RedrawAsync((await EventAccess.FindAsync(db, stuck, org))!, org)).Ok);
         }
         Assert.DoesNotContain(me, await app.ParticipantsAsync(stuck));
         await DeleteAsync();

@@ -3,7 +3,11 @@
 @using Pollyanna.Data
 @{
     ViewData["Title"] = Model.Event.Name;
-    // Every state: _EventHead, then the state's own partial.
+    // Every state: _EventHead, then the state's own partial. The page is live (spec §16 "What each
+    // page does live"): its shape is the status, and each part that patches in place is marked
+    // data-live with a stable id in the partials. The gift itself never is, so a patch neither ties
+    // nor unties it: its state is held in the browser (site.js).
+    Pollyanna.Live.LiveShape.Mark(ViewData, "event", Model.Event);
 }
 @section Preload {
     @if (Model.Event.Status == EventStatus.Drawn && Model.Slip is not null)

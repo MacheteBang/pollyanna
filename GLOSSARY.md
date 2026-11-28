@@ -180,8 +180,28 @@ _Avoid_: Blocked, muted, locked
 ## Notifications
 
 **Notification**:
-An email telling one person, or one invited address, that something in an event needs them.
-_Avoid_: Alert, message (Messages belong to the question box), mail, push
+Telling one person, or one invited address, that something in an event needs them: by email or in the app's "What's new" menu.
+_Avoid_: Alert, message (Messages belong to the question box), push
+
+**Happening**:
+Something that happens in an event and makes zero or more notifications and live updates. Internal only; never shown in the interface.
+_Avoid_: Event (an event is a gift exchange), activity, change
+
+**What's new**:
+The in-app list of a person's notifications, opened from the bell in the masthead, or the `/whats-new` page without the script. It isn't a history: a notification leaves it when dismissed or seen.
+_Avoid_: Inbox, notification center, feed
+
+**Dismiss**:
+Taking a notification out of "What's new" on purpose. For a notification tied to an assignment it moves the same marker seeing the thing would.
+_Avoid_: Mark read, clear, archive
+
+**Live connection**:
+The one stream (`/live`) each signed-in page holds open, which carries hints that a page should refetch a part, or, between a giver and a recipient, the changed content itself.
+_Avoid_: Socket, channel, subscription
+
+**Live refetch**:
+A page fetching its own URL again because of a hint. It is not a visit: it moves no marker and clears no notification.
+_Avoid_: Reload, poll
 
 **Notification kind**:
 Which of the fixed set of things a notification is about, e.g. "Event is open" or "A question for you".

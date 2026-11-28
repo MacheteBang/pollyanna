@@ -1,5 +1,7 @@
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.Live;
+using Pollyanna.WhatsNew;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +16,7 @@ namespace Pollyanna.Pages.Events;
 /// isn't a participant goes to manage. Before reveal, only the viewer's own slip and threads are
 /// ever looked up.
 /// </summary>
-public sealed class EventModel(PollyannaDb db, EventManager events, TimeProvider clock) : EventPageModel(db)
+public sealed class EventModel(PollyannaDb db, EventManager events, WhatsNewList whatsNew, TimeProvider clock) : EventPageModel(db)
 {
     public sealed record ParticipantRow(Guid Id, string Name, bool HasPicture, string Notes) : PersonRow(Id, Name, HasPicture);
 
@@ -40,6 +42,11 @@ public sealed class EventModel(PollyannaDb db, EventManager events, TimeProvider
     /// assignment; after a patch the new recipient counts as a first time too.
     /// </summary>
     public bool FirstTime => Slip is { Viewed: false } or { RecipientChanged: true };
+    /// <summary>
+    /// Whether the page carries the parts between the viewer and their recipient or giver; not on
+    /// a live refetch a hint set off (spec §16, <see cref="LiveRefetch.CarriesPairParts"/>).
+    /// </summary>
+    public bool PairParts => Request.CarriesPairParts();
     /// <summary>Today in UTC, for the day lines of the giver's thread (site.js redoes them in local time).</summary>
     public DateOnly Today { get; private set; }
     /// <summary>Once revealed: who drew whom (spec §4).</summary>
@@ -58,6 +65,9 @@ public sealed class EventModel(PollyannaDb db, EventManager events, TimeProvider
             return NotFound();
         if (!Membership.IsParticipant)
             return Redirect($"/events/{id}/manage");
+        // Seeing the page clears what pointed here, in this same request; a live refetch isn't seeing it (spec §16).
+        if (!Request.IsLiveRefetch())
+            await whatsNew.SeenAsync(Me, id, $"/events/{id}");
 
         Participants = await Db.Participants.Where(p => p.EventId == id)
             .Join(Db.People, p => p.PersonId, person => person.Id, (p, person) => new ParticipantRow(

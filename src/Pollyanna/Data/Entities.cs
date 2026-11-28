@@ -198,6 +198,11 @@ public sealed class Assignment
     public bool RecipientChanged { get; set; }
     /// <summary>The recipient closed the question thread (spec §6): nobody can post until they reopen it.</summary>
     public bool ThreadClosed { get; set; }
+    /// <summary>
+    /// The recipient closed or reopened the thread since the giver last opened the card or
+    /// dismissed "What's new"'s line about it (spec §16): a yes/no, never a time.
+    /// </summary>
+    public bool ThreadChangeUnseen { get; set; }
     /// <summary>The <see cref="Message.Seq"/> of the last message the giver has seen.</summary>
     public int GiverReadUpto { get; set; }
     /// <summary>The <see cref="Message.Seq"/> of the last message the recipient has seen.</summary>
@@ -213,8 +218,9 @@ public enum MessageSender
 
 /// <summary>
 /// One passed note in an assignment's anonymous question thread (spec §6). It names a role, not
-/// a person; <see cref="Seq"/> orders the thread and counts only within it, and the time is
-/// rounded down to the hour.
+/// a person; <see cref="Seq"/> orders the thread and counts only within it. The time is the
+/// exact moment it was sent (docs/adr/0007); messages stored before that keep the hour they were
+/// rounded down to, with no marker (<see cref="Pollyanna.Events.Note.OnTheHour"/>).
 /// </summary>
 public sealed class Message
 {
@@ -225,12 +231,8 @@ public sealed class Message
     public int Seq { get; set; }
     public MessageSender Sender { get; set; }
     public required string Body { get; set; }
-    /// <summary>UTC, rounded down to the hour (<see cref="HourOf"/>).</summary>
+    /// <summary>UTC, the moment it was sent.</summary>
     public DateTime CreatedAt { get; set; }
-
-    /// <summary>The hour a message posted at <paramref name="now"/> (UTC) is stored under, to blunt timing guesses (spec §6).</summary>
-    public static DateTime HourOf(DateTime now) =>
-        new(now.Ticks - now.Ticks % TimeSpan.TicksPerHour, DateTimeKind.Utc);
 }
 
 /// <summary>
@@ -263,6 +265,26 @@ public sealed class Notification
     public int FailedAttempts { get; set; }
     /// <summary>The first failed attempt; the row is dropped 24 hours after it.</summary>
     public DateTime? FirstFailedAt { get; set; }
+}
+
+/// <summary>
+/// One stored in-app notification in "What's new" (spec §16, docs/adr/0008): one row per person,
+/// event and kind, for the seven kinds that say nothing about who gives to whom. It holds only
+/// what email already sends that person; the words are worked out when shown. Deleted, never
+/// flagged, when dismissed or seen, or when what it says no longer holds. Unrelated to the email
+/// outbox (<see cref="Notification"/>).
+/// </summary>
+public sealed class InAppNotification
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid PersonId { get; set; }
+    public Guid EventId { get; set; }
+    /// <summary>The happening that made it; only kinds the happening table marks as stored.</summary>
+    public Happenings.HappeningKind Kind { get; set; }
+    /// <summary>Who the line names ("Alice made you an organizer", "Sue is taking part"), if anyone. Never a giver.</summary>
+    public Guid? NamedPersonId { get; set; }
+    /// <summary>When the latest happening of this kind happened (UTC).</summary>
+    public DateTime At { get; set; }
 }
 
 /// <summary>

@@ -11,3 +11,4 @@ No notification is ever addressed to a giver because of something in their own a
 
 - Emails to recipients are fine ("A question for you"): the database already says whose thread it is, and the email names no giver. Question emails are still held to the next full hour (ADR-0004).
 - A new notification kind that goes to one giver, or to some givers but not all, contradicts this ADR.
+- This ADR is about email. In-app notifications to one giver (SPEC.md §16) are allowed because they are worked out from the sealed row's markers and travel inside the giver's own live connection, with no stored row and no follow-up request (ADR-0008).

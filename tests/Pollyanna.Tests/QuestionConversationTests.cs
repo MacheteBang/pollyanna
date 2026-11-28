@@ -10,8 +10,8 @@ namespace Pollyanna.Tests;
 /// <summary>
 /// "Questions for you" in the "Tablecloth" look (spec §7, §12): the thread reads as a
 /// conversation, the giver on the left and the viewer on the right, oldest at the top with a
-/// line between days; on the cloth with a filled "Send" while a question is unanswered, on
-/// white with the reply box in a bar otherwise. The question box's rules are in QuestionTests.
+/// line between days, always on the cloth with the reply box's "Send" filled beside it (owner,
+/// November 27, 2026: the page keeps its shape). The question box's rules are in QuestionTests.
 /// </summary>
 public sealed class QuestionConversationTests : IAsyncLifetime
 {
@@ -78,13 +78,13 @@ public sealed class QuestionConversationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task With_nothing_asked_the_page_says_so_with_no_cloth_and_no_reply_box()
+    public async Task With_nothing_asked_the_page_says_so_on_the_cloth_with_no_reply_box()
     {
         var page = await ann.GetPageAsync(Questions);
 
-        Assert.Contains("No questions yet. When your giver asks you something, it shows up here and you can reply.", page.QuerySelector("main")!.TextContent);
-        Assert.Null(page.QuerySelector(".cloth"));
-        Assert.Null(page.QuerySelector("form"));
+        Assert.Contains("No questions yet. When your giver asks you something, it shows up here and you can reply.",
+            page.QuerySelector(".cloth > .panel")!.TextContent);
+        Assert.Null(page.QuerySelector("main form"));
     }
 
     [Fact]
@@ -104,12 +104,12 @@ public sealed class QuestionConversationTests : IAsyncLifetime
             "-- Sunday --", "me: Yes, a small one that folds away.",
             "-- Today --", "giver: What's your favorite kind of tea?", "me: Earl Grey,\nor anything smoky.",
         ], Lines(conversation));
-        // Each message carries its hour, rounded, in machine form for the script and in words.
+        // Each message carries its time to the minute, in machine form for the script and in words.
         var times = conversation.QuerySelectorAll(".message time").ToList();
-        Assert.Equal("2030-11-20T16:00:00Z", times[0].GetAttribute("datetime"));
-        Assert.Contains("about 4 PM", times[0].TextContent);
-        Assert.Contains("about 8 AM", times[1].TextContent);
-        Assert.Contains("about 9 AM", times[3].TextContent);
+        Assert.Equal("2030-11-20T16:02Z", times[0].GetAttribute("datetime"));
+        Assert.Contains("4:02 PM", times[0].TextContent);
+        Assert.Contains("8:15 AM", times[1].TextContent);
+        Assert.Contains("9:40 AM", times[3].TextContent);
         // A screen reader hears who said what.
         Assert.StartsWith("Your giver:", conversation.QuerySelector(".message-theirs .bubble")!.TextContent.Trim());
         Assert.StartsWith("You:", conversation.QuerySelector(".message-mine .bubble")!.TextContent.Trim());
@@ -155,7 +155,7 @@ public sealed class QuestionConversationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task With_nothing_new_there_is_no_cloth_and_the_reply_box_sits_in_a_bar_with_send_outlined()
+    public async Task With_nothing_new_the_page_keeps_its_shape_on_the_cloth_with_send_filled()
     {
         await SayAsync(MessageSender.Giver, "What's your favorite kind of tea?", new(2030, 12, 3, 9, 0, 0, TimeSpan.Zero));
         await SayAsync(MessageSender.Recipient, "Earl Grey.", new(2030, 12, 3, 10, 0, 0, TimeSpan.Zero));
@@ -163,20 +163,20 @@ public sealed class QuestionConversationTests : IAsyncLifetime
 
         var page = await ann.GetPageAsync(Questions);
 
-        Assert.Null(page.QuerySelector(".cloth"));
         Assert.Null(page.QuerySelector(".message-new"));
-        Assert.Null(page.QuerySelector(".button-fill"));
-        var conversation = page.QuerySelector("ol.conversation")!;
-        var bar = page.QuerySelector(".reply-bar")!;
-        Assert.NotEqual((DocumentPositions)0, conversation.CompareDocumentPosition(bar) & DocumentPositions.Following);
-        var send = bar.QuerySelector("form#reply button")!;
+        var cloth = Assert.Single(page.QuerySelectorAll(".cloth"));
+        var panel = cloth.QuerySelector(":scope > .panel")!;
+        // The conversation scrolls in its own box, the reply box under it.
+        Assert.NotNull(panel.QuerySelector(".thread-scroll > ol.conversation"));
+        var send = panel.QuerySelector("form#reply.composer button")!;
         Assert.Equal("Send", send.TextContent.Trim());
-        Assert.Contains("button", send.ClassList);
-        Assert.NotNull(page.QuerySelector($"form[action='{Questions}/close'] .link-button"));
+        Assert.Contains("button-fill", send.ClassList);
+        // "Close this conversation" sits under the panel, still on the cloth.
+        Assert.NotNull(cloth.QuerySelector($":scope > .conversation-foot form[action='{Questions}/close'] .link-button"));
     }
 
     [Fact]
-    public async Task A_closed_conversation_has_no_cloth_and_offers_to_reopen()
+    public async Task A_closed_conversation_stays_on_the_cloth_and_offers_to_reopen()
     {
         await SayAsync(MessageSender.Giver, "What's your favorite kind of tea?", new(2030, 12, 3, 9, 0, 0, TimeSpan.Zero));
         await TodayAsync();
@@ -184,8 +184,9 @@ public sealed class QuestionConversationTests : IAsyncLifetime
 
         var page = await ann.GetPageAsync(Questions);
 
-        Assert.Null(page.QuerySelector(".cloth"));
+        Assert.NotNull(page.QuerySelector(".cloth > .panel #reply.conversation-closed"));
         Assert.Null(page.QuerySelector("form#reply"));
+        Assert.Null(page.QuerySelector($"form[action='{Questions}/close']"));
         Assert.Contains("You closed this conversation", page.QuerySelector("#reply")!.TextContent);
         Assert.Equal("Reopen it", page.QuerySelector($"form[action='{Questions}/reopen'] button")!.TextContent.Trim());
     }

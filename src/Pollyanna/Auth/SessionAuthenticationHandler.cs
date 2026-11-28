@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Encodings.Web;
 using Pollyanna.Data;
+using Pollyanna.Live;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
@@ -26,11 +27,14 @@ public sealed class SessionAuthenticationHandler(
     IOptionsMonitor<PollyannaSessionOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder,
-    PollyannaDb db)
+    PollyannaDb db,
+    LiveConnections live)
     : SignInAuthenticationHandler<PollyannaSessionOptions>(options, logger, encoder)
 {
     public const string SchemeName = "PollyannaSession";
     public const string PersonIdClaim = "pollyanna:person";
+    /// <summary>The session's id (its token's hash), so a live stream can be ended with its session.</summary>
+    public const string SessionIdClaim = "pollyanna:session";
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -59,6 +63,7 @@ public sealed class SessionAuthenticationHandler(
         var identity = new ClaimsIdentity(
             [
                 new Claim(PersonIdClaim, session.PersonId.ToString()),
+                new Claim(SessionIdClaim, session.Id),
                 new Claim(ClaimTypes.Name, found.DisplayName ?? ""),
             ],
             SchemeName, ClaimTypes.Name, ClaimTypes.Role);
@@ -98,6 +103,7 @@ public sealed class SessionAuthenticationHandler(
         {
             var id = HashToken(token);
             await db.Sessions.Where(s => s.Id == id).ExecuteDeleteAsync();
+            live.EndSession(id);
         }
         Response.Cookies.Delete(Options.CookieName, CookieOptions(null));
     }
@@ -125,4 +131,7 @@ public static class ClaimsPrincipalExtensions
     public static Guid PersonId(this ClaimsPrincipal user) =>
         Guid.Parse(user.FindFirstValue(SessionAuthenticationHandler.PersonIdClaim)
             ?? throw new InvalidOperationException("Not signed in."));
+
+    /// <summary>The signed-in session's id; null when not signed in.</summary>
+    public static string? SessionId(this ClaimsPrincipal user) => user.FindFirstValue(SessionAuthenticationHandler.SessionIdClaim);
 }

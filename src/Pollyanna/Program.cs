@@ -2,9 +2,12 @@ using Pollyanna.Auth;
 using Pollyanna.Configuration;
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.Happenings;
 using Pollyanna.Infrastructure;
+using Pollyanna.Live;
 using Pollyanna.Notifications;
 using Pollyanna.People;
+using Pollyanna.WhatsNew;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
@@ -38,9 +41,23 @@ services.AddSingleton<OutboxSender>();
 services.AddHostedService(sp => sp.GetRequiredService<OutboxSender>());
 services.AddScoped<Outbox>();
 services.AddScoped<EmailSwitch>();
+// Every happening goes through one entry point (spec §16); email is the first listener.
+services.AddScoped<Announcer>();
+services.AddScoped<IHappeningListener, EmailOnHappening>();
+// "What's new": stored rows written and deleted by happenings, read by the bell and /whats-new.
+services.AddScoped<StoredNotifications>();
+services.AddScoped<IHappeningListener, WhatsNewOnHappening>();
+services.AddScoped<WhatsNewList>();
+// Live pages (spec §16): the open /live streams, in memory, and the hints sent once a change commits.
+services.AddSingleton<LiveConnections>();
+services.AddSingleton<LiveAfterCommit>();
+services.AddScoped<LiveSignals>();
+services.AddSingleton<LiveContent>();
+services.AddScoped<IHappeningListener, LiveOnHappening>();
 
 services.AddDbContext<PollyannaDb>((sp, options) => options
     .UseSqlite($"Data Source={sp.GetRequiredService<PollyannaSettings>().DatabasePath}")
+    .AddInterceptors(sp.GetRequiredService<LiveAfterCommit>())
     // SQLite rebuilds a table with foreign keys off, outside the migration's transaction. Expected
     // and harmless (spec §8); every other EF warning still logs.
     .ConfigureWarnings(w => w.Ignore(RelationalEventId.NonTransactionalMigrationOperationWarning)));
@@ -91,6 +108,8 @@ services.AddRazorPages(o =>
     o.Conventions.AllowAnonymousToFolder("/Auth");
     o.Conventions.AllowAnonymousToPage("/Error");
 });
+// A live refetch leaves those notices for the next real visit.
+Pollyanna.Live.LiveTempData.AddTo(services);
 services.AddRouting(o => o.LowercaseUrls = true);
 
 // A missing or invalid setting can surface while the pipeline is built (data protection reads
@@ -112,6 +131,7 @@ try
     app.MapGet("/healthz", () => Results.Text("ok")).AllowAnonymous();
     app.MapPictures();
     app.MapProviderIcons();
+    app.MapLive();
     app.MapRazorPages();
 
     // Check the settings before the host starts: a failure inside a hosted service would have

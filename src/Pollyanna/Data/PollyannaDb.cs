@@ -22,6 +22,7 @@ public sealed class PollyannaDb(DbContextOptions<PollyannaDb> options) : DbConte
     public DbSet<Assignment> Assignments => Set<Assignment>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<InAppNotification> InAppNotifications => Set<InAppNotification>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -139,6 +140,17 @@ public sealed class PollyannaDb(DbContextOptions<PollyannaDb> options) : DbConte
             e.Property(n => n.Email).HasMaxLength(320);
             e.HasIndex(n => n.NotBefore);
             e.HasIndex(n => new { n.EventId, n.Kind, n.PersonId });
+            e.HasOne<Event>().WithMany().HasForeignKey(n => n.EventId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Person>().WithMany().HasForeignKey(n => n.PersonId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Person>().WithMany().HasForeignKey(n => n.NamedPersonId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        model.Entity<InAppNotification>(e =>
+        {
+            e.Property(n => n.Id).ValueGeneratedNever();
+            e.Property(n => n.Kind).HasConversion<string>().HasMaxLength(32);
+            e.HasIndex(n => new { n.PersonId, n.EventId, n.Kind }).IsUnique();
+            e.HasIndex(n => new { n.EventId, n.Kind });
             e.HasOne<Event>().WithMany().HasForeignKey(n => n.EventId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Person>().WithMany().HasForeignKey(n => n.PersonId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Person>().WithMany().HasForeignKey(n => n.NamedPersonId).OnDelete(DeleteBehavior.Cascade);

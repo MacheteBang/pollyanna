@@ -80,7 +80,7 @@
     --soft-ink: #5B5650;   /* secondary text */
     --ribbon: #3F6E8C;     /* bows, the cloth's thread, the focus ring, link underlines */
     --pale: #DCE7EE;       /* row dividers, the girl's shirt, the other side's bubbles */
-    --red: #9E2019;        /* error text, "Cancel this event" and "Delete my account" only */
+    --red: #9E2019;        /* error text, "Cancel this event", "Delete my account" and the bell's dot only */
     --thread: color-mix(in srgb, var(--ribbon) 50%, transparent); /* ribbon blue at 50%: one gingham thread */
 
     /* Type. */
@@ -160,6 +160,7 @@ summary::-webkit-details-marker { display: none; }
     justify-content: space-between;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
+    position: relative; /* the bell's panel hangs from its bottom edge */
 }
 
 /* The wordmark: the girl at 40px, then "pollyanna" in lowercase Figtree 800, tightened. */
@@ -180,12 +181,70 @@ summary::-webkit-details-marker { display: none; }
     min-width: 0;
 }
 
-/* The reserved place for the notification menu: empty until that feature exists. */
-.masthead-slot {
+/* The bell (spec §12): a 44px link to "What's new", or with the script a button that opens the
+   panel below. With something new it is filled ribbon blue with an ink clapper and a small red
+   dot at its top right (the one dot in the app), ringed in white so it reads on the fill; with
+   nothing, a soft-ink outline and no dot. No number, word or badge, and nothing moves. */
+.bell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: var(--tap);
     height: var(--tap);
     flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: var(--corner);
+    background: none;
+    cursor: pointer;
 }
+.bell svg { width: 26px; height: 26px; }
+.bell path { fill: none; stroke: var(--soft-ink); stroke-width: 1.6; stroke-linejoin: round; }
+.bell-new .bell-body { fill: var(--ribbon); stroke: none; }
+.bell-new .bell-clapper { fill: var(--ink); stroke: none; }
+.bell-dot { fill: var(--red); stroke: var(--white); stroke-width: 1.5; }
+
+/* The "What's new" panel (spec §12, the #89 mockup, variant A): the one thing that sits over the
+   page. White, just under the masthead, 8px in from each edge on a phone and in the 560px column
+   on wider screens, a 2px ink border and the one corner, no shadow. Nothing in it moves: no
+   transition or animation, and the browser's scroll anchoring keeps the row in view in place. */
+.bell-panel {
+    position: absolute;
+    top: 100%;
+    inset-inline: max(var(--space-2), calc((100% - var(--column)) / 2));
+    z-index: 5;
+    max-height: min(560px, calc(100dvh - 80px));
+    overflow: auto;
+    padding: var(--space-4) var(--space-4) var(--space-2);
+    background: var(--white);
+    border: var(--line) solid var(--ink);
+    border-radius: var(--corner);
+    box-shadow: none;
+}
+.bell-panel-heading {
+    padding-bottom: var(--space-1);
+    font: var(--type-action);
+    letter-spacing: var(--tight);
+}
+.bell-rows .row, .whats-new-rows .row { align-items: flex-start; }
+.bell-line, .whats-new-line { overflow-wrap: anywhere; }
+.bell-row form, .whats-new-row form { flex: none; }
+/* The row's "×": a 44px target, drawn 14px. */
+.bell-x {
+    display: grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    margin: -6px -10px 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--corner);
+    background: none;
+    cursor: pointer;
+}
+.bell-x svg { width: 14px; height: 14px; fill: none; stroke: var(--ink); stroke-width: 2.4; }
+.bell-empty, .whats-new-empty { display: flex; flex-direction: column; gap: var(--space-1); padding-block: var(--space-2); }
+.bell-empty-title, .whats-new-empty-title { font-weight: 800; }
 
 .masthead-account {
     display: flex;
@@ -352,6 +411,30 @@ summary::-webkit-details-marker { display: none; }
 
 /* ---------- Notices after a form post ---------- */
 
+/* A live region that is there even when empty (spec §16), so content can arrive in it; it adds
+   no box of its own, so the column's gaps are as if it weren't there. */
+.live-slot { display: contents; }
+
+/* The quiet line a live state change shows while something is being edited (spec §16):
+   "Names have been drawn." with "Show". A notice, never a flash. */
+.live-line a { margin-inline-start: var(--space-2); }
+
+/* "New message below" (spec §16 Threads): a quiet link, held at the bottom of the view while the
+   thread is on screen and the new message isn't. No motion. */
+.new-below {
+    position: sticky;
+    bottom: var(--space-2);
+    margin: var(--space-2) 0 0;
+    text-align: center;
+}
+.new-below a {
+    display: inline-block;
+    padding: var(--space-2) var(--space-3);
+    background: var(--white);
+    border: var(--line) solid var(--pale);
+    border-radius: var(--corner);
+}
+
 .notice {
     margin-block: var(--space-3);
     padding: var(--space-3) var(--space-4);
@@ -477,17 +560,35 @@ summary::-webkit-details-marker { display: none; }
 
 .conversation-panel { gap: var(--space-5); }
 
-.conversation-quiet {
-    padding-top: var(--space-1);
-    padding-bottom: var(--space-5);
+/* The questions page is always the cloth, and it runs to the bottom of the page, under "Close
+   this conversation" too: the page body grows to the window and the cloth takes what's left. */
+body:has(.questions-cloth) { display: flex; flex-direction: column; min-height: 100dvh; }
+body:has(.questions-cloth) main { flex: 1; display: flex; flex-direction: column; }
+.questions-cloth { flex: 1; }
+
+/* A conversation scrolls in its own box (spec §16 Threads), so a new message is added inside it
+   and the page itself never moves. Plain: no shadow, no styled scrollbar. Without the script the
+   box starts at its newest message (column-reverse); with it, site.js puts it there. */
+.thread-scroll {
+    max-height: 55dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
+html:not(.js) .thread-scroll { display: flex; flex-direction: column-reverse; }
 
 /* The one-line reply box with "Send" beside it. */
 .composer {
     display: flex;
-    gap: var(--space-2);
+    flex-wrap: wrap;
+    column-gap: var(--space-2);
     align-items: flex-end;
 }
+
+/* Why a send that stayed on the page (site.js, spec §16 Threads) didn't go: under the box, so the
+   thread and the box stay where they are. Empty, it takes no room but stays a live region; the
+   script fills it only. Without the script the page's notice above the box says it. */
+.composer-note { flex-basis: 100%; color: var(--red); font: var(--type-small); font-weight: 600; }
+.composer-note:not(:empty) { margin-top: var(--space-2); }
 
 .composer textarea {
     flex: 1;
@@ -506,11 +607,6 @@ summary::-webkit-details-marker { display: none; }
 
 .composer .button { flex: none; font: var(--type-body); font-weight: 800; padding-inline: var(--space-4); }
 
-/* With nothing new: the reply box in a bar under the conversation. */
-.reply-bar {
-    border-top: var(--line) solid var(--pale);
-    padding-block: var(--space-3);
-}
 
 .conversation-closed {
     display: flex;
@@ -521,8 +617,10 @@ summary::-webkit-details-marker { display: none; }
 
 .conversation-closed h2 { font: var(--type-body); font-weight: 800; }
 
-.conversation-foot { padding-block: var(--space-1) var(--space-5); }
-.cloth + .conversation-foot { padding-top: var(--space-2); }
+/* "Close this conversation", under the panel on the cloth. */
+.conversation-foot { max-width: var(--column); margin-inline: auto; padding-top: var(--space-2); }
+/* On white, so the small link reads on the gingham. */
+.conversation-foot .link-button { background: var(--white); padding-inline: var(--space-2); border-radius: var(--corner); }
 
 /* ---------- Error and sign-in failure pages: the girl large, no cloth (spec §7, §12) ---------- */
 
@@ -792,6 +890,10 @@ summary::-webkit-details-marker { display: none; }
 .past-row:hover .past-name { text-decoration: underline; text-decoration-color: var(--ribbon); text-decoration-thickness: var(--line); }
 .past-name { font: var(--type-action); overflow-wrap: anywhere; }
 .past-row .small { font-weight: 400; }
+
+/* "What's new" without the script (spec §7, §16): divided rows, the line as a link with the
+   event and time under it, and a small "Dismiss" on the right. No cloth. */
+.whats-new-row .link-button { margin-top: -10px; }
 
 /* ---------- Event page once the event is over (#77): no cloth, nothing left to do ---------- */
 

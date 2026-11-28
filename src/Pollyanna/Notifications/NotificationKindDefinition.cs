@@ -36,7 +36,7 @@ public sealed class NotificationContext
 
 /// <summary>
 /// Something that happened, as one kind's own record (e.g. <c>RedrawNeeded.Cause</c>), handed to
-/// <see cref="Outbox.QueueAsync"/>. Holds IDs only; a kind reads anything else it needs.
+/// <see cref="Outbox.AddAsync"/>. Holds IDs only; a kind reads anything else it needs.
 /// </summary>
 /// <param name="Actor">Who did it; never emailed about it (spec §15). Null when nobody did, as at sign-in.</param>
 public abstract record NotificationCause(Guid EventId, Guid? Actor);
@@ -62,7 +62,7 @@ public enum WaitingCover
 /// <summary>
 /// One notification kind: who it is for, when a waiting row is no longer wanted, and what the
 /// email says. Subclasses are found by reflection, so a new kind is one new file in
-/// <c>Notifications/Kinds/</c> plus the <see cref="Outbox.QueueAsync"/> call where its cause happens.
+/// <c>Notifications/Kinds/</c> plus the Email column of its happening's row in <see cref="Happenings.HappeningKinds"/>.
 /// The shared rules (account deleted, no usable address, role lost) are applied by
 /// <see cref="OutboxSender"/> before <see cref="IsStillWantedAsync"/>; the footer is added there too.
 /// </summary>
@@ -108,7 +108,7 @@ public abstract class NotificationKindDefinition
 
 /// <summary>
 /// A kind queued by its own <typeparamref name="TCause"/>: the kind answers who gets it, whom it
-/// names and how long it is held, and <see cref="Outbox.QueueAsync"/> does the rest.
+/// names and how long it is held, and <see cref="Outbox.AddAsync"/> does the rest.
 /// </summary>
 public abstract class NotificationKindDefinition<TCause> : NotificationKindDefinition where TCause : NotificationCause
 {

@@ -1,5 +1,7 @@
 # Hold question emails to the next full hour
 
+**Superseded** by [ADR-0007](0007-question-times-are-exact-and-shown-at-once.md) (November 27, 2026): message times are now exact and shown at once. The email hold stays, as batching only.
+
 "A question for you" is sent at the top of the next full hour after the giver posts, not straight away, and further questions in that thread within the hour join the same email. Message times are already stored rounded to the hour (so the recipient can't tell when their giver was online), and an instant email would give the exact minute back. If the recipient has read the thread by then, the email is dropped unsent.
 
 ## Consequences

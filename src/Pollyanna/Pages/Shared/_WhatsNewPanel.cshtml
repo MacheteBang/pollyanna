@@ -1,0 +1,26 @@
+@model Pollyanna.Pages.Shared.WhatsNewPanelView
+@using Pollyanna.Infrastructure
+@using Pollyanna.Pages.Shared
+@* The bell and its "What's new" panel (spec §7, §12, §16; the #89 mockup, variant A). The bell is
+   filled, with a small red dot, with something new and outlined without, never a number. The
+   button carries its three labels, so site.js counts the rows it shows in the server's words. Without the script it is the
+   link to /whats-new and the panel stays hidden; site.js (whatsNewPanel) hides the link, shows
+   the button, opens and closes the panel, and dismisses in place by posting each row's own form,
+   the same post as the page. The panel comes right after the button so Tab goes into it. *@
+@{
+    var bell = "M12 3a6 6 0 0 0-6 6v3.6L4 16.5h16l-2-3.9V9a6 6 0 0 0-6-6z";
+    var clapper = "M9.8 18.5a2.2 2.2 0 0 0 4.4 0z";
+}
+<a class="@Model.BellClass" href="/whats-new" aria-label="@Model.BellLabel" data-bell-link>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="bell-body" d="@bell"/><path class="bell-clapper" d="@clapper"/><circle class="bell-dot" cx="19" cy="5" r="3.5" hidden="@(Model.Rows.Count == 0)"/></svg>
+</a>
+<button type="button" class="@Model.BellClass" aria-label="@Model.BellLabel" aria-expanded="false"
+        aria-controls="whats-new-panel" data-bell data-bell-labels="@WhatsNewPanelView.Labels" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="bell-body" d="@bell"/><path class="bell-clapper" d="@clapper"/><circle class="bell-dot" cx="19" cy="5" r="3.5" hidden="@(Model.Rows.Count == 0)"/></svg>
+</button>
+<div class="bell-panel" id="whats-new-panel" role="region" aria-labelledby="whats-new-panel-heading" hidden>
+    <h2 class="bell-panel-heading" id="whats-new-panel-heading">What's new</h2>
+    <partial name="_WhatsNewRows" model="@(new Pollyanna.Pages.Shared.WhatsNewRowsView(Model.Rows, Model.Now, InPanel: true, Model.Withheld))" />
+</div>
+@* site.js (liveConnection) says each row that arrives live here, politely; empty until then. *@
+<p class="visually-hidden" aria-live="polite" data-bell-say></p>

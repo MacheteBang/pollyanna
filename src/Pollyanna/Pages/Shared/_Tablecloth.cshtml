@@ -2,10 +2,18 @@
    runs the full width; the page's body follows it directly, so the page decides where the cloth
    goes. See notes on the pieces (.column, _PageHead, .cloth > .panel, .below, .button-fill) in
    tablecloth.css. A page adds a font to preload with a "Preload" section. *@
+@inject Pollyanna.WhatsNew.WhatsNewList WhatsNew
+@inject TimeProvider Clock
 @{
     var signedIn = User.Identity?.IsAuthenticated == true;
     var name = User.Identity?.Name?.Trim();
     var firstName = string.IsNullOrEmpty(name) ? "Your account" : name.Split(' ', 2)[0];
+    var live = Pollyanna.Live.LiveShape.Of(ViewData);
+    // A live refetch a hint set off leaves out the rows tied to an assignment (spec §16).
+    var pairParts = Pollyanna.Live.LiveRefetch.CarriesPairParts(Context.Request);
+    var news = signedIn
+        ? new Pollyanna.Pages.Shared.WhatsNewPanelView(await WhatsNew.RowsAsync(User.PersonId(), workedOut: pairParts), Clock.GetUtcNow().UtcDateTime, Withheld: !pairParts)
+        : null;
 }
 <!doctype html>
 <html lang="en">
@@ -25,16 +33,26 @@
 <body>
     <header class="masthead">
         <a class="brand" href="/"><partial name="_TableclothGirl" model="40" /><span>pollyanna</span></a>
-        @if (signedIn)
+        @if (news is not null)
         {
             <nav class="masthead-end" aria-label="Account">
-                <span class="masthead-slot"></span>
+                <partial name="_WhatsNewPanel" model="news" />
                 <a class="masthead-account" href="/account">@firstName</a>
             </nav>
         }
     </header>
-    <main>
+    @* A page that updates live names its shape and the quiet line for arriving at it (spec §16;
+       Pollyanna.Live.LiveShape): a live refetch with another shape is a state change. It names
+       its own path (as content frames file it), where a refetch sent on goes, and the words the
+       script shows for what a refetch can't show. The empty live line is where the script puts
+       that line ("Names have been drawn." Show) and says it. *@
+    <main data-live-shape="@live?.Shape" data-live-line="@live?.Line" data-live-path="@live?.Path" data-live-moved="@live?.Moved"
+          data-live-words="@(live is null ? null : Pollyanna.Live.LiveShape.Words)">
         <div class="column"><partial name="_Notice" /></div>
+        @if (live is not null)
+        {
+            <div class="column" data-live-say aria-live="polite"></div>
+        }
         @RenderBody()
     </main>
 </body>

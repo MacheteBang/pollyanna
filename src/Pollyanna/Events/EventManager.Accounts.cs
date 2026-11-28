@@ -1,5 +1,5 @@
 using Pollyanna.Data;
-using Pollyanna.Notifications.Kinds;
+using Pollyanna.Happenings;
 using Microsoft.EntityFrameworkCore;
 
 namespace Pollyanna.Events;
@@ -71,17 +71,21 @@ public sealed partial class EventManager
             {
                 var status = await db.Events.Where(e => e.Id == p.EventId).Select(e => e.Status).SingleAsync();
                 if (EventLifecycle.BeforeDraw.Contains(status))
-                    await RemoveAsync(p.EventId, me);
-                else if (!await TakeOutAfterDrawAsync(p.EventId, me))
+                    await RemoveAsync(new Happening(HappeningKind.Left, p.EventId, me, me));
+                else if (!await TakeOutAfterDrawAsync(new Happening(HappeningKind.Left, p.EventId, me, me)))
                     blocked.Add(p.EventId);
             }
             if (blocked.Count > 0)
                 return blocked;
 
+            foreach (var organized in await db.Organizers.Where(o => o.PersonId == me).Select(o => o.EventId).ToListAsync())
+                await announcer.AnnounceAsync(new Happening(HappeningKind.OrganizerRemoved, organized, me, me));
             await db.Organizers.Where(o => o.PersonId == me).ExecuteDeleteAsync();
             // Revealed and archived events keep the participant row; their notes go.
             await db.Participants.Where(p => p.PersonId == me)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.Notes, "").SetProperty(p => p.NotesVersion, p => p.NotesVersion + 1));
+            // Their "What's new" rows go with the account (spec §16).
+            await stored.ForgetPersonAsync(me);
             await db.PersonPictures.Where(p => p.PersonId == me).ExecuteDeleteAsync();
             await db.Sessions.Where(s => s.PersonId == me).ExecuteDeleteAsync();
             await db.Logins.Where(l => l.PersonId == me).ExecuteDeleteAsync();
@@ -104,7 +108,7 @@ public sealed partial class EventManager
             await db.Participants.Where(p => p.PersonId == me && stuck.Contains(p.EventId))
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.WantsToLeave, true));
             foreach (var eventId in stuck)
-                await outbox.QueueAsync(new RedrawNeeded.Cause(eventId, me));
+                await announcer.AnnounceAsync(new Happening(HappeningKind.RedrawNeeded, eventId, me));
             await db.SaveChangesAsync();
             return true;
         }, done => done);

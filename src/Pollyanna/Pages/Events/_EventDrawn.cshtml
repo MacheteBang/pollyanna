@@ -14,6 +14,22 @@
     the gift) runs the untying in CSS (site.js gifts()) and posts /seen; "Hide the name" ties it
     back at once. Without the script, "Untie the bow" goes to /events/{id}/untie, which renders the
     page untied with no motion, and "Hide the name" posts /seen, which records the viewing.
+
+    Live (spec §16): the recipient's notes, "Done shopping", the viewer's notes and the people
+    patch in place (data-live). The gift isn't a region, so a live refetch, which always comes
+    back tied, never ties or unties it. The question box is a region, and so are its thread and
+    its closed line inside it, so with a draft in the box (which keeps the box itself as it is) a
+    reply still arrives and closing still shows, and the script turns Send off; the lines before
+    and after the gift sit in always-there slots. A patch brings the whole gift in again, tied
+    (site.js, on the giver's own content frame), so an old name is never left on screen. With
+    the script, the question box sends without leaving the page (data-in-place, spec §16), and an
+    error shows under the box (data-composer-note).
+
+    The parts between the viewer and their recipient or giver (data-live-pair: their notes, the
+    question box, the lines before and after the gift, and the name and markers on the gift) are
+    left out of a refetch a hint set off (Model.PairParts false), so what it brings back depends on
+    nobody's pairing; each keeps its place (_Withheld), and the script keeps what it shows. They
+    arrive in the viewer's own content frames, a catch-up refetch or a real load.
 *@
 @{
     var id = Model.Event.Id;
@@ -21,22 +37,35 @@
     var ask = Model.AskThread;
     var questions = Model.QuestionsThread is { Notes.Count: > 0 } q ? q : null;
     var untie = $"/events/{id}/untie#gift";
+    var pair = Model.PairParts;
 }
 
-@if (questions is { Unread: > 0 })
+@if (!pair)
 {
-    <div class="column gift-asked">
-        <a class="asked-link" href="/events/@id/questions">Your giver asked you something</a>
-    </div>
+    <partial name="_Withheld" model="@("live-asked")" />
+    <partial name="_Withheld" model="@("live-gift-again")" />
 }
+else
+{
+<div class="live-slot" id="live-asked" data-live data-live-pair>
+    @if (questions is { Unread: > 0 })
+    {
+        <div class="column gift-asked">
+            <a class="asked-link" href="/events/@id/questions">Your giver asked you something</a>
+        </div>
+    }
+</div>
 
-@if (slip is { RecipientChanged: true })
-{
-    <div class="column"><p class="gift-again" role="status">You're giving to someone new. Someone left or joined, so who you're giving to changed.</p></div>
-}
-else if (slip is { DrawnAgain: true })
-{
-    <div class="column"><p class="gift-again">Names were drawn again, so this may be someone new.</p></div>
+<div class="live-slot" id="live-gift-again" data-live data-live-pair>
+    @if (slip is { RecipientChanged: true })
+    {
+        <div class="column"><p class="gift-again" role="status">You're giving to someone new. Someone left or joined, so who you're giving to changed.</p></div>
+    }
+    else if (slip is { DrawnAgain: true })
+    {
+        <div class="column"><p class="gift-again">Names were drawn again, so this may be someone new.</p></div>
+    }
+</div>
 }
 
 @if (Model.WantsToLeave)
@@ -60,16 +89,23 @@ else if (slip is { DrawnAgain: true })
 }
 else
 {
-    var first = Model.FirstTime ? "true" : "false";
-    var name = slip.Recipient.Name;
-    <section id="gift" class="gift@(Model.Unfold ? " untied still" : "")" data-gift data-first="@first" aria-label="Who you're giving to">
+    var first = pair && Model.FirstTime ? "true" : "false";
+    var name = pair ? slip.Recipient.Name : "";
+    <section id="gift" class="gift@(Model.Unfold ? " untied still" : "")" data-gift data-first="@first" @(pair ? null : Html.Raw("data-live-withheld")) aria-label="Who you're giving to">
         <div class="cloth gift-cloth">
             <div class="panel gift-panel">
                 <p class="gift-to">You're giving to</p>
                 <p class="revealed-name@(name.Length > 8 ? " revealed-name-long" : "")" tabindex="-1">@name</p>
                 <div class="gift-more">
                     <div class="gift-more-in">
-                        <section class="gift-group" aria-labelledby="their-notes-heading">
+                        @if (!pair)
+                        {
+                            <partial name="_Withheld" model="@("their-notes")" />
+                            <partial name="_Withheld" model="@("ask")" />
+                        }
+                        else
+                        {
+                        <section class="gift-group" id="their-notes" data-live data-live-pair aria-labelledby="their-notes-heading">
                             <h2 id="their-notes-heading" class="section-title">@Format.Possessive(name) notes</h2>
                             @if (slip.NotesUpdated)
                             {
@@ -79,11 +115,13 @@ else
                         </section>
                         @if (ask is not null)
                         {
-                            <section class="gift-group" id="ask" aria-labelledby="ask-heading">
+                            <section class="gift-group" id="ask" data-live data-live-pair aria-labelledby="ask-heading">
                                 <h2 id="ask-heading" class="section-title">Ask @name something</h2>
-                                <p class="small soft">@name sees "Your giver asks…", never your name. Times are rounded to the hour.</p>
+                                <p class="small soft">@name sees "Your giver asks…", never your name.</p>
+                                <div class="live-slot" id="ask-thread" data-live data-thread>
                                 @if (ask.Notes.Count > 0)
                                 {
+                                    <div class="thread-scroll">
                                     <ol class="conversation" data-conversation>
                                         @{ DateOnly? day = null; }
                                         @foreach (var note in ask.Notes)
@@ -97,35 +135,41 @@ else
                                             }
                                             <li class="message @(mine ? "message-mine" : "message-theirs")">
                                                 <p class="bubble"><span class="visually-hidden">@(mine ? "You:" : $"{name}:")</span> <span class="bubble-body">@note.Body</span></p>
-                                                <p class="message-meta"><time datetime="@Format.IsoHour(note.CreatedAt)" data-said>@QuestionsModel.About(note.CreatedAt.Hour) UTC</time>@if (note.IsNew)
+                                                <p class="message-meta"><time datetime="@Format.IsoMinute(note.CreatedAt)" data-said="@(note.OnTheHour ? "hour" : "")">@Format.Said(note)</time>@if (note.IsNew)
                                                     {
                                                         <text> · </text><strong class="message-new">new</strong>
                                                     }</p>
                                             </li>
                                         }
                                     </ol>
+                                    </div>
                                 }
+                                </div>
                                 <partial name="_Notice" view-data="@(new ViewDataDictionary(ViewData) { ["NoticeAt"] = "ask" })" />
-                                @if (ask.Closed)
+                                <div class="live-slot" id="ask-closed" data-live>
+                                    @if (ask.Closed)
+                                    {
+                                        <p role="status" data-closed>Your recipient has closed this conversation.</p>
+                                    }
+                                </div>
+                                @if (!ask.Closed)
                                 {
-                                    <p role="status">@name closed this conversation.</p>
-                                }
-                                else
-                                {
-                                    <form method="post" action="/events/@id/ask" asp-antiforgery="true" class="field">
+                                    <form method="post" action="/events/@id/ask" asp-antiforgery="true" class="composer" data-composer data-in-place>
                                         <label for="ask-body" class="visually-hidden">Your question for @name</label>
-                                        <textarea id="ask-body" name="body" rows="2" maxlength="@EventManager.MessageMax" required></textarea>
-                                        <button type="submit" class="button button-start">Send</button>
+                                        <textarea id="ask-body" name="body" rows="1" maxlength="@EventManager.MessageMax" required></textarea>
+                                        <button type="submit" class="button button-fill">Send</button>
+                                        <p class="composer-note" role="alert" data-composer-note></p>
                                     </form>
                                 }
                             </section>
                         }
-                        <form method="post" asp-page-handler="shopping" id="shopping" class="gift-shopping" data-save-on-change>
+                        }
+                        <form method="post" asp-page-handler="shopping" id="shopping" class="gift-shopping" data-save-on-change data-live>
                             <label class="check"><input type="checkbox" name="done" value="true" checked="@Model.DoneShopping"> Done shopping</label>
                             <button type="submit" class="button button-start" data-save-button>Save</button>
                         </form>
                         <form method="post" action="/events/@id/seen" asp-antiforgery="true" data-hide>
-                            <input type="hidden" name="upto" value="@(ask?.Upto ?? 0)">
+                            <input type="hidden" name="upto" value="@(pair ? ask?.Upto ?? 0 : 0)">
                             <button type="submit" class="link-button">Hide the name</button>
                         </form>
                     </div>
@@ -154,12 +198,21 @@ else
 }
 
 <div class="column below">
-    @if (questions is not { Unread: > 0 })
+    @if (!pair)
     {
-        <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
+        <partial name="_Withheld" model="@("live-questions-link")" />
+    }
+    else
+    {
+        <div class="live-slot" id="live-questions-link" data-live data-live-pair>
+            @if (questions is not { Unread: > 0 })
+            {
+                <p><a class="questions-link" href="/events/@id/questions">Questions from your giver</a></p>
+            }
+        </div>
     }
     <div class="folds">
-        <details class="fold" id="your-notes">
+        <details class="fold" id="your-notes" data-live>
             <summary><span>Your notes</span><span class="fold-hint">@(Model.MyNotes.Length > 0 ? Model.MyNotes : "None yet")</span></summary>
             <div class="fold-body">
                 @if (Model.Membership.Editable)
@@ -176,7 +229,7 @@ else
                 }
             </div>
         </details>
-        <details class="fold" id="taking-part">
+        <details class="fold" id="taking-part" data-live>
             <summary><span>Taking part</span><span class="fold-hint">@Model.Participants.Count people</span></summary>
             <div class="fold-body">
                 <partial name="_People" model="Model" />

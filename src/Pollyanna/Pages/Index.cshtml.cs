@@ -1,6 +1,7 @@
 using Pollyanna.Auth;
 using Pollyanna.Data;
 using Pollyanna.Events;
+using Pollyanna.Live;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +18,12 @@ public sealed class IndexModel(PollyannaDb db, EventManager events) : PageModel
         int ParticipantCount, int InvitationCount, bool IsParticipant)
     {
         public Waiting Waiting { get; set; }
+
+        /// <summary>
+        /// The waiting line is left out of this render: a live refetch a hint set off, in a drawn
+        /// event the viewer takes part in, where the line can be about their recipient or giver (spec §16).
+        /// </summary>
+        public bool Withheld { get; set; }
 
         /// <summary>Where the event opens: its own page, or the organizing page for an organizer who doesn't take part.</summary>
         public string Href => IsParticipant ? $"/events/{Id}" : $"/events/{Id}/manage";
@@ -55,8 +62,13 @@ public sealed class IndexModel(PollyannaDb db, EventManager events) : PageModel
                 e.Participants.Any(p => p.PersonId == me)))
             .ToListAsync();
 
+        var pairParts = Request.CarriesPairParts();
         foreach (var e in Events)
-            e.Waiting = await events.WaitingAsync(me, e.Id, e.Status, e.IsOrganizer, e.IsParticipant);
+        {
+            e.Withheld = !pairParts && e.IsParticipant && EventLifecycle.Live.Contains(e.Status);
+            if (!e.Withheld)
+                e.Waiting = await events.WaitingAsync(me, e.Id, e.Status, e.IsOrganizer, e.IsParticipant);
+        }
 
         var person = await db.People.Where(p => p.Id == me).Select(p => new { p.Email, p.EmailVerified }).SingleAsync();
         Email = person.Email;

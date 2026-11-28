@@ -1,0 +1,15 @@
+@page "/whats-new/{handler?}"
+@model WhatsNewModel
+@using Pollyanna.Infrastructure
+@using Pollyanna.Pages.Shared
+@{
+    ViewData["Title"] = "What's new";
+}
+
+@* "What's new" without the script (spec §7, §16): one row per notification, the line as a link
+   to where it's dealt with, the event and time under it in small soft ink, and a small "Dismiss"
+   form button. No cloth: there is nothing to do here but go somewhere else. *@
+<partial name="_PageHead" model="@(new PageHeadView("What's new", Back: new("Home", "/")))" />
+<div class="column">
+    <partial name="_WhatsNewRows" model="@(new WhatsNewRowsView(Model.Rows, Model.Now, InPanel: false))" />
+</div>
